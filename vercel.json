@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "api/index.php": {
+      "runtime": "vercel-php@0.8.0",
+      "memory": 1024,
+      "maxDuration": 30,
+      "excludeFiles": "{storage/**,*.sqlite,php.ini,.env,.git/**}"
+    }
+  },
+  "routes": [
+    { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
+    { "src": "/favicon.ico", "dest": "/public/assets/favicon.svg" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
+  ]
+}

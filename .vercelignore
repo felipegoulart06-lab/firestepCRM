@@ -1,0 +1,8 @@
+storage
+php.ini
+.env
+.git
+*.sqlite
+*.sqlite-*
+storage/php-error.log
+.DS_Store
