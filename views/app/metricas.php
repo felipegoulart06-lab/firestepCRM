@@ -2,7 +2,8 @@
 $terms = terms_of($tenant);
 $period = (int)($_GET['period'] ?? 30);
 $period = in_array($period, [7, 30, 90], true) ? $period : 30;
-$maxSource = max(1, ...array_map(fn($row) => (int)$row['total'], $sources));
+$sourceTotals = array_map(static fn($row) => (int)$row['total'], $sources ?? []);
+$maxSource = max(1, $sourceTotals ? max($sourceTotals) : 0);
 $conversion = $requestTotal > 0 ? round(($scheduledRequests / $requestTotal) * 100) : 0;
 $attendance = $appointmentTotal > 0 ? round(($doneAppointments / $appointmentTotal) * 100) : 0;
 ?>
