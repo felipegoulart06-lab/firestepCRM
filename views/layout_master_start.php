@@ -19,7 +19,6 @@
     <a href="/master/clientes" class="<?= $path==='/master/clientes'?'active':'' ?>"><?= icon('users') ?> Clientes SaaS</a>
     <a href="/master/clientes/novo" class="<?= $path==='/master/clientes/novo'?'active':'' ?>"><?= icon('plus') ?> Criar cliente</a>
     <a href="/master/segmentos" class="<?= $path==='/master/segmentos'?'active':'' ?>"><?= icon('tag') ?> Segmentos</a>
-    <a href="/master/planos" class="<?= $path==='/master/planos'?'active':'' ?>"><?= icon('briefcase') ?> Planos</a>
     <div class="nav-cat">SISTEMA</div>
     <a href="/master/integracoes" class="<?= $path==='/master/integracoes'?'active':'' ?>"><?= icon('webhook') ?> Integrações</a>
     <a href="/master/logs" class="<?= $path==='/master/logs'?'active':'' ?>"><?= icon('list') ?> Logs</a>

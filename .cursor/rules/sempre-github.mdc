@@ -1,0 +1,14 @@
+---
+description: After every code change, commit and push to GitHub without waiting to be asked.
+alwaysApply: true
+---
+
+# Sempre enviar ao GitHub
+
+Depois de editar o projeto, faça commit e `git push` para `origin` na branch atual, sem esperar o usuário pedir.
+
+- Não altere `git config`.
+- Não use `--no-verify`, force push, amend de commit já enviado, nem reset destrutivo.
+- Não commite `.env`, senhas ou credenciais.
+- Mensagem de commit em 1–2 frases, no estilo do repositório, focada no porquê.
+- Informe o hash do commit e que o push foi feito.

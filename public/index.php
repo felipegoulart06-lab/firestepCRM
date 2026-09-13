@@ -287,9 +287,7 @@ if (str_starts_with($path, '/master')) {
             redirect('/master/configuracoes/tecnico');
         }
         if ($path === '/master/planos/salvar') {
-            q('UPDATE plans SET name=?, description=?, active=? WHERE id=?', [post('name'), post('description'), db_bool(isset($_POST['active'])), post('id')]);
-            flash('Plano atualizado.');
-            redirect('/master/planos');
+            redirect('/master');
         }
         if ($path === '/master/segmentos/criar') {
             $name = trim((string)post('name', ''));
@@ -387,14 +385,7 @@ if (str_starts_with($path, '/master')) {
         exit;
     }
     if ($path === '/master/planos') {
-        $counts = [];
-        foreach (all('SELECT plan, COUNT(*) c FROM tenants GROUP BY plan') as $row) {
-            $counts[$row['plan']] = (int)$row['c'];
-        }
-        layout_start('master', compact('user','path'));
-        view('master/planos', ['plans'=>all('SELECT * FROM plans ORDER BY slug'), 'counts'=>$counts]);
-        layout_end('master');
-        exit;
+        redirect('/master');
     }
     if ($path === '/master/integracoes') { layout_start('master', compact('user','path')); view('master/integracoes'); layout_end('master'); exit; }
     if ($path === '/master/logs') { layout_start('master', compact('user','path')); view('master/logs', ['logs'=>all('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 80')]); layout_end('master'); exit; }
