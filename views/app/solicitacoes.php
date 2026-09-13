@@ -15,17 +15,17 @@ $canConvert = static function (array $r): bool {
     <p class="subtitle">Pedidos recebidos pelo site, WhatsApp e integrações. Não se cadastram por aqui.</p>
   </div>
 </div>
-<div class="grid g4" style="margin:14px 0">
-  <div class="card stat"><span>Novas</span><b><?= $counts['NEW'] ?></b></div>
-  <div class="card stat"><span>Em atendimento</span><b><?= $counts['CONTACTED']+$counts['WAITING_CLIENT'] ?></b></div>
-  <div class="card stat"><span>Agendadas</span><b><?= $counts['SCHEDULED'] ?></b></div>
-  <div class="card stat"><span>Finalizadas</span><b><?= $counts['DONE'] ?></b></div>
+<div class="grid g4" style="margin:10px 0 14px">
+  <div class="card stat"><span class="stat-label">Novas</span><b><?= $counts['NEW'] ?></b></div>
+  <div class="card stat"><span class="stat-label">Em atendimento</span><b><?= $counts['CONTACTED']+$counts['WAITING_CLIENT'] ?></b></div>
+  <div class="card stat"><span class="stat-label">Agendadas</span><b><?= $counts['SCHEDULED'] ?></b></div>
+  <div class="card stat"><span class="stat-label">Finalizadas</span><b><?= $counts['DONE'] ?></b></div>
 </div>
-<p>
+<div class="tabs" style="margin:0 0 12px">
   <?php foreach ($map as $k=>$l): ?>
-    <a class="btn <?= $fil===$k?'btn-primary':'btn-ghost' ?>" href="/app/solicitacoes?f=<?= e($k) ?>"><?= $l ?></a>
+    <a class="<?= $fil===$k?'active':'' ?>" href="/app/solicitacoes?f=<?= e($k) ?>"><?= $l ?></a>
   <?php endforeach; ?>
-</p>
+</div>
 <div class="card table-wrap">
 <?php
 $show = array_filter($requests, function($r) use ($fil) {
@@ -39,18 +39,24 @@ if (!$show): ?>
   <table class="data">
     <thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Serviço</th><th>Data desejada</th><th>Origem</th><th>Status</th><th>Ações</th></tr></thead>
     <tbody>
-    <?php foreach ($show as $r): ?>
+    <?php foreach ($show as $r):
+      $desired = '—';
+      if (!empty($r['desired_date'])) {
+          $desired = date('d/m/Y', strtotime((string)$r['desired_date']));
+          if (!empty($r['desired_time'])) $desired .= ' '.substr((string)$r['desired_time'], 0, 5);
+      }
+    ?>
       <tr>
         <td><?= e(date('d/m/Y H:i', strtotime($r['created_at']))) ?></td>
         <td><b><?= e($r['name']) ?></b></td>
-        <td><?= e($r['phone'] ?: '—') ?></td>
+        <td><?= e(phone_fmt($r['phone'] ?? null) ?: '—') ?></td>
         <td><?= e($r['service_name'] ?: '—') ?></td>
-        <td><?= e(trim(($r['desired_date']??'').' '.($r['desired_time']??'')) ?: '—') ?></td>
+        <td><?= e($desired) ?></td>
         <td><?= e($r['source']) ?></td>
         <td><?= badge_req($r['status']) ?></td>
         <td>
           <div class="row-actions">
-            <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($r['id']) ?><?= $fil!=='ALL'?'&f='.e($fil):'' ?>">Ver detalhes</a>
+            <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($r['id']) ?><?= $fil!=='ALL'?'&f='.e($fil):'' ?>">Detalhes</a>
             <?php if ($canConvert($r)): ?>
             <a class="btn btn-primary" href="/app/solicitacoes?ver=<?= e($r['id']) ?>&amp;converter=1">Converter</a>
             <?php endif; ?>
