@@ -10,7 +10,7 @@ $total = count($items);
     <h1>Agendamentos</h1>
     <p>Todos os horários, de qualquer origem: manual, site, webhook ou outros canais.</p>
   </div>
-  <a class="btn btn-primary" href="/app/agenda?new=1"><?= icon('plus') ?> Novo agendamento</a>
+  <a class="btn btn-primary" href="/app/agendamentos?new=1"><?= icon('plus') ?> Novo agendamento</a>
 </div>
 
 <form method="get" action="/app/agendamentos" class="card service-toolbar">
@@ -38,7 +38,7 @@ $total = count($items);
     <div class="empty-icon"><?= icon('calendar',22) ?></div>
     <b>Nenhum agendamento encontrado.</b>
     <div>Horários criados na agenda, convertidos de solicitações ou recebidos por webhook aparecerão nesta tabela.</div>
-    <p><a class="btn btn-primary" href="/app/agenda?new=1"><?= icon('plus') ?> Criar agendamento</a></p>
+    <p><a class="btn btn-primary" href="/app/agendamentos?new=1"><?= icon('plus') ?> Criar agendamento</a></p>
   </div>
 <?php else: ?>
 <table class="data">
@@ -71,8 +71,13 @@ $total = count($items);
 </table>
 <?php endif; ?>
 </div>
-<?php if (!empty($edit)):
+<?php if (!empty($edit) || !empty($creating)):
   $listQs = http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null]));
   $modalClose = '/app/agendamentos'.($listQs !== '' ? '?'.$listQs : '');
+  $forcedClient = $forcedClient ?? null;
+  if ($forcedClient && ($_GET['from'] ?? '') === 'clientes') {
+      $modalClose = '/app/clientes/ver?id='.$forcedClient['id'];
+  }
+  $hideCalendarSwitch = true;
   include VIEWS . '/app/modal_appointment.php';
 endif; ?>

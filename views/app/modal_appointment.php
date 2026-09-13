@@ -47,7 +47,7 @@ $services = $services ?? [];
       <div style="border-top:1px solid #e4e7ec;margin:14px 0 12px"></div>
       <h3 style="font-size:13px;margin:0 0 8px">Editar agendamento</h3>
     <?php endif; ?>
-    <?php if (!$edit && empty($forcedClient)): ?>
+    <?php if (!$edit && empty($forcedClient) && empty($hideCalendarSwitch)): ?>
       <p><a href="/app/agenda?new=1&date=<?= e($date) ?>&start=<?= e($start) ?>">Agendar</a> · <a href="/app/agenda?new=1&block=1&date=<?= e($date) ?>&start=<?= e($start) ?>">Bloquear horário</a></p>
     <?php endif; ?>
     <?php if ($mode): ?>
@@ -133,17 +133,19 @@ $services = $services ?? [];
         </div>
         <?php endif; ?>
         <div><label class="label">Serviço</label>
-          <select class="select" name="service_id">
+          <select class="select" name="service_id" required>
+            <option value="">Selecione</option>
             <?php foreach ($services as $s): ?>
-              <option value="<?= e($s['id']) ?>" <?= ($edit && $edit['service_id']===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min</option>
+              <option value="<?= e($s['id']) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min</option>
             <?php endforeach; ?>
           </select>
+          <?php if (!$services): ?><p class="muted">Cadastre um serviço em Serviços para definir a duração do atendimento.</p><?php endif; ?>
         </div>
         <div class="grid g2">
           <div><label class="label">Data</label><input class="input" type="date" name="date" value="<?= e($date) ?>" required></div>
           <div><label class="label">Início</label><input class="input" type="time" name="start" value="<?= e($start) ?>" required></div>
         </div>
-        <p style="color:#667085;font-size:13px;margin:0">O término é calculado pela duração do serviço.</p>
+        <p class="muted" style="margin:0">O término usa a duração do serviço (Serviços → Agenda e valor). Se esse período cruzar outro agendamento, não será possível salvar até excluir ou alterar o horário ocupado.</p>
         <div><label class="label">Status</label>
           <select class="select" name="status">
             <?php foreach (APPT_STATUS as $k=>$v): ?>

@@ -9,9 +9,11 @@ $canConvert = static function (array $r): bool {
     return !in_array($r['status'], ['SCHEDULED','ARCHIVED'], true);
 };
 ?>
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-  <div><h1 style="margin-bottom:4px">Solicitações</h1><p style="color:#667085;margin:0">Centralize pedidos recebidos pelo site, WhatsApp e integrações.</p></div>
-  <a class="btn btn-primary" href="/app/solicitacoes?nova=1">+ Nova solicitação</a>
+<div class="page-head">
+  <div>
+    <h1>Solicitações</h1>
+    <p class="subtitle">Pedidos recebidos pelo site, WhatsApp e integrações. Não se cadastram por aqui.</p>
+  </div>
 </div>
 <div class="grid g4" style="margin:14px 0">
   <div class="card stat"><span>Novas</span><b><?= $counts['NEW'] ?></b></div>
@@ -32,7 +34,7 @@ $show = array_filter($requests, function($r) use ($fil) {
     return $r['status']===$fil;
 });
 if (!$show): ?>
-  <div class="empty"><b>Nenhuma solicitação recebida.</b><div>Solicitações enviadas pelo seu site aparecerão aqui.</div></div>
+  <div class="empty"><b>Nenhuma solicitação recebida.</b><div>Solicitações enviadas pelo seu site ou integrações aparecerão aqui.</div></div>
 <?php else: ?>
   <table class="data">
     <thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Serviço</th><th>Data desejada</th><th>Origem</th><th>Status</th><th>Ações</th></tr></thead>
@@ -69,23 +71,6 @@ if (!$show): ?>
   </table>
 <?php endif; ?>
 </div>
-<?php if (!empty($_GET['nova'])): ?>
-<div class="overlay">
-  <form method="post" action="/app/solicitacoes/criar" class="card" style="width:100%;max-width:480px;padding:22px" onclick="event.stopPropagation()">
-    <h2>Nova solicitação</h2>
-    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-    <label class="label">Nome</label><input class="input" name="name" required>
-    <label class="label">Telefone</label><input class="input" name="phone">
-    <label class="label">E-mail</label><input class="input" name="email">
-    <label class="label">Serviço</label>
-    <select class="select" name="service_id"><option value="">—</option><?php foreach ($services as $s): ?><option value="<?= e($s['id']) ?>"><?= e($s['name']) ?></option><?php endforeach; ?></select>
-    <div class="grid g2"><div><label class="label">Data desejada</label><input class="input" type="date" name="desired_date"></div>
-    <div><label class="label">Horário</label><input class="input" type="time" name="desired_time"></div></div>
-    <label class="label">Mensagem</label><textarea class="textarea" name="message"></textarea>
-    <p><button class="btn btn-primary" type="submit">Criar</button> <a class="btn btn-ghost" href="/app/solicitacoes">Fechar</a></p>
-  </form>
-</div>
-<?php endif; ?>
 <?php if ($detail && !$confirmConvert):
   $payload = [];
   if (!empty($detail['metadata'])) {

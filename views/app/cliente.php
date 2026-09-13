@@ -9,7 +9,7 @@
   <div class="card" style="padding:14px"><div style="font-size:12px;color:#667085">Solicitações</div><b><?= (int)$totalReq ?></b></div>
 </div>
 <p>
-  <a class="btn btn-primary" href="/app/agenda?new=1&amp;client_id=<?= e($c['id']) ?>&amp;from=clientes"><?= icon('plus') ?> Novo agendamento</a>
+  <a class="btn btn-primary" href="/app/agendamentos?new=1&amp;client_id=<?= e($c['id']) ?>&amp;from=clientes"><?= icon('plus') ?> Novo agendamento</a>
   <a class="btn btn-ghost" href="/app/clientes/resumo.pdf?id=<?= e($c['id']) ?>"><?= icon('download') ?> Baixar resumo em PDF</a>
 </p>
 <div class="card" style="padding:16px;margin-bottom:16px">

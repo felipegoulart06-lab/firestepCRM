@@ -469,8 +469,8 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/agenda/salvar') {
             $back = app_return_url(post('return_to'), '/app/agenda');
-            $retryNew = '/app/agenda?new=1';
-            if (post('lock_client_id')) $retryNew .= '&client_id='.urlencode((string)post('lock_client_id'));
+            $retryNew = str_contains($back, '/agendamentos') ? '/app/agendamentos?new=1' : '/app/agenda?new=1';
+            if (post('lock_client_id')) $retryNew .= (str_contains($retryNew, '?') ? '&' : '?').'client_id='.urlencode((string)post('lock_client_id'));
             if (post('from') === 'clientes') $retryNew .= '&from=clientes';
             $cid = null;
             $rid = post('request_id');
@@ -509,13 +509,21 @@ if (str_starts_with($path, '/app')) {
                     redirect($retryNew);
                 }
             }
-            if (!$cid) { flash('Informe o cliente do agendamento.'); redirect($retryNew); }
+            if (!$cid) { flash('Informe o cliente do agendamento.', 'error'); redirect($retryNew); }
             $id = post('id');
+            $svc = post('service_id') ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [post('service_id'), $tid]) : null;
+            if (!$svc) {
+                flash('Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.', 'error');
+                redirect($id ? $back : $retryNew);
+            }
             if ($id) {
-                $svc = post('service_id') ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [post('service_id'), $tid]) : null;
                 $start = post('date').' '.post('start').':00';
                 $end = date('Y-m-d H:i:s', strtotime($start) + service_span_minutes($svc)*60);
-                if (has_conflict($tid, $start, $end, $id)) { flash('Este horário já está ocupado.'); redirect($back); }
+                $conflict = find_slot_conflict($tid, $start, $end, $id);
+                if ($conflict) {
+                    flash(slot_conflict_message($conflict, (int)$svc['duration_minutes']), 'error');
+                    redirect($back);
+                }
                 $prev = one('SELECT * FROM appointments WHERE id=? AND tenant_id=?', [$id, $tid]);
                 q('UPDATE appointments SET client_id=?, service_id=?, starts_at=?, ends_at=?, status=?, notes=? WHERE id=? AND tenant_id=?',
                     [$cid, $svc['id']??null, $start, $end, post('status','SCHEDULED'), post('notes'), $id, $tid]);
@@ -530,7 +538,7 @@ if (str_starts_with($path, '/app')) {
                     'source'=>$req['source'] ?? 'Manual',
                     'metadata'=>$req && !empty($req['metadata']) ? (json_decode($req['metadata'], true) ?: null) : null,
                 ]);
-                flash($res['ok'] ? 'Agendamento criado.' : $res['message']);
+                flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
                 redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos') : $retryNew);
             }
             redirect($back);
@@ -621,10 +629,6 @@ if (str_starts_with($path, '/app')) {
             redirect($res['ok'] ? '/app/agendamentos' : '/app/solicitacoes?ver='.$req['id']);
         }
         if ($path === '/app/solicitacoes/criar') {
-            q('INSERT INTO requests(id,tenant_id,name,phone,email,service_id,desired_date,desired_time,message,source,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-                [uid(),$tid,post('name'),post('phone'),post('email'),post('service_id') ?: null, empty_to_null(post('desired_date')), empty_to_null(post('desired_time')),post('message'),'Manual','NEW',now()]);
-            notify($tid, 'Nova solicitação recebida', post('name'));
-            flash('Solicitação criada.');
             redirect('/app/solicitacoes');
         }
         if ($path === '/app/solicitacoes/status' || $path === '/app/kanban') {
@@ -966,10 +970,17 @@ if (str_starts_with($path, '/app')) {
         $items = all($sql, $p);
         $sources = all("SELECT DISTINCT source FROM appointments WHERE tenant_id=? AND COALESCE(source,'')!='' ORDER BY source", [$tenant['id']]);
         $edit = !empty($_GET['edit']) ? appointment_detail($tenant['id'], (string)$_GET['edit']) : null;
+        $creating = !$edit && !empty($_GET['new']);
+        $forcedClient = null;
+        if ($creating && !empty($_GET['client_id'])) {
+            $forcedClient = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['client_id'], $tenant['id']]);
+        }
         layout_start('app', compact('user','tenant','path'));
         view('app/agendamentos', [
             'items'=>$items, 'sources'=>$sources, 'statusFilter'=>$st, 'sourceFilter'=>$src, 'search'=>trim($_GET['q'] ?? ''),
             'edit'=>$edit,
+            'creating'=>$creating,
+            'forcedClient'=>$forcedClient,
             'clients'=>all('SELECT id,name,phone FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
             'services'=>all('SELECT * FROM services WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
         ]);

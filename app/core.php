@@ -117,13 +117,52 @@ function emit_outbound(string $tenant, string $event, array $payload): void
     }
 }
 
+function find_slot_conflict(string $tenant, string $start, string $end, ?string $ignoreAppt = null): ?array
+{
+    $sql = "SELECT a.id, a.starts_at, a.ends_at, c.name client_name, s.name service_name
+            FROM appointments a
+            JOIN clients c ON c.id=a.client_id
+            LEFT JOIN services s ON s.id=a.service_id
+            WHERE a.tenant_id=? AND a.status!=? AND a.starts_at<? AND a.ends_at>?";
+    $p = [$tenant, 'CANCELLED', $end, $start];
+    if ($ignoreAppt) {
+        $sql .= ' AND a.id!=?';
+        $p[] = $ignoreAppt;
+    }
+    $sql .= ' ORDER BY a.starts_at LIMIT 1';
+    $row = one($sql, $p);
+    if ($row) {
+        $row['kind'] = 'appointment';
+        return $row;
+    }
+    $block = one('SELECT id, starts_at, ends_at, reason FROM calendar_blocks WHERE tenant_id=? AND starts_at<? AND ends_at>? LIMIT 1', [$tenant, $end, $start]);
+    if ($block) {
+        $block['kind'] = 'block';
+        return $block;
+    }
+    return null;
+}
+
 function has_conflict(string $tenant, string $start, string $end, ?string $ignoreAppt = null): bool
 {
-    $sql = 'SELECT id FROM appointments WHERE tenant_id=? AND status!=? AND starts_at<? AND ends_at>?';
-    $p = [$tenant, 'CANCELLED', $end, $start];
-    if ($ignoreAppt) { $sql .= ' AND id!=?'; $p[] = $ignoreAppt; }
-    if (one($sql, $p)) return true;
-    return (bool)one('SELECT id FROM calendar_blocks WHERE tenant_id=? AND starts_at<? AND ends_at>?', [$tenant, $end, $start]);
+    return find_slot_conflict($tenant, $start, $end, $ignoreAppt) !== null;
+}
+
+function slot_conflict_message(?array $conflict, int $durationMinutes): string
+{
+    $need = $durationMinutes.' minuto'.($durationMinutes === 1 ? '' : 's');
+    if (!$conflict) {
+        return 'Não é possível agendar neste horário. O serviço dura '.$need.' e o período não está livre.';
+    }
+    $when = substr((string)$conflict['starts_at'], 11, 5).'–'.substr((string)$conflict['ends_at'], 11, 5);
+    if (($conflict['kind'] ?? '') === 'block') {
+        $why = trim((string)($conflict['reason'] ?? '')) !== '' ? ' ('.trim((string)$conflict['reason']).')' : '';
+        return 'Não é possível agendar. O serviço dura '.$need.' e esse período está bloqueado'.$why.' das '.$when.'. Remova o bloqueio ou escolha outro horário.';
+    }
+    $who = (string)($conflict['client_name'] ?? 'outro cliente');
+    $svc = trim((string)($conflict['service_name'] ?? ''));
+    $svcBit = $svc !== '' ? ' · '.$svc : '';
+    return 'Não é possível agendar. O serviço dura '.$need.' e esse período já está ocupado pelo agendamento de '.$who.$svcBit.' ('.$when.'). Exclua ou altere esse agendamento para liberar o tempo do serviço.';
 }
 
 function outside_hours(array $tenant, string $start, string $end): bool
@@ -146,16 +185,20 @@ function outside_hours(array $tenant, string $start, string $end): bool
 
 function create_appointment(array $tenant, array $in): array
 {
-    $svc = $in['service_id'] ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$in['service_id'], $tenant['id']]) : null;
+    $svc = !empty($in['service_id']) ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$in['service_id'], $tenant['id']]) : null;
+    if (!$svc && empty($in['allow_waiting'])) {
+        return ['ok'=>false,'message'=>'Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.'];
+    }
     $dur = service_span_minutes($svc);
-    $start = $in['date'] . ' ' . $in['start'] . ':00';
+    $start = $in['date'] . ' ' . substr((string)$in['start'], 0, 5) . ':00';
     $end = date('Y-m-d H:i:s', strtotime($start) + $dur * 60);
     if (outside_hours($tenant, $start, $end) && empty($in['allow_waiting'])) {
         return ['ok'=>false,'message'=>'Fora do horário de funcionamento.'];
     }
-    if (has_conflict($tenant['id'], $start, $end, $in['ignore'] ?? null)) {
+    $conflict = find_slot_conflict($tenant['id'], $start, $end, $in['ignore'] ?? null);
+    if ($conflict) {
         if (empty($in['allow_waiting'])) {
-            return ['ok'=>false,'message'=>'Este horário já está ocupado.'];
+            return ['ok'=>false,'message'=>slot_conflict_message($conflict, (int)($svc['duration_minutes'] ?? $dur))];
         }
         $in['status'] = 'WAITING';
     }
