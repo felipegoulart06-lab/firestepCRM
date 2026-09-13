@@ -179,6 +179,107 @@ function empty_to_null(?string $value): ?string
     return $value === '' ? null : $value;
 }
 
+function br_digits(?string $value): string
+{
+    return preg_replace('/\D+/', '', (string)$value) ?? '';
+}
+
+function br_doc_kind_from_value(?string $value): string
+{
+    $len = strlen(br_digits($value));
+    if ($len === 14) {
+        return 'cnpj';
+    }
+    if ($len === 11) {
+        return 'cpf';
+    }
+    return '';
+}
+
+function format_br_document(?string $value, ?string $kind = null): string
+{
+    $d = br_digits($value);
+    $kind = $kind ?: br_doc_kind_from_value($d);
+    if ($kind === 'cpf') {
+        $d = substr($d, 0, 11);
+        $out = substr($d, 0, min(3, strlen($d)));
+        if (strlen($d) > 3) {
+            $out .= '.' . substr($d, 3, min(3, strlen($d) - 3));
+        }
+        if (strlen($d) > 6) {
+            $out .= '.' . substr($d, 6, min(3, strlen($d) - 6));
+        }
+        if (strlen($d) > 9) {
+            $out .= '-' . substr($d, 9, 2);
+        }
+        return $out;
+    }
+    if ($kind === 'cnpj') {
+        $d = substr($d, 0, 14);
+        $out = substr($d, 0, min(2, strlen($d)));
+        if (strlen($d) > 2) {
+            $out .= '.' . substr($d, 2, min(3, strlen($d) - 2));
+        }
+        if (strlen($d) > 5) {
+            $out .= '.' . substr($d, 5, min(3, strlen($d) - 5));
+        }
+        if (strlen($d) > 8) {
+            $out .= '/' . substr($d, 8, min(4, strlen($d) - 8));
+        }
+        if (strlen($d) > 12) {
+            $out .= '-' . substr($d, 12, 2);
+        }
+        return $out;
+    }
+    return (string)$value;
+}
+
+function parse_br_document(?string $kind, ?string $value, bool $required = true): array
+{
+    $kind = strtolower(trim((string)$kind));
+    $digits = br_digits($value);
+    if ($kind !== 'cpf' && $kind !== 'cnpj') {
+        return [false, null, 'Selecione se o documento é CPF ou CNPJ.'];
+    }
+    if ($digits === '') {
+        if ($required) {
+            return [false, null, $kind === 'cpf' ? 'Informe o CPF no formato 000.000.000-00.' : 'Informe o CNPJ no formato 00.000.000/0001-00.'];
+        }
+        return [true, null, null];
+    }
+    if ($kind === 'cpf' && strlen($digits) !== 11) {
+        return [false, null, 'CPF deve ter 11 dígitos: 000.000.000-00.'];
+    }
+    if ($kind === 'cnpj' && strlen($digits) !== 14) {
+        return [false, null, 'CNPJ deve ter 14 dígitos: 00.000.000/0001-00.'];
+    }
+    return [true, format_br_document($digits, $kind), null];
+}
+
+function br_document_fields(string $inputName, ?string $value = null, bool $required = true, string $kindName = 'document_kind'): void
+{
+    $kind = strtolower((string)($_POST[$kindName] ?? br_doc_kind_from_value($value)));
+    if ($kind !== 'cpf' && $kind !== 'cnpj') {
+        $kind = '';
+    }
+    $shown = $value ? format_br_document($value, $kind ?: null) : '';
+    $placeholder = $kind === 'cnpj' ? '00.000.000/0001-00' : ($kind === 'cpf' ? '000.000.000-00' : 'Selecione CPF ou CNPJ');
+    ?>
+<div data-doc-group>
+  <label class="label">Tipo de documento</label>
+  <select class="select js-doc-kind" name="<?= e($kindName) ?>" <?= $required ? 'required' : '' ?>>
+    <option value="">Selecione</option>
+    <option value="cpf" <?= $kind === 'cpf' ? 'selected' : '' ?>>CPF</option>
+    <option value="cnpj" <?= $kind === 'cnpj' ? 'selected' : '' ?>>CNPJ</option>
+  </select>
+</div>
+<div data-doc-group-number>
+  <label class="label js-doc-label"><?= $kind === 'cnpj' ? 'CNPJ' : ($kind === 'cpf' ? 'CPF' : 'Número do documento') ?></label>
+  <input class="input js-doc-number" name="<?= e($inputName) ?>" value="<?= e($shown) ?>" inputmode="numeric" autocomplete="off" placeholder="<?= e($placeholder) ?>" maxlength="18" <?= $required ? 'required data-required="1"' : '' ?>>
+</div>
+    <?php
+}
+
 function sql_lit_bool(bool $value): string
 {
     if (is_pgsql()) {

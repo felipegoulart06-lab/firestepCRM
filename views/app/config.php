@@ -74,6 +74,7 @@ $hourLine = static function (array $h) {
     <dl class="settings-kv">
       <div><dt>Nome comercial</dt><dd><?= $dash($tenant['business_name']) ?></dd></div>
       <div><dt>Nome exibido</dt><dd><?= $dash($tenant['display_name']) ?></dd></div>
+      <div><dt>Documento</dt><dd><?= $dash($tenant['document'] ?? '') ?></dd></div>
       <div><dt>Telefone</dt><dd><?= $dash($tenant['phone']) ?></dd></div>
       <div><dt>WhatsApp</dt><dd><?= $dash($tenant['whatsapp']) ?></dd></div>
       <div><dt>E-mail</dt><dd><?= $dash($tenant['email']) ?></dd></div>
@@ -88,22 +89,23 @@ $hourLine = static function (array $h) {
     <form method="post" action="/app/configuracoes/negocio">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <label class="label">Nome comercial</label><input class="input" name="business_name" required value="<?= e($tenant['business_name']) ?>">
-      <label class="label">Nome exibido</label><input class="input" name="display_name" value="<?= e($tenant['display_name']) ?>">
+      <label class="label">Nome exibido</label><input class="input" name="display_name" required value="<?= e($tenant['display_name']) ?>">
       <div class="grid g2">
-        <div><label class="label">Telefone</label><input class="input" name="phone" value="<?= e($tenant['phone']) ?>"></div>
-        <div><label class="label">WhatsApp</label><input class="input" name="whatsapp" value="<?= e($tenant['whatsapp']) ?>"></div>
-        <div><label class="label">E-mail</label><input class="input" name="email" type="email" value="<?= e($tenant['email']) ?>"></div>
+        <?php br_document_fields('document', $tenant['document'] ?? null, true); ?>
+        <div><label class="label">Telefone</label><input class="input" name="phone" required inputmode="tel" value="<?= e($tenant['phone']) ?>"></div>
+        <div><label class="label">WhatsApp</label><input class="input" name="whatsapp" inputmode="tel" placeholder="Opcional" value="<?= e($tenant['whatsapp']) ?>"></div>
+        <div><label class="label">E-mail</label><input class="input" name="email" type="email" required value="<?= e($tenant['email']) ?>"></div>
         <div><label class="label">Fuso</label>
-          <select class="select" name="timezone">
+          <select class="select" name="timezone" required>
             <?php foreach (['America/Sao_Paulo','America/Manaus','America/Fortaleza','America/Recife'] as $tz): ?>
               <option <?= $tenant['timezone']===$tz?'selected':'' ?>><?= $tz ?></option>
             <?php endforeach; ?>
           </select>
         </div>
-        <div><label class="label">Cidade</label><input class="input" name="city" value="<?= e($tenant['city']) ?>"></div>
-        <div><label class="label">Estado</label><input class="input" name="state" value="<?= e($tenant['state']) ?>"></div>
+        <div><label class="label">Cidade</label><input class="input" name="city" required value="<?= e($tenant['city']) ?>"></div>
+        <div><label class="label">Estado</label><input class="input" name="state" required maxlength="2" placeholder="UF" style="text-transform:uppercase" value="<?= e($tenant['state']) ?>"></div>
       </div>
-      <label class="label">Endereço</label><input class="input" name="address" value="<?= e($tenant['address']) ?>">
+      <label class="label">Endereço</label><input class="input" name="address" required value="<?= e($tenant['address']) ?>">
       <div class="grid g2">
         <div><label class="label">Instagram</label><input class="input" name="instagram" value="<?= e($tenant['instagram']) ?>"></div>
         <div><label class="label">Website</label><input class="input" name="website" value="<?= e($tenant['website']) ?>"></div>
@@ -270,37 +272,36 @@ $hourLine = static function (array $h) {
   <?php endif; ?>
 </div>
 
-<div class="card settings-panel" style="margin-top:14px">
+<div class="card settings-panel google-login-card" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
       <h2>Google Sheets</h2>
-      <p>Clientes, agendamentos e serviços sincronizam depois do login no Google.</p>
+      <p>Entre com a conta Google do negócio. O sistema pede autorização, grava os tokens e cria a planilha automaticamente.</p>
     </div>
   </div>
-  <?php if (!$googleReady): ?>
-    <p class="flash" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa">O Admin Master ainda precisa configurar o Client ID e o Client Secret do Google.</p>
-  <?php elseif (!$connected): ?>
-    <a class="btn btn-primary" href="/app/google/connect">Entrar com Google</a>
-    <p class="settings-hint">Você será levado à página oficial do Google para autorizar o acesso.</p>
-  <?php else: ?>
-    <p><span class="badge" style="background:#dcfce7;color:#166534">Conectado</span> <?= e($sheets['google_email'] ?: 'Conta Google') ?></p>
+  <?php if ($connected): ?>
+    <p><span class="badge" style="background:#dcfce7;color:#166534">Conta conectada</span> <?= e($sheets['google_email'] ?: 'Google') ?></p>
     <?php if (!empty($sheets['spreadsheet_url'])): ?>
       <p><a class="btn btn-ghost" href="<?= e($sheets['spreadsheet_url']) ?>" target="_blank" rel="noopener">Abrir planilha</a></p>
     <?php endif; ?>
     <?php if (!empty($sheets['last_sync'])): ?>
       <p class="settings-hint">Última sincronização: <?= e(date('d/m/Y H:i', strtotime($sheets['last_sync']))) ?> · <?= ($sheets['last_status']??'')==='ok' ? 'OK' : 'Erro' ?><?php if (!empty($sheets['last_error'])): ?> · <?= e($sheets['last_error']) ?><?php endif; ?></p>
     <?php endif; ?>
+    <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
+    <p class="settings-hint">O clique abre a tela oficial do Google. A conta escolhida passa a ser a da planilha deste painel.</p>
     <div class="settings-actions" style="justify-content:flex-start">
       <form method="post" action="/app/configuracoes/sheets/sync">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <button class="btn btn-primary">Sincronizar agora</button>
       </form>
-      <a class="btn btn-ghost" href="/app/google/connect">Trocar conta Google</a>
       <form method="post" action="/app/google/disconnect" onsubmit="return confirm('Desconectar o Google Sheets? A sincronização automática para até você entrar de novo.')">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <button class="btn btn-danger">Desconectar</button>
       </form>
     </div>
+  <?php else: ?>
+    <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
+    <p class="settings-hint">Obrigatório: a janela do Google vai abrir. Autorize o acesso à planilha; os tokens e a API Sheets desta conta são ligados sozinhos neste painel.</p>
   <?php endif; ?>
 </div>
 <?php endif; ?>

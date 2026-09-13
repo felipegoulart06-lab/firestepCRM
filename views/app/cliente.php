@@ -33,10 +33,10 @@
         <option <?= (($c['source']??'')===$o)?'selected':'' ?>><?= $o ?></option>
       <?php endforeach; ?></select>
     </div>
-    <div><label class="label">Telefone</label><input class="input" name="phone" value="<?= e($c['phone'] ?? '') ?>"></div>
-    <div><label class="label">WhatsApp</label><input class="input" name="whatsapp" value="<?= e($c['whatsapp'] ?? '') ?>"></div>
-    <div><label class="label">E-mail</label><input class="input" name="email" value="<?= e($c['email'] ?? '') ?>"></div>
-    <div><label class="label">CPF (opcional)</label><input class="input" name="cpf" value="<?= e($c['cpf'] ?? '') ?>"></div>
+    <div><label class="label">Telefone</label><input class="input" name="phone" value="<?= e($c['phone'] ?? '') ?>" required inputmode="tel"></div>
+    <div><label class="label">WhatsApp</label><input class="input" name="whatsapp" value="<?= e($c['whatsapp'] ?? '') ?>" inputmode="tel" placeholder="Opcional"></div>
+    <div><label class="label">E-mail</label><input class="input" type="email" name="email" value="<?= e($c['email'] ?? '') ?>" required></div>
+    <?php br_document_fields('cpf', $c['cpf'] ?? null, true); ?>
     <div><label class="label">Nascimento</label><input class="input" type="date" name="birth_date" value="<?= e($c['birth_date'] ?? '') ?>"></div>
     <div><label class="label">Status</label>
       <select class="select" name="status">

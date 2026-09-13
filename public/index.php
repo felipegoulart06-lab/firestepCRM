@@ -189,8 +189,17 @@ if (str_starts_with($path, '/master')) {
             $username = strtolower((string)post('username', ''));
             $password = (string)post('password', '');
             $confirm = (string)post('password_confirm', '');
-            if (!post('name') || !post('business_name') || !$email) {
-                flash('Preencha profissional, empresa e e-mail.');
+            if (!post('name') || !post('business_name') || !post('display_name') || !post('segment') || !$email || !post('phone') || !post('city') || !post('state') || !$username) {
+                flash('Preencha todos os campos obrigatórios. Só WhatsApp e cor principal são opcionais.');
+                redirect('/master/clientes/novo');
+            }
+            [$docOk, $document, $docError] = parse_br_document(post('document_kind'), post('document'), true);
+            if (!$docOk) {
+                flash($docError);
+                redirect('/master/clientes/novo');
+            }
+            if ($password === '' || $confirm === '') {
+                flash('Informe e confirme a senha temporária.');
                 redirect('/master/clientes/novo');
             }
             if ($password !== $confirm) {
@@ -208,10 +217,10 @@ if (str_starts_with($path, '/master')) {
             try {
                 $created = create_tenant_panel([
                     'name'=>post('name'),'business_name'=>post('business_name'),'segment'=>post('segment','outros'),
-                    'document'=>post('document'),'email'=>$email,'phone'=>post('phone'),'whatsapp'=>post('whatsapp'),
-                    'city'=>post('city'),'state'=>post('state'),'username'=>$username,'password'=>$password,
-                    'plan'=>post('plan','starter'),'status'=>post('status','ACTIVE'),'primary_color'=>post('primary_color','#2563eb'),
-                    'display_name'=>post('display_name') ?: post('business_name'),
+                    'document'=>$document,'email'=>$email,'phone'=>post('phone'),'whatsapp'=>post('whatsapp'),
+                    'city'=>post('city'),'state'=>strtoupper((string)post('state')),'username'=>$username,'password'=>$password,
+                    'plan'=>'starter','status'=>post('status','ACTIVE'),'primary_color'=>post('primary_color','#2563eb'),
+                    'display_name'=>post('display_name'),
                 ], $user['id']);
             } catch (Throwable $e) {
                 flash('Não foi possível criar o acesso: '.$e->getMessage());
@@ -291,16 +300,22 @@ if (str_starts_with($path, '/master')) {
             redirect('/master/clientes');
         }
         if ($path === '/master/configuracoes/google') {
+            $clientId = trim((string)post('google_client_id', ''));
+            if ($clientId !== '' && !str_contains($clientId, '.apps.googleusercontent.com')) {
+                flash('O Client ID deve terminar com .apps.googleusercontent.com. Não use nome de pessoa nem e-mail.');
+                redirect('/master/configuracoes/tecnico');
+            }
             $settings = platform_settings();
-            $settings['google_client_id'] = trim((string)post('google_client_id', ''));
+            $settings['google_client_id'] = $clientId;
             $secret = post('google_client_secret');
             if ($secret) $settings['google_client_secret'] = $secret;
             save_platform_settings($settings);
-            flash('Credenciais do Google salvas.');
-            redirect('/master/configuracoes');
+            flash('Credenciais técnicas do Google salvas. O login dos profissionais fica no painel de cada cliente.');
+            redirect('/master/configuracoes/tecnico');
         }
         if ($path === '/master/planos/salvar') {
             q('UPDATE plans SET name=?, description=?, active=? WHERE id=?', [post('name'), post('description'), db_bool(isset($_POST['active'])), post('id')]);
+            flash('Plano atualizado.');
             redirect('/master/planos');
         }
     }
@@ -361,21 +376,26 @@ if (str_starts_with($path, '/master')) {
         exit;
     }
     if ($path === '/master/planos') {
+        $counts = [];
+        foreach (all('SELECT plan, COUNT(*) c FROM tenants GROUP BY plan') as $row) {
+            $counts[$row['plan']] = (int)$row['c'];
+        }
         layout_start('master', compact('user','path'));
-        view('master/planos', ['plans'=>all('SELECT * FROM plans')]);
+        view('master/planos', ['plans'=>all('SELECT * FROM plans ORDER BY slug'), 'counts'=>$counts]);
         layout_end('master');
         exit;
     }
     if ($path === '/master/integracoes') { layout_start('master', compact('user','path')); view('master/integracoes'); layout_end('master'); exit; }
     if ($path === '/master/logs') { layout_start('master', compact('user','path')); view('master/logs', ['logs'=>all('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 80')]); layout_end('master'); exit; }
     if ($path === '/master/configuracoes') { layout_start('master', compact('user','path')); view('master/config'); layout_end('master'); exit; }
+    if ($path === '/master/configuracoes/tecnico') { layout_start('master', compact('user','path')); view('master/tecnico'); layout_end('master'); exit; }
     http_response_code(404); echo 'Não encontrado'; exit;
 }
 
 /* -------- APP -------- */
 if (str_starts_with($path, '/app')) {
     [$user, $tenant] = require_tenant();
-    $allowedWhileMustChange = ['/app/configuracoes', '/app/configuracoes/conta'];
+    $allowedWhileMustChange = ['/app/configuracoes', '/app/configuracoes/conta', '/app/google/connect', '/app/google/callback'];
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
         flash('Defina uma senha permanente antes de usar o painel.');
         redirect('/app/configuracoes?tab=conta');
@@ -508,7 +528,16 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/clientes/salvar') {
             $id = post('id');
-            $data = [post('name'), post('phone'), post('whatsapp'), post('email')?strtolower(post('email')):null, post('cpf'), post('birth_date'), post('source','Outro'), post('notes'), post('status','ACTIVE')];
+            if (!post('name') || !post('phone') || !post('email')) {
+                flash('Nome, telefone e e-mail são obrigatórios. WhatsApp é opcional.');
+                redirect($id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo');
+            }
+            [$docOk, $document, $docErr] = parse_br_document(post('document_kind'), post('cpf'), true);
+            if (!$docOk) {
+                flash($docErr);
+                redirect($id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo');
+            }
+            $data = [post('name'), post('phone'), post('whatsapp'), strtolower(post('email')), $document, empty_to_null(post('birth_date')), post('source','Outro'), post('notes'), post('status','ACTIVE')];
             if ($id) {
                 q('UPDATE clients SET name=?,phone=?,whatsapp=?,email=?,cpf=?,birth_date=?,source=?,notes=?,status=? WHERE id=? AND tenant_id=?', [...$data, $id, $tid]);
                 audit($tid, $user['id'], 'client.updated', 'client', $id);
@@ -612,9 +641,18 @@ if (str_starts_with($path, '/app')) {
             redirect('/app/webhooks');
         }
         if ($path === '/app/configuracoes/negocio') {
-            q('UPDATE tenants SET business_name=?,display_name=?,phone=?,whatsapp=?,email=?,address=?,city=?,state=?,instagram=?,website=?,timezone=?,updated_at=? WHERE id=?', [
-                post('business_name'), post('display_name'), post('phone'), post('whatsapp'), post('email'),
-                post('address'), post('city'), post('state'), post('instagram'), post('website'), post('timezone','America/Sao_Paulo'),
+            if (!post('business_name') || !post('display_name') || !post('phone') || !post('email') || !post('city') || !post('state') || !post('address')) {
+                flash('Preencha os dados do negócio. Só WhatsApp, Instagram e site são opcionais.');
+                redirect('/app/configuracoes?tab=negocio&edit=1');
+            }
+            [$docOk, $document, $docErr] = parse_br_document(post('document_kind'), post('document'), true);
+            if (!$docOk) {
+                flash($docErr);
+                redirect('/app/configuracoes?tab=negocio&edit=1');
+            }
+            q('UPDATE tenants SET business_name=?,display_name=?,document=?,phone=?,whatsapp=?,email=?,address=?,city=?,state=?,instagram=?,website=?,timezone=?,updated_at=? WHERE id=?', [
+                post('business_name'), post('display_name'), $document, post('phone'), post('whatsapp'), post('email'),
+                post('address'), post('city'), strtoupper((string)post('state')), post('instagram'), post('website'), post('timezone','America/Sao_Paulo'),
                 now(), $tid,
             ]);
             flash('Dados do negócio atualizados.');
