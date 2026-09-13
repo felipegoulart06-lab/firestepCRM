@@ -319,18 +319,24 @@ $hourLine = static function (array $h) {
     <input class="input" name="name" required value="<?= e($user['name']) ?>">
     <label class="label">E-mail de acesso</label>
     <input class="input" type="email" value="<?= e($user['email']) ?>" readonly disabled>
-    <p class="muted" style="margin:6px 0 12px">Fixo. Só o Admin Master pode redefinir o acesso desta conta.</p>
+    <label class="label">Usuário de acesso</label>
+    <input class="input" value="<?= e($user['username']) ?>" readonly disabled>
+    <p class="muted" style="margin:6px 0 12px">O login é o e-mail ou este usuário. O nome da empresa no menu não serve para entrar.</p>
     <div class="settings-warn">
+      <?php if (!empty($user['must_change_password'])): ?>
+      <p class="muted" style="margin:0 0 12px">Primeiro acesso: defina uma senha permanente (mínimo 10 caracteres, com letras e números). Não é preciso informar a senha temporária de novo.</p>
+      <?php else: ?>
       <label class="label">Senha atual</label>
       <input class="input" type="password" name="current_password" autocomplete="current-password" placeholder="Obrigatória para mudar a senha">
+      <?php endif; ?>
       <div class="grid g2">
         <div>
           <label class="label">Nova senha</label>
-          <input class="input" type="password" name="password" autocomplete="new-password" placeholder="Deixe em branco para manter">
+          <input class="input" type="password" name="password" autocomplete="new-password" placeholder="<?= !empty($user['must_change_password']) ? 'Obrigatória neste acesso' : 'Deixe em branco para manter' ?>" <?= !empty($user['must_change_password']) ? 'required' : '' ?>>
         </div>
         <div>
           <label class="label">Confirmar nova senha</label>
-          <input class="input" type="password" name="password_confirm" autocomplete="new-password">
+          <input class="input" type="password" name="password_confirm" autocomplete="new-password" <?= !empty($user['must_change_password']) ? 'required' : '' ?>>
         </div>
       </div>
     </div>

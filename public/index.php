@@ -3,16 +3,22 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/app/helpers.php';
 require dirname(__DIR__) . '/app/core.php';
-require_once dirname(__DIR__) . '/app/sheets.php';
-require dirname(__DIR__) . '/app/pdf.php';
 
 security_headers();
-db();
-boot_session();
 
 $path = rtrim((string)parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') ?: '/';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'local';
+
+if ($path === '/favicon.ico') {
+    $file = dirname(__DIR__) . '/public/assets/favicon.png';
+    if (is_file($file)) {
+        header('Content-Type: image/png');
+        header('Cache-Control: public, max-age=86400');
+        readfile($file);
+        exit;
+    }
+}
 
 if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
     $file = dirname(__DIR__) . '/public/assets/' . $asset[1];
@@ -25,10 +31,22 @@ if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
     }
 }
 
+db();
+boot_session();
+
 function current_user(): ?array
 {
-    if (empty($_SESSION['uid'])) return null;
-    return one('SELECT * FROM users WHERE id=? AND '.sql_true('active'), [$_SESSION['uid']]);
+    static $cached = false;
+    static $user = null;
+    if ($cached) {
+        return $user;
+    }
+    $cached = true;
+    if (empty($_SESSION['uid'])) {
+        return null;
+    }
+    $user = one('SELECT * FROM users WHERE id=? AND '.sql_true('active'), [$_SESSION['uid']]);
+    return $user;
 }
 
 function require_login(): array
@@ -131,7 +149,7 @@ if ($path === '/login' && $method === 'POST') {
     if (!$user) {
         $user = one('SELECT * FROM users WHERE lower(email)=? AND '.sql_true('active'), [$login]);
     }
-    if (!$user || !password_verify(post('password', ''), $user['password_hash'])) {
+    if (!$user || !password_matches(post('password', ''), $user['password_hash'] ?? null)) {
         view('login', ['error'=>'Credenciais inválidas.']);
         exit;
     }
@@ -553,7 +571,7 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/solicitacoes/criar') {
             q('INSERT INTO requests(id,tenant_id,name,phone,email,service_id,desired_date,desired_time,message,source,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-                [uid(),$tid,post('name'),post('phone'),post('email'),post('service_id'),post('desired_date'),post('desired_time'),post('message'),'Manual','NEW',now()]);
+                [uid(),$tid,post('name'),post('phone'),post('email'),post('service_id') ?: null, empty_to_null(post('desired_date')), empty_to_null(post('desired_time')),post('message'),'Manual','NEW',now()]);
             notify($tid, 'Nova solicitação recebida', post('name'));
             flash('Solicitação criada.');
             redirect('/app/solicitacoes');
@@ -629,8 +647,13 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/configuracoes/conta') {
             $pw = post('password');
             $confirm = post('password_confirm');
+            $mustChange = !empty($user['must_change_password']);
+            if ($mustChange && !$pw) {
+                flash('Defina uma senha permanente para continuar.');
+                redirect('/app/configuracoes?tab=conta');
+            }
             if ($pw) {
-                if (!password_verify((string)post('current_password',''), $user['password_hash'])) {
+                if (!$mustChange && !password_matches((string)post('current_password',''), $user['password_hash'] ?? null)) {
                     flash('Informe a senha atual para alterar a senha.');
                     redirect('/app/configuracoes?tab=conta');
                 }
@@ -646,7 +669,7 @@ if (str_starts_with($path, '/app')) {
             if ($pw) q('UPDATE users SET name=?, password_hash=?, must_change_password='.sql_lit_bool(false).' WHERE id=?', [post('name'), password_hash($pw, PASSWORD_DEFAULT), $user['id']]);
             else q('UPDATE users SET name=? WHERE id=?', [post('name'), $user['id']]);
             flash('Conta atualizada.');
-            redirect('/app/configuracoes?tab=conta');
+            redirect($mustChange && $pw ? '/app/agenda' : '/app/configuracoes?tab=conta');
         }
         if ($path === '/app/configuracoes/analytics') {
             $gtm = strtoupper(post('gtm_id', ''));
@@ -740,6 +763,7 @@ if (str_starts_with($path, '/app')) {
     }
 
     if (str_starts_with($path, '/app/relatorios/') && str_ends_with($path, '.pdf')) {
+        require_once dirname(__DIR__) . '/app/pdf.php';
         $tid = $tenant['id'];
         $business = $tenant['display_name'] ?: $tenant['business_name'];
         if ($path === '/app/relatorios/atendimentos.pdf') {
@@ -779,6 +803,7 @@ if (str_starts_with($path, '/app')) {
     }
 
     if ($path === '/app/clientes/resumo.pdf') {
+        require_once dirname(__DIR__) . '/app/pdf.php';
         $client = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['id'] ?? '', $tenant['id']]);
         if (!$client) { http_response_code(404); exit('Cadastro não encontrado.'); }
         $rows = all("SELECT a.*,s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$client['id']]);
@@ -823,7 +848,7 @@ if (str_starts_with($path, '/app')) {
         $events = [];
         foreach ($ap as $a) $events[] = ['id'=>$a['id'],'kind'=>'appointment','title'=>$a['client_name'],'subtitle'=>$a['service_name'],'status'=>$a['status'],'source'=>$a['source'],'start'=>$a['starts_at'],'end'=>$a['ends_at']];
         foreach ($bl as $b) $events[] = ['id'=>$b['id'],'kind'=>'block','title'=>$b['reason']?:'Bloqueio','start'=>$b['starts_at'],'end'=>$b['ends_at']];
-        $pendingReq = all("SELECT r.*, s.name service_name, s.duration_minutes FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? AND r.status NOT IN ('SCHEDULED','DONE','ARCHIVED','LOST') AND COALESCE(r.desired_date,'')!=''", [$tenant['id']]);
+        $pendingReq = all("SELECT r.*, s.name service_name, s.duration_minutes FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? AND r.status NOT IN ('SCHEDULED','DONE','ARCHIVED','LOST') AND ".sql_not_blank('r.desired_date'), [$tenant['id']]);
         foreach ($pendingReq as $r) {
             $time = substr((string)($r['desired_time'] ?: '09:00'), 0, 5);
             $start = $r['desired_date'].' '.$time.':00';

@@ -257,8 +257,8 @@ function ingest_webhook(string $token, array $body, string $ip): array
         $attribution['utm_medium'], $attribution['utm_campaign'],
         json_encode(['type'=>$type], JSON_UNESCAPED_UNICODE), now(),
     ]);
-    $date = $body['date'] ?? $body['desired_date'] ?? null;
-    $time = $body['time'] ?? $body['desired_time'] ?? null;
+    $date = empty_to_null($body['date'] ?? $body['desired_date'] ?? null);
+    $time = empty_to_null($body['time'] ?? $body['desired_time'] ?? null);
     if ($type === 'appointment' && $date && $time) {
         $res = create_appointment($tenant, [
             'client_id'=>$client['id'],'service_id'=>$svc['id']??null,'date'=>$date,'start'=>$time,
@@ -287,7 +287,7 @@ function ingest_webhook(string $token, array $body, string $ip): array
     $rid = uid();
     q('INSERT INTO requests(id,tenant_id,client_id,service_id,name,phone,email,desired_date,desired_time,message,source,utm_source,utm_medium,utm_campaign,metadata,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
         $rid, $tenant['id'], $client['id'], $svc['id']??null, $name, $phone?:null, $email?:null,
-        $body['desired_date']??$date, $body['desired_time']??$time, $body['message']??null, $source,
+        $date, $time, $body['message']??null, $source,
         $attribution['utm_source'], $attribution['utm_medium'], $attribution['utm_campaign'],
         json_encode($body, JSON_UNESCAPED_UNICODE), 'NEW', now(),
     ]);

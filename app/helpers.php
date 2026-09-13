@@ -8,12 +8,40 @@ date_default_timezone_set('America/Sao_Paulo');
 
 function env_str(string $key, ?string $default = null): ?string
 {
-    $value = $_ENV[$key] ?? getenv($key);
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
     if ($value === false || $value === null || $value === '') {
         return $default;
     }
-    return (string)$value;
+    return trim((string)$value, " \t\n\r\0\x0B\"'");
 }
+
+function load_env_file(?string $path = null): void
+{
+    $path ??= ROOT . '/.env';
+    if (!is_file($path)) {
+        return;
+    }
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        if (!str_contains($line, '=')) {
+            continue;
+        }
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value, " \t\n\r\0\x0B\"'");
+        if ($key === '' || env_str($key) !== null) {
+            continue;
+        }
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+        putenv($key . '=' . $value);
+    }
+}
+
+load_env_file();
 
 function is_vercel(): bool
 {
@@ -37,7 +65,32 @@ function storage_dir(): string
 
 function database_url(): ?string
 {
-    return env_str('DATABASE_URL') ?: env_str('POSTGRES_URL') ?: env_str('SUPABASE_DB_URL');
+    foreach (['DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_PRISMA_URL', 'SUPABASE_DB_URL', 'POSTGRES_URL_NON_POOLING'] as $key) {
+        $url = env_str($key);
+        if ($url) {
+            return $url;
+        }
+    }
+    return null;
+}
+
+function missing_database_config(): void
+{
+    http_response_code(503);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Configurar banco</title>';
+    echo '<style>body{font:16px/1.5 Inter,Segoe UI,sans-serif;background:#f6f7f9;color:#101828;margin:0;display:grid;place-items:center;min-height:100vh;padding:24px}main{max-width:560px;background:#fff;border:1px solid #d9dee7;border-radius:8px;padding:28px 32px}h1{font-size:22px;margin:0 0 12px}ol{padding-left:20px}code{background:#f2f4f7;padding:1px 6px;border-radius:4px}</style></head><body><main>';
+    echo '<h1>Falta a conexão com o banco</h1>';
+    echo '<p>Na Vercel o FirestepCRM precisa do Postgres do Supabase. Defina a variável <code>DATABASE_URL</code> e publique de novo.</p>';
+    echo '<ol>';
+    echo '<li>Abra o projeto na Vercel → <b>Settings</b> → <b>Environment Variables</b>.</li>';
+    echo '<li>Adicione <code>DATABASE_URL</code> nos ambientes Production, Preview e Development.</li>';
+    echo '<li>Use a URI do <b>Transaction pooler</b> do Supabase (porta <code>6543</code>), por exemplo:<br><code>postgresql://postgres.REF:SENHA@aws-0-sa-east-1.pooler.supabase.com:6543/postgres</code></li>';
+    echo '<li>Em <b>Deployments</b>, faça <b>Redeploy</b> (sem cache).</li>';
+    echo '</ol>';
+    echo '<p>No Supabase: <b>Project Settings → Database → Connection string → URI</b>. Aplique também as migrations da pasta <code>supabase/migrations</code>.</p>';
+    echo '</main></body></html>';
+    exit;
 }
 
 function db(): PDO
@@ -61,30 +114,28 @@ function db(): PDO
         }
         $dbName = ltrim((string)($parts['path'] ?? '/postgres'), '/');
         $dsn = sprintf(
-            'pgsql:host=%s;port=%s;dbname=%s;sslmode=require',
+            'pgsql:host=%s;port=%s;dbname=%s;sslmode=require;connect_timeout=5;options=--client-encoding=UTF8',
             $parts['host'],
             $parts['port'] ?? '5432',
             $dbName !== '' ? $dbName : 'postgres'
         );
+        if (str_contains((string)$parts['host'], 'pooler.supabase.com') && (string)($parts['port'] ?? '5432') === '5432') {
+            $dsn = sprintf(
+                'pgsql:host=%s;port=6543;dbname=%s;sslmode=require;connect_timeout=5',
+                $parts['host'],
+                $dbName !== '' ? $dbName : 'postgres'
+            );
+            $options[PDO::ATTR_EMULATE_PREPARES] = true;
+        }
         if (($parts['port'] ?? '') === '6543' || str_contains($url, 'pgbouncer')) {
             $options[PDO::ATTR_EMULATE_PREPARES] = true;
         }
         $pdo = new PDO($dsn, urldecode((string)($parts['user'] ?? 'postgres')), urldecode((string)($parts['pass'] ?? '')), $options);
-        $pdo->exec("SET TIME ZONE 'America/Sao_Paulo'");
-        try {
-            $hasUsers = (bool)$pdo->query('SELECT 1 FROM users LIMIT 1')->fetch();
-        } catch (Throwable $e) {
-            throw new RuntimeException('Schema do banco não encontrado. Aplique as migrations do Supabase antes de publicar.', 0, $e);
-        }
-        if (!$hasUsers) {
-            require __DIR__ . '/seed.php';
-            nexo_seed($pdo);
-        }
         return $pdo;
     }
 
     if (is_vercel()) {
-        throw new RuntimeException('Defina DATABASE_URL (Postgres/Supabase) para publicar na Vercel.');
+        missing_database_config();
     }
 
     $path = storage_dir() . '/nexo.sqlite';
@@ -115,6 +166,17 @@ function sql_true(string $column): string
 function sql_false(string $column): string
 {
     return is_pgsql() ? $column . ' IS FALSE' : $column . '=0';
+}
+
+function sql_not_blank(string $column): string
+{
+    return is_pgsql() ? $column . ' IS NOT NULL' : "COALESCE($column,'')!=''";
+}
+
+function empty_to_null(?string $value): ?string
+{
+    $value = trim((string)$value);
+    return $value === '' ? null : $value;
 }
 
 function sql_lit_bool(bool $value): string
@@ -231,6 +293,9 @@ class PgSessionHandler implements SessionHandlerInterface
 
     public function gc(int $max_lifetime): int|false
     {
+        if (random_int(1, 40) !== 1) {
+            return 0;
+        }
         $st = q('DELETE FROM php_sessions WHERE expires_at < ?', [date('c')]);
         return $st->rowCount();
     }
@@ -273,6 +338,14 @@ function password_is_strong(string $password): bool
     return strlen($password) >= 10
         && preg_match('/[A-Za-z]/', $password)
         && preg_match('/\d/', $password);
+}
+
+function password_matches(?string $plain, mixed $hash): bool
+{
+    if (!is_string($hash) || $hash === '') {
+        return false;
+    }
+    return password_verify((string)$plain, $hash);
 }
 
 function generate_temp_password(): string
@@ -548,7 +621,9 @@ function rate_ok(string $key, int $limit, int $window): bool
 {
     if (is_pgsql()) {
         $since = date('c', time() - $window);
-        q('DELETE FROM rate_limits WHERE hit_at < ?', [date('c', time() - max($window, 86400))]);
+        if (random_int(1, 20) === 1) {
+            q('DELETE FROM rate_limits WHERE hit_at < ?', [date('c', time() - max($window, 86400))]);
+        }
         $row = one('SELECT COUNT(*) AS c FROM rate_limits WHERE key=? AND hit_at>=?', [$key, $since]);
         if ((int)($row['c'] ?? 0) >= $limit) {
             return false;

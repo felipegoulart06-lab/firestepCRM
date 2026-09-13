@@ -24,16 +24,21 @@ function nexo_seed(PDO $pdo): void
 
     $email = strtolower(env_str('MASTER_EMAIL', 'nathan.k@example.net'));
     $username = strtolower(env_str('MASTER_USERNAME', 'admin'));
-    $exists = $pdo->prepare('SELECT id FROM users WHERE lower(email)=? OR lower(username)=?');
+    $exists = $pdo->prepare('SELECT id, password_hash FROM users WHERE lower(email)=? OR lower(username)=?');
     $exists->execute([$email, $username]);
-    if ($exists->fetch()) {
+    $master = $exists->fetch();
+
+    $password = env_str('MASTER_PASSWORD');
+    if ($master) {
+        if ((empty($master['password_hash']) || !is_string($master['password_hash'])) && $password) {
+            $pdo->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($password, PASSWORD_DEFAULT), $master['id']]);
+        }
         return;
     }
 
-    $password = env_str('MASTER_PASSWORD');
     if (!$password) {
         if (is_vercel()) {
-            throw new RuntimeException('Defina MASTER_PASSWORD no ambiente da Vercel.');
+            return;
         }
         $password = 'Admin@123';
     }

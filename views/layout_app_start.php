@@ -1,6 +1,6 @@
 <?php
 $terms = terms_of($tenant);
-$notifs = all('SELECT * FROM notifications WHERE tenant_id=? AND '.sql_false('read_flag').' ORDER BY created_at DESC LIMIT 10', [$tenant['id']]);
+$notifs = all('SELECT id,title,body FROM notifications WHERE tenant_id=? AND '.sql_false('read_flag').' ORDER BY created_at DESC LIMIT 8', [$tenant['id']]);
 $qsearch = trim($_GET['q'] ?? '');
 ?>
 <!doctype html>
@@ -11,6 +11,8 @@ $qsearch = trim($_GET['q'] ?? '');
 <meta name="csrf" content="<?= e(csrf()) ?>">
 <title>FirestepCRM · <?= e($tenant['display_name'] ?: $tenant['business_name']) ?></title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/app.css">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
