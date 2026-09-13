@@ -37,18 +37,20 @@
   <td>
     <?php $locked = saas_access_confirmed($t); ?>
     <div class="table-actions">
-    <?php if ($locked): ?>
+      <a class="btn btn-ghost" href="/master/clientes/ficha?id=<?= e($t['id']) ?>">Ficha</a>
+      <a class="btn btn-primary" href="/master/clientes/dossie?id=<?= e($t['id']) ?>" target="_blank" rel="noopener">Dossiê</a>
+      <?php if ($locked): ?>
       <span class="badge" style="background:#ecfdf3;color:#166534">Acesso confirmado</span>
       <button type="button" class="btn btn-ghost" disabled title="O cliente já entrou e trocou a senha"><?= $t['status']==='ACTIVE'?'Suspender':'Ativar' ?></button>
-    <?php else: ?>
-      <a class="btn btn-primary" href="/master/clientes/acesso?id=<?= e($t['id']) ?>">Acesso</a>
+      <?php else: ?>
+      <a class="btn btn-ghost" href="/master/clientes/ficha?id=<?= e($t['id']) ?>"><?= !empty($t['access_token_viewed_at']) ? 'Token visto' : 'Gerar token' ?></a>
       <form method="post" action="/master/clientes/status">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <input type="hidden" name="id" value="<?= e($t['id']) ?>">
         <input type="hidden" name="status" value="<?= $t['status']==='ACTIVE'?'SUSPENDED':'ACTIVE' ?>">
         <button class="btn btn-ghost"><?= $t['status']==='ACTIVE'?'Suspender':'Ativar' ?></button>
       </form>
-    <?php endif; ?>
+      <?php endif; ?>
     </div>
   </td>
 </tr>

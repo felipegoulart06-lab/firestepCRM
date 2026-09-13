@@ -33,4 +33,5 @@
 <div class="main">
   <header class="card top"><b>Painel da plataforma</b><span style="margin-left:auto;color:#667085"><?= e($user['name']) ?></span></header>
   <main class="content">
-    <?php if ($f = flash()): ?><div class="flash"><?= e($f) ?></div><?php endif; ?>
+  <?php $f = flash(); $fk = flash_kind(); ?>
+  <?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>"><?= e($f) ?></div><?php endif; ?>

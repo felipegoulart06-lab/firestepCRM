@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/sheets.php';
+require_once __DIR__ . '/pdf.php';
 
 function create_tenant_panel(array $in, ?string $actor = null): array
 {
@@ -25,10 +26,7 @@ function create_tenant_panel(array $in, ?string $actor = null): array
     if (login_taken($email, $username)) {
         throw new RuntimeException('E-mail ou usuário já cadastrado.');
     }
-    $password = (string)($in['password'] ?? '');
-    if (!password_is_strong($password)) {
-        $password = generate_temp_password();
-    }
+    $password = generate_temp_password();
     $tid = uid();
     $uid = uid();
     $tnow = now();

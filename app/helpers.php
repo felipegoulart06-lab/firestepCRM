@@ -256,13 +256,16 @@ function parse_br_document(?string $kind, ?string $value, bool $required = true)
     return [true, format_br_document($digits, $kind), null];
 }
 
-function br_document_fields(string $inputName, ?string $value = null, bool $required = true, string $kindName = 'document_kind'): void
+function br_document_fields(string $inputName, ?string $value = null, bool $required = true, string $kindName = 'document_kind', array $fill = []): void
 {
-    $kind = strtolower((string)($_POST[$kindName] ?? br_doc_kind_from_value($value)));
+    $kind = strtolower((string)($fill[$kindName] ?? $_POST[$kindName] ?? br_doc_kind_from_value($value)));
     if ($kind !== 'cpf' && $kind !== 'cnpj') {
         $kind = '';
     }
-    $shown = $value ? format_br_document($value, $kind ?: null) : '';
+    $rawNumber = $fill[$inputName] ?? null;
+    $shown = $rawNumber !== null && $rawNumber !== ''
+        ? (string)$rawNumber
+        : ($value ? format_br_document($value, $kind ?: null) : '');
     $placeholder = $kind === 'cnpj' ? '00.000.000/0001-00' : ($kind === 'cpf' ? '000.000.000-00' : 'Selecione CPF ou CNPJ');
     ?>
 <div data-doc-group>
@@ -319,6 +322,8 @@ function migrate_database(PDO $pdo): void
             'webhook_approved_at' => 'TEXT',
             'webhook_approved_by' => 'TEXT',
             'sheets_config' => "TEXT DEFAULT '{}'",
+            'access_token_generated_at' => 'TEXT',
+            'access_token_viewed_at' => 'TEXT',
         ],
         'users' => [
             'last_login_at' => 'TEXT',
@@ -516,15 +521,45 @@ function url(string $path = '/'): string
     return $path === '' ? '/' : $path;
 }
 
-function flash(?string $msg = null): ?string
+function flash(?string $msg = null, string $kind = 'ok'): ?string
 {
     if ($msg !== null) {
         $_SESSION['flash'] = $msg;
+        $_SESSION['flash_kind'] = $kind;
         return null;
     }
     $m = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
     return $m;
+}
+
+function flash_kind(): string
+{
+    $k = $_SESSION['flash_kind'] ?? 'ok';
+    unset($_SESSION['flash_kind']);
+    return $k === 'error' ? 'error' : 'ok';
+}
+
+function bounce_form(string $to, string $msg): never
+{
+    flash($msg, 'error');
+    $keep = $_POST;
+    unset($keep['password'], $keep['password_confirm'], $keep['_csrf']);
+    $_SESSION['form_old'] = $keep;
+    redirect($to);
+}
+
+function take_old_form(): array
+{
+    $old = $_SESSION['form_old'] ?? [];
+    unset($_SESSION['form_old']);
+    return is_array($old) ? $old : [];
+}
+
+function old_fill(array $old, string $key, string $default = ''): string
+{
+    $v = $old[$key] ?? $default;
+    return is_scalar($v) ? (string)$v : $default;
 }
 
 function csrf(): string

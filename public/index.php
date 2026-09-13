@@ -133,7 +133,7 @@ if ($path === '/' ) redirect('/login');
 if ($path === '/login' && $method === 'GET') {
     if (current_user()) {
         $u = current_user();
-        redirect($u['role']==='MASTER' ? '/master' : '/app/agenda');
+        redirect($u['role']==='MASTER' ? '/master' : (!empty($u['must_change_password']) ? '/app/senha' : '/app/agenda'));
     }
     view('login', ['error' => null]);
     exit;
@@ -162,13 +162,14 @@ if ($path === '/login' && $method === 'POST') {
     }
     session_regenerate_id(true);
     $_SESSION['uid'] = $user['id'];
-    q('UPDATE users SET last_login_at=? WHERE id=?', [now(), $user['id']]);
+    if (empty($user['must_change_password'])) {
+        q('UPDATE users SET last_login_at=? WHERE id=?', [now(), $user['id']]);
+    }
     if ($user['role'] === 'MASTER') {
         redirect('/master');
     }
     if (!empty($user['must_change_password'])) {
-        flash('Defina uma senha permanente antes de usar o painel.');
-        redirect('/app/configuracoes?tab=conta');
+        redirect('/app/senha');
     }
     redirect('/app/agenda');
 }
@@ -187,92 +188,64 @@ if (str_starts_with($path, '/master')) {
         if ($path === '/master/clientes/criar') {
             $email = strtolower((string)post('email', ''));
             $username = strtolower((string)post('username', ''));
-            $password = (string)post('password', '');
-            $confirm = (string)post('password_confirm', '');
             if (!post('name') || !post('business_name') || !post('display_name') || !post('segment') || !$email || !post('phone') || !post('city') || !post('state') || !$username) {
-                flash('Preencha todos os campos obrigatórios. Só WhatsApp e cor principal são opcionais.');
-                redirect('/master/clientes/novo');
+                bounce_form('/master/clientes/novo', 'Preencha todos os campos obrigatórios. Só WhatsApp e cor principal são opcionais.');
             }
             [$docOk, $document, $docError] = parse_br_document(post('document_kind'), post('document'), true);
             if (!$docOk) {
-                flash($docError);
-                redirect('/master/clientes/novo');
-            }
-            if ($password === '' || $confirm === '') {
-                flash('Informe e confirme a senha temporária.');
-                redirect('/master/clientes/novo');
-            }
-            if ($password !== $confirm) {
-                flash('A confirmação da senha não confere.');
-                redirect('/master/clientes/novo');
-            }
-            if ($password !== '' && !password_is_strong($password)) {
-                flash('A senha precisa ter no mínimo 10 caracteres, com letras e números.');
-                redirect('/master/clientes/novo');
+                bounce_form('/master/clientes/novo', (string)$docError);
             }
             if (login_taken($email, $username ?: $email)) {
-                flash('E-mail ou usuário já está em uso. Não use o login do Admin Master.');
-                redirect('/master/clientes/novo');
+                bounce_form('/master/clientes/novo', 'E-mail ou usuário já está em uso. Não use o login do Admin Master.');
             }
             try {
                 $created = create_tenant_panel([
                     'name'=>post('name'),'business_name'=>post('business_name'),'segment'=>post('segment','outros'),
                     'document'=>$document,'email'=>$email,'phone'=>post('phone'),'whatsapp'=>post('whatsapp'),
-                    'city'=>post('city'),'state'=>strtoupper((string)post('state')),'username'=>$username,'password'=>$password,
+                    'city'=>post('city'),'state'=>strtoupper((string)post('state')),'username'=>$username,
                     'plan'=>'starter','status'=>post('status','ACTIVE'),'primary_color'=>post('primary_color','#2563eb'),
                     'display_name'=>post('display_name'),
                 ], $user['id']);
             } catch (Throwable $e) {
-                flash('Não foi possível criar o acesso: '.$e->getMessage());
-                redirect('/master/clientes/novo');
+                bounce_form('/master/clientes/novo', 'Não foi possível criar o acesso: '.$e->getMessage());
             }
-            $_SESSION['issued_access'] = [
-                'tenant_id' => $created['tenant_id'],
-                'username' => $created['username'],
-                'email' => $created['email'],
-                'password' => $created['password'],
-            ];
-            flash('Cliente SaaS criado. Copie o acesso abaixo — a senha só aparece agora.');
-            redirect('/master/clientes/acesso?id='.$created['tenant_id']);
+            unset($_SESSION['form_old']);
+            flash('Cliente criado. Baixe o dossiê e gere o token de acesso quando for entregar o login.');
+            redirect('/master/clientes/ficha?id='.$created['tenant_id']);
         }
-        if ($path === '/master/clientes/acesso') {
-            $tenantId = post('id');
-            $admin = tenant_admin((string)$tenantId);
+        if ($path === '/master/clientes/token') {
+            $tenantId = (string)post('id', '');
+            $tenant = one('SELECT * FROM tenants WHERE id=?', [$tenantId]);
+            $admin = $tenant ? tenant_admin($tenant['id']) : null;
+            if (!$tenant || !$admin) {
+                flash('Cliente não encontrado.', 'error');
+                redirect('/master/clientes');
+            }
+            if (!empty($tenant['access_token_viewed_at'])) {
+                flash('Este token já foi revelado e não pode ser visto de novo.', 'error');
+                redirect('/master/clientes/ficha?id='.$tenantId);
+            }
             if (saas_access_confirmed($admin)) {
-                flash('Acesso e suspensão ficam bloqueados depois que o cliente entra e troca a senha.');
-                redirect('/master/clientes');
+                flash('O cliente já entrou e definiu a senha permanente.', 'error');
+                redirect('/master/clientes/ficha?id='.$tenantId);
             }
-            if (!$admin) {
-                flash('Este cliente ainda não tem usuário de acesso.');
-                redirect('/master/clientes');
+            if (post('confirm') !== '1') {
+                flash('Confirme que deseja gerar o token. Ele só aparece uma vez.', 'error');
+                redirect('/master/clientes/ficha?id='.$tenantId);
             }
-            $email = strtolower((string)post('email', $admin['email']));
-            $username = strtolower((string)post('username', $admin['username']));
-            $password = (string)post('password', '');
-            if ($password === '') {
-                $password = generate_temp_password();
-            }
-            if (!password_is_strong($password)) {
-                flash('A senha precisa ter no mínimo 10 caracteres, com letras e números.');
-                redirect('/master/clientes/acesso?id='.$tenantId);
-            }
-            if (login_taken($email, $username, $admin['id'])) {
-                flash('E-mail ou usuário já está em uso.');
-                redirect('/master/clientes/acesso?id='.$tenantId);
-            }
-            q('UPDATE users SET email=?, username=?, password_hash=?, must_change_password='.sql_lit_bool(true).', last_login_at=NULL, active='.sql_lit_bool(true).' WHERE id=?', [
-                $email, $username, password_hash($password, PASSWORD_DEFAULT), $admin['id'],
+            $password = generate_temp_password();
+            q('UPDATE users SET password_hash=?, must_change_password='.sql_lit_bool(true).', last_login_at=NULL, active='.sql_lit_bool(true).' WHERE id=?', [
+                password_hash($password, PASSWORD_DEFAULT), $admin['id'],
             ]);
-            q('UPDATE tenants SET email=?, updated_at=? WHERE id=?', [$email, now(), $tenantId]);
-            audit($tenantId, $user['id'], 'tenant.access_reset', 'user', $admin['id']);
+            q('UPDATE tenants SET access_token_generated_at=?, updated_at=? WHERE id=?', [now(), now(), $tenantId]);
+            audit($tenantId, $user['id'], 'tenant.access_token_generated', 'user', $admin['id']);
             $_SESSION['issued_access'] = [
                 'tenant_id' => $tenantId,
-                'username' => $username,
-                'email' => $email,
+                'username' => $admin['username'],
+                'email' => $admin['email'],
                 'password' => $password,
             ];
-            flash('Acesso redefinido. Copie a senha temporária agora.');
-            redirect('/master/clientes/acesso?id='.$tenantId);
+            redirect('/master/clientes/ficha?id='.$tenantId);
         }
         if ($path === '/master/clientes/status') {
             $st = post('status');
@@ -318,6 +291,32 @@ if (str_starts_with($path, '/master')) {
             flash('Plano atualizado.');
             redirect('/master/planos');
         }
+        if ($path === '/master/segmentos/criar') {
+            $name = trim((string)post('name', ''));
+            $category = trim((string)post('category', ''));
+            if ($name === '' || $category === '') {
+                flash('Informe o nome e a categoria do segmento.');
+                redirect('/master/segmentos');
+            }
+            $base = slugify($name, 'segmento');
+            $slug = $base;
+            $i = 1;
+            while (one('SELECT id FROM segments WHERE slug=?', [$slug])) {
+                $slug = $base.'-'.$i++;
+            }
+            q('INSERT INTO segments(id,name,slug,category,active) VALUES(?,?,?,?,'.sql_lit_bool(true).')', [uid(), $name, $slug, $category]);
+            flash('Segmento "'.$name.'" criado. Já aparece em Criar cliente.');
+            redirect('/master/segmentos');
+        }
+        if ($path === '/master/segmentos/status') {
+            $id = (string)post('id', '');
+            $on = post('active') === '1';
+            if ($id !== '') {
+                q('UPDATE segments SET active=? WHERE id=?', [db_bool($on), $id]);
+                flash($on ? 'Segmento ativado.' : 'Segmento ocultado.');
+            }
+            redirect('/master/segmentos');
+        }
     }
     if ($path === '/master') {
         layout_start('master', compact('user','path'));
@@ -344,34 +343,46 @@ if (str_starts_with($path, '/master')) {
         layout_end('master');
         exit;
     }
-    if ($path === '/master/clientes/acesso') {
+    if ($path === '/master/clientes/ficha' || $path === '/master/clientes/acesso') {
         $tenant = one('SELECT * FROM tenants WHERE id=?', [$_GET['id'] ?? '']);
         if (!$tenant) redirect('/master/clientes');
         $admin = tenant_admin($tenant['id']);
-        if (saas_access_confirmed($admin) && $method === 'GET') {
-            flash('Este cliente já entrou e trocou a senha. Acesso e suspensão estão inativos.');
-            redirect('/master/clientes');
-        }
         $issued = $_SESSION['issued_access'] ?? null;
         if (!$issued || ($issued['tenant_id'] ?? '') !== $tenant['id']) {
             $issued = null;
         } else {
             unset($_SESSION['issued_access']);
+            if (empty($tenant['access_token_viewed_at'])) {
+                q('UPDATE tenants SET access_token_viewed_at=?, updated_at=? WHERE id=?', [now(), now(), $tenant['id']]);
+                $tenant['access_token_viewed_at'] = now();
+                audit($tenant['id'], $user['id'], 'tenant.access_token_viewed', 'tenant', $tenant['id']);
+            }
         }
+        $segment = one('SELECT * FROM segments WHERE slug=?', [$tenant['segment'] ?? '']);
         layout_start('master', compact('user','path'));
-        view('master/acesso', ['tenant'=>$tenant,'admin'=>$admin,'issued'=>$issued]);
+        view('master/ficha', ['tenant'=>$tenant,'admin'=>$admin,'issued'=>$issued,'segment'=>$segment]);
         layout_end('master');
         exit;
     }
+    if ($path === '/master/clientes/dossie') {
+        $tenant = one('SELECT * FROM tenants WHERE id=?', [$_GET['id'] ?? '']);
+        if (!$tenant) redirect('/master/clientes');
+        $admin = tenant_admin($tenant['id']);
+        $segment = one('SELECT * FROM segments WHERE slug=?', [$tenant['segment'] ?? '']);
+        send_tenant_dossier_pdf($tenant, $admin, $segment);
+    }
     if ($path === '/master/clientes/novo') {
         layout_start('master', compact('user','path'));
-        view('master/novo');
+        view('master/novo', ['old'=>take_old_form()]);
         layout_end('master');
         exit;
     }
     if ($path === '/master/segmentos') {
         layout_start('master', compact('user','path'));
-        view('master/segmentos', ['items'=>all('SELECT * FROM segments ORDER BY category')]);
+        view('master/segmentos', [
+            'items'=>all('SELECT * FROM segments ORDER BY category, name'),
+            'categories'=>array_values(array_unique(array_filter(array_map(fn($r) => $r['category'] ?? '', all('SELECT DISTINCT category FROM segments ORDER BY category'))))),
+        ]);
         layout_end('master');
         exit;
     }
@@ -395,10 +406,9 @@ if (str_starts_with($path, '/master')) {
 /* -------- APP -------- */
 if (str_starts_with($path, '/app')) {
     [$user, $tenant] = require_tenant();
-    $allowedWhileMustChange = ['/app/configuracoes', '/app/configuracoes/conta', '/app/google/connect', '/app/google/callback'];
+    $allowedWhileMustChange = ['/app/senha'];
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
-        flash('Defina uma senha permanente antes de usar o painel.');
-        redirect('/app/configuracoes?tab=conta');
+        redirect('/app/senha');
     }
 
     if ($path === '/app/google/connect' && $method === 'GET') {
@@ -429,6 +439,27 @@ if (str_starts_with($path, '/app')) {
     if ($method === 'POST') {
         csrf_check();
         $tid = $tenant['id'];
+        if ($path === '/app/senha') {
+            $pw = (string)post('password', '');
+            $confirm = (string)post('password_confirm', '');
+            if ($pw === '' || $confirm === '') {
+                flash('Informe e confirme a nova senha.', 'error');
+                redirect('/app/senha');
+            }
+            if ($pw !== $confirm) {
+                flash('A confirmação da senha não confere.', 'error');
+                redirect('/app/senha');
+            }
+            if (!password_is_strong($pw)) {
+                flash('A senha precisa ter no mínimo 10 caracteres, com letras e números. Os demais dados não foram alterados.', 'error');
+                redirect('/app/senha');
+            }
+            q('UPDATE users SET password_hash=?, must_change_password='.sql_lit_bool(false).', last_login_at=? WHERE id=?', [
+                password_hash($pw, PASSWORD_DEFAULT), now(), $user['id'],
+            ]);
+            flash('Senha definida. Bem-vindo ao painel.');
+            redirect('/app/agenda');
+        }
         if ($path === '/app/notificacoes/ler') {
             q('UPDATE notifications SET read_flag='.sql_lit_bool(true).' WHERE tenant_id=?', [$tid]);
             redirect('/app');
@@ -751,6 +782,16 @@ if (str_starts_with($path, '/app')) {
             }
             redirect('/app/onboarding?step='.($step+1));
         }
+    }
+
+    if ($path === '/app/senha') {
+        if (empty($user['must_change_password'])) {
+            redirect('/app/agenda');
+        }
+        layout_start('lock', compact('user','tenant','path'));
+        view('app/senha', compact('user','tenant'));
+        layout_end('lock');
+        exit;
     }
 
     if ($path === '/app/onboarding' || (!$tenant['onboarding_done'] && $path === '/app')) {

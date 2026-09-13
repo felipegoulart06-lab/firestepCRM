@@ -65,4 +65,5 @@ $qsearch = trim($_GET['q'] ?? '');
     </div>
   </header>
   <main class="content">
-    <?php if ($f = flash()): ?><div class="flash"><?= e($f) ?></div><?php endif; ?>
+    <?php $f = flash(); $fk = flash_kind(); ?>
+    <?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>"><?= e($f) ?></div><?php endif; ?>

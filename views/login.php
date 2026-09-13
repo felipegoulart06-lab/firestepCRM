@@ -29,7 +29,8 @@
   <div style="height:16px"></div>
   <label class="label">Senha</label>
   <input class="input" type="password" name="password" autocomplete="current-password" placeholder="Sua senha" required>
-  <?php if ($f = flash()): ?><p style="color:#166534;background:#ecfdf3;border:1px solid #bbf7d0;padding:9px 11px;border-radius:8px"><?= e($f) ?></p><?php endif; ?>
+  <?php $f = flash(); $fk = flash_kind(); ?>
+  <?php if ($f): ?><p class="flash<?= $fk==='error' ? ' flash-error' : '' ?>"><?= e($f) ?></p><?php endif; ?>
   <?php if (!empty($error)): ?><p style="color:#b42318;background:#fef3f2;border:1px solid #fecdca;padding:9px 11px;border-radius:8px"><?= e($error) ?></p><?php endif; ?>
   <button class="btn btn-primary" style="width:100%;margin-top:20px;min-height:43px">Entrar no sistema</button>
 </form>

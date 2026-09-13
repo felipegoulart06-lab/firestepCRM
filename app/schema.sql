@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS tenants (
   webhook_requested_at TEXT,
   webhook_approved_at TEXT,
   webhook_approved_by TEXT,
+  access_token_generated_at TEXT,
+  access_token_viewed_at TEXT,
   onboarding_done INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
