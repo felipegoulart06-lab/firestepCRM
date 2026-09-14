@@ -229,3 +229,19 @@ CREATE INDEX IF NOT EXISTS idx_appt_tenant ON appointments(tenant_id, starts_at)
 CREATE INDEX IF NOT EXISTS idx_req_tenant ON requests(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_wh_token ON webhooks(token);
 CREATE INDEX IF NOT EXISTS idx_analytics_tenant ON analytics_events(tenant_id, created_at);
+CREATE TABLE IF NOT EXISTS finance_entries (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  flow TEXT NOT NULL DEFAULT 'in',
+  status TEXT NOT NULL DEFAULT 'open',
+  description TEXT NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  due_date TEXT,
+  paid_at TEXT,
+  client_id TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries(tenant_id, kind, status);

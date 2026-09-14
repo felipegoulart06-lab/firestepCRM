@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/app/helpers.php';
 require dirname(__DIR__) . '/app/core.php';
+require dirname(__DIR__) . '/app/finance.php';
 
 security_headers();
 
@@ -799,6 +800,50 @@ if (str_starts_with($path, '/app')) {
             flash('Conta Google desconectada.');
             redirect('/app/configuracoes?tab=integracoes');
         }
+        if ($path === '/app/financeiro/salvar') {
+            ensure_finance_schema();
+            $kind = post('kind', '');
+            if (!in_array($kind, ['entry', 'receivable', 'payable'], true)) {
+                flash('Tipo financeiro inválido.', 'error');
+                redirect('/app/financeiro');
+            }
+            $desc = trim((string)post('description', ''));
+            $amount = (float)str_replace(',', '.', (string)post('amount', '0'));
+            if ($desc === '' || $amount <= 0) {
+                bounce_form(finance_back(post('back')), 'Informe descrição e um valor maior que zero.');
+            }
+            $clientId = post('client_id');
+            if ($clientId) {
+                $ok = one('SELECT id FROM clients WHERE id=? AND tenant_id=?', [$clientId, $tid]);
+                if (!$ok) {
+                    $clientId = null;
+                }
+            } else {
+                $clientId = null;
+            }
+            $flow = $kind === 'payable' ? 'out' : ($kind === 'receivable' ? 'in' : (post('flow', 'in') === 'out' ? 'out' : 'in'));
+            $status = $kind === 'entry' ? 'paid' : 'open';
+            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                uid(), $tid, $kind, $flow, $status, $desc, $amount, post('due_date') ?: null,
+                $status === 'paid' ? now() : null, $clientId, post('notes'), now(), now(),
+            ]);
+            flash('Registro financeiro salvo.');
+            redirect(finance_back(post('back')));
+        }
+        if ($path === '/app/financeiro/status') {
+            ensure_finance_schema();
+            $row = one('SELECT * FROM finance_entries WHERE id=? AND tenant_id=?', [post('id'), $tid]);
+            $st = post('status', '');
+            if (!$row || !in_array($st, ['paid', 'billed', 'cancelled'], true)) {
+                flash('Não foi possível atualizar este registro.', 'error');
+                redirect(finance_back(post('back')));
+            }
+            q('UPDATE finance_entries SET status=?, paid_at=?, updated_at=? WHERE id=? AND tenant_id=?', [
+                $st, $st === 'paid' ? now() : ($row['paid_at'] ?? null), now(), $row['id'], $tid,
+            ]);
+            flash('Status atualizado.');
+            redirect(finance_back(post('back')));
+        }
         if ($path === '/app/onboarding') {
             $step = (int)($_POST['step'] ?? 1);
             try {
@@ -1138,6 +1183,62 @@ if (str_starts_with($path, '/app')) {
             'fields'=>all('SELECT * FROM custom_fields WHERE tenant_id=? ORDER BY sort_order', [$tenant['id']]),
             'analyticsEndpoint'=>$analyticsHook ? app_url().'/api/webhooks/'.$analyticsHook['token'] : null,
         ]);
+        layout_end('app');
+        exit;
+    }
+    if ($path === '/app/financeiro' || str_starts_with($path, '/app/financeiro/')) {
+        ensure_finance_schema();
+        $clients = all('SELECT id,name FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'], 'ACTIVE']);
+        $page = 'dashboard';
+        if ($path === '/app/financeiro/lancamentos') $page = 'lancamentos';
+        elseif ($path === '/app/financeiro/receber') $page = 'receber';
+        elseif ($path === '/app/financeiro/faturado') $page = 'faturado';
+        elseif ($path === '/app/financeiro/pagar') $page = 'pagar';
+        elseif ($path === '/app/financeiro/relatorios') $page = 'relatorios';
+        elseif ($path === '/app/financeiro/relatorio.pdf') {
+            require_once dirname(__DIR__) . '/app/pdf.php';
+            $from = $_GET['from'] ?? date('Y-m-01');
+            $to = $_GET['to'] ?? date('Y-m-d');
+            $rows = all("SELECT f.*, c.name client_name FROM finance_entries f
+                LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
+                WHERE f.tenant_id=? AND f.status!='cancelled'
+                  AND COALESCE(f.due_date, substr(f.created_at,1,10))>=? AND COALESCE(f.due_date, substr(f.created_at,1,10))<=?
+                ORDER BY COALESCE(f.due_date, f.created_at)", [$tenant['id'], $from, $to]);
+            $business = $tenant['display_name'] ?: $tenant['business_name'];
+            $lines = ['Empresa: '.$business, 'Período: '.date('d/m/Y', strtotime($from)).' a '.date('d/m/Y', strtotime($to)), str_repeat('-', 80)];
+            $in = 0; $out = 0;
+            foreach ($rows as $r) {
+                $st = FINANCE_STATUS[$r['status']][0] ?? $r['status'];
+                $sign = $r['flow'] === 'out' ? '-' : '+';
+                if ($r['flow'] === 'out') $out += (float)$r['amount'];
+                else $in += (float)$r['amount'];
+                $lines[] = date('d/m/Y', strtotime($r['due_date'] ?: $r['created_at'])).' | '.$sign.number_format((float)$r['amount'], 2, ',', '.').' | '.$r['description'].' | '.$st;
+            }
+            $lines[] = str_repeat('-', 80);
+            $lines[] = 'Entradas: '.money($in);
+            $lines[] = 'Saídas: '.money($out);
+            $lines[] = 'Saldo: '.money($in - $out);
+            download_pdf('Relatório financeiro', $lines, 'financeiro-'.$from.'-'.$to.'.pdf');
+        }
+        if ($path !== '/app/financeiro' && $page === 'dashboard') {
+            http_response_code(404);
+            echo 'Página não encontrada.';
+            exit;
+        }
+        layout_start('app', compact('user','tenant','path'));
+        if ($page === 'dashboard') {
+            view('app/financeiro_dashboard', ['tenant'=>$tenant]);
+        } elseif ($page === 'relatorios') {
+            view('app/financeiro_relatorios', ['tenant'=>$tenant]);
+        } else {
+            view('app/financeiro_lista', [
+                'tenant'=>$tenant,
+                'page'=>$page,
+                'items'=>finance_query($tenant['id'], $page, trim($_GET['q'] ?? '')),
+                'search'=>trim($_GET['q'] ?? ''),
+                'clients'=>$clients,
+            ]);
+        }
         layout_end('app');
         exit;
     }

@@ -355,6 +355,22 @@ function migrate_database(PDO $pdo): void
     }
     $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email_lc ON users(lower(email))');
     $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS users_username_lc ON users(lower(username))');
+    $pdo->exec("CREATE TABLE IF NOT EXISTS finance_entries (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      flow TEXT NOT NULL DEFAULT 'in',
+      status TEXT NOT NULL DEFAULT 'open',
+      description TEXT NOT NULL,
+      amount REAL NOT NULL DEFAULT 0,
+      due_date TEXT,
+      paid_at TEXT,
+      client_id TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )");
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries(tenant_id, kind, status)');
 }
 
 function security_headers(): void
@@ -644,6 +660,7 @@ function icon(string $name, int $size = 18): string
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'arrow-up' => '<path d="m18 15-6-6-6 6"/>',
         'tag' => '<path d="M20 13 13 20 4 11V4h7z"/><circle cx="8.5" cy="8.5" r="1"/>',
+        'wallet' => '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 14h2"/>',
     ];
     $body = $paths[$name] ?? $paths['list'];
     return '<svg class="ico" width="'.$size.'" height="'.$size.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.$body.'</svg>';

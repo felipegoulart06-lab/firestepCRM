@@ -33,6 +33,14 @@ $qsearch = trim($_GET['q'] ?? '');
     <a href="/app/clientes" class="<?= str_starts_with($path,'/app/clientes')?'active':'' ?>"><?= icon('users') ?> <?= e($terms['clients']) ?></a>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
+    <details class="nav-group" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>
+      <summary><?= icon('wallet') ?> Financeiro</summary>
+      <div class="nav-sub">
+        <?php foreach (finance_pages() as $href): ?>
+          <a href="<?= e($href[1]) ?>" class="<?= $path===$href[1] ? 'active' : '' ?>"><?= e($href[0]) ?></a>
+        <?php endforeach; ?>
+      </div>
+    </details>
     <div class="nav-cat">INTEGRAÇÕES</div>
     <a href="/app/webhooks" class="<?= $path==='/app/webhooks'?'active':'' ?>"><?= icon('webhook') ?> Webhooks</a>
     <a href="/app/configuracoes" class="<?= $path==='/app/configuracoes'?'active':'' ?>"><?= icon('settings') ?> Configurações</a>

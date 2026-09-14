@@ -14,6 +14,14 @@ button{color:inherit}
 .brand-name{font-size:15px;color:#fff;font-weight:700;letter-spacing:-.01em}
 .brand-sub{max-width:158px;font-size:11px;color:#98a2b3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav-cat{font-size:10px;letter-spacing:.1em;color:#667085;padding:15px 10px 6px;font-weight:700}
+.nav-group{margin:2px 0 8px}
+.nav-group>summary{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:5px;color:#b9c2d0;cursor:pointer;list-style:none;font-weight:500}
+.nav-group>summary::-webkit-details-marker,.nav-group>summary::marker{display:none;content:""}
+.nav-group>summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);opacity:.7}
+.nav-group[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+.nav-group>summary:hover,.nav-group[open]>summary{background:rgba(255,255,255,.075);color:#fff}
+.nav-sub{padding:2px 0 4px 8px}
+.nav-sub a{font-size:13px;padding:7px 10px 7px 28px}
 .nav a,.nav button.link{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:5px;color:#b9c2d0;margin-bottom:2px;width:100%;background:none;border:0;text-align:left;cursor:pointer;font-weight:500;transition:.15s ease}
 .nav a:hover,.nav a.active{background:rgba(255,255,255,.075);color:#fff}
 .nav a.active{box-shadow:inset 3px 0 0 var(--primary);background:rgba(255,255,255,.09)}
