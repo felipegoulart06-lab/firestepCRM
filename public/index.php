@@ -926,6 +926,13 @@ if (str_starts_with($path, '/app')) {
         }
     }
 
+    if ($path === '/app/agendamentos/reserva.pdf') {
+        require_once dirname(__DIR__) . '/app/pdf.php';
+        $appt = appointment_detail($tenant['id'], (string)($_GET['id'] ?? ''));
+        if (!$appt) { http_response_code(404); exit('Agendamento não encontrado.'); }
+        send_appointment_pdf($tenant, $appt);
+    }
+
     if ($path === '/app/clientes/resumo.pdf') {
         require_once dirname(__DIR__) . '/app/pdf.php';
         $client = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['id'] ?? '', $tenant['id']]);
@@ -1020,7 +1027,8 @@ if (str_starts_with($path, '/app')) {
         $items = all($sql, $p);
         $sources = all("SELECT DISTINCT source FROM appointments WHERE tenant_id=? AND COALESCE(source,'')!='' ORDER BY source", [$tenant['id']]);
         $edit = !empty($_GET['edit']) ? appointment_detail($tenant['id'], (string)$_GET['edit']) : null;
-        $creating = !$edit && !empty($_GET['new']);
+        $viewing = !$edit && !empty($_GET['ver']) ? appointment_detail($tenant['id'], (string)$_GET['ver']) : null;
+        $creating = !$edit && !$viewing && !empty($_GET['new']);
         $forcedClient = null;
         if ($creating && !empty($_GET['client_id'])) {
             $forcedClient = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['client_id'], $tenant['id']]);
@@ -1029,6 +1037,7 @@ if (str_starts_with($path, '/app')) {
         view('app/agendamentos', [
             'items'=>$items, 'sources'=>$sources, 'statusFilter'=>$st, 'sourceFilter'=>$src, 'search'=>trim($_GET['q'] ?? ''),
             'edit'=>$edit,
+            'viewing'=>$viewing,
             'creating'=>$creating,
             'forcedClient'=>$forcedClient,
             'clients'=>all('SELECT id,name,phone FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),

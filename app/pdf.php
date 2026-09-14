@@ -158,6 +158,42 @@ function tenant_dossier_pdf(array $tenant, ?array $admin, ?array $segment): stri
     return $pdf;
 }
 
+function send_appointment_pdf(array $tenant, array $a): never
+{
+    $status = APPT_STATUS[$a['status'] ?? ''][0] ?? (string)($a['status'] ?? '—');
+    $start = $a['starts_at'] ?? '';
+    $end = $a['ends_at'] ?? '';
+    $lines = [
+        'Empresa: '.($tenant['display_name'] ?: $tenant['business_name']),
+        str_repeat('-', 80),
+        'Cliente: '.($a['client_name'] ?? '—'),
+        'Telefone: '.phone_fmt($a['client_phone'] ?: ($a['client_whatsapp'] ?? null)),
+        'WhatsApp: '.phone_fmt($a['client_whatsapp'] ?? null),
+        'E-mail: '.($a['client_email'] ?: 'Não informado'),
+        str_repeat('-', 80),
+        'Serviço: '.($a['service_name'] ?: 'Não informado'),
+        'Duração: '.(((int)($a['duration_minutes'] ?? 0)) > 0 ? (int)$a['duration_minutes'].' min' : '—'),
+        'Data: '.($start ? date('d/m/Y', strtotime($start)) : '—'),
+        'Horário: '.($start && $end ? substr($start, 11, 5).' – '.substr($end, 11, 5) : '—'),
+        'Status: '.$status,
+        'Origem: '.($a['source'] ?: '—'),
+        'Criado em: '.(!empty($a['created_at']) ? date('d/m/Y H:i', strtotime($a['created_at'])) : '—'),
+    ];
+    if (!empty($a['notes'])) {
+        $lines[] = 'Observações: '.$a['notes'];
+    }
+    if (!empty($a['request_message'])) {
+        $lines[] = 'Mensagem da solicitação: '.$a['request_message'];
+    }
+    $utm = array_filter([$a['utm_source'] ?? '', $a['utm_medium'] ?? '', $a['utm_campaign'] ?? '']);
+    if ($utm) {
+        $lines[] = 'Campanha: '.implode(' · ', $utm);
+    }
+    $who = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)($a['client_name'] ?? 'reserva'))) ?: 'reserva';
+    $when = $start ? date('Y-m-d-Hi', strtotime($start)) : date('Y-m-d');
+    download_pdf('Reserva · '.($a['client_name'] ?? 'Agendamento'), $lines, 'reserva-'.$who.'-'.$when.'.pdf');
+}
+
 function send_tenant_dossier_pdf(array $tenant, ?array $admin, ?array $segment): never
 {
     $pdf = tenant_dossier_pdf($tenant, $admin, $segment);

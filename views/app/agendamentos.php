@@ -64,14 +64,20 @@ $total = count($items);
       <td><?= e($a['service_name'] ?: '—') ?></td>
       <td><?= e($a['source'] ?: '—') ?></td>
       <td><?= badge_appt($a['status']) ?></td>
-      <td style="text-align:right"><a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$a['id']]))) ?>">Detalhes</a></td>
+      <td>
+        <div class="row-actions">
+          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'ver'=>$a['id']]))) ?>">Ver</a>
+          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$a['id']]))) ?>">Editar</a>
+          <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($a['id']) ?>"><?= icon('download') ?> PDF</a>
+        </div>
+      </td>
     </tr>
   <?php endforeach; ?>
   </tbody>
 </table>
 <?php endif; ?>
 </div>
-<?php if (!empty($edit) || !empty($creating)):
+<?php if (!empty($edit) || !empty($viewing) || !empty($creating)):
   $listQs = http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null]));
   $modalClose = '/app/agendamentos'.($listQs !== '' ? '?'.$listQs : '');
   $forcedClient = $forcedClient ?? null;
@@ -79,5 +85,10 @@ $total = count($items);
       $modalClose = '/app/clientes/ver?id='.$forcedClient['id'];
   }
   $hideCalendarSwitch = true;
+  $viewOnly = !empty($viewing);
+  if ($viewOnly) {
+      $edit = $viewing;
+      $editHref = '/app/agendamentos?'.http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$viewing['id']]));
+  }
   include VIEWS . '/app/modal_appointment.php';
 endif; ?>

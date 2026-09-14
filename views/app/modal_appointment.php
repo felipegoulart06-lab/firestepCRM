@@ -6,11 +6,18 @@ $modalClose = $modalClose ?? '/app/agenda';
 $forcedClient = $forcedClient ?? null;
 $clients = $clients ?? [];
 $services = $services ?? [];
+$viewOnly = !empty($viewOnly);
+$showEditForm = $edit && !$viewOnly;
 ?>
-<div class="overlay" role="presentation">
+        <div class="overlay" role="presentation">
   <div class="card overlay-panel" style="max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <h2 style="margin:0;font-size:17px"><?= $edit ? 'Detalhes do agendamento' : ($mode ? 'Bloquear horário' : 'Novo agendamento') ?></h2>
+      <h2 style="margin:0;font-size:17px"><?php
+        if ($viewOnly) echo 'Detalhes da reserva';
+        elseif ($edit) echo 'Editar agendamento';
+        elseif ($mode) echo 'Bloquear horário';
+        else echo 'Novo agendamento';
+      ?></h2>
       <a class="btn btn-ghost" href="<?= e($modalClose) ?>">Fechar</a>
     </div>
     <?php if ($edit):
@@ -44,8 +51,15 @@ $services = $services ?? [];
           <pre class="payload"><?= e(json_encode($metadata,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)) ?></pre>
         </details>
       <?php endif; ?>
+      <?php if ($viewOnly): ?>
+        <div class="row-actions" style="margin-top:14px;justify-content:flex-start">
+          <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($edit['id']) ?>"><?= icon('download') ?> PDF</a>
+          <a class="btn btn-primary" href="<?= e($editHref ?? '/app/agendamentos?edit='.urlencode($edit['id'])) ?>">Editar</a>
+        </div>
+      <?php elseif ($showEditForm): ?>
       <div style="border-top:1px solid #e4e7ec;margin:14px 0 12px"></div>
-      <h3 style="font-size:13px;margin:0 0 8px">Editar agendamento</h3>
+      <h3 style="font-size:13px;margin:0 0 8px">Alterar dados</h3>
+      <?php endif; ?>
     <?php endif; ?>
     <?php if (!$edit && empty($forcedClient) && empty($hideCalendarSwitch)): ?>
       <p><a href="/app/agenda?new=1&date=<?= e($date) ?>&start=<?= e($start) ?>">Agendar</a> · <a href="/app/agenda?new=1&block=1&date=<?= e($date) ?>&start=<?= e($start) ?>">Bloquear horário</a></p>
@@ -62,7 +76,7 @@ $services = $services ?? [];
         <div><label class="label">Motivo</label><input class="input" name="reason" placeholder="Almoço, compromisso pessoal..."></div>
         <button class="btn btn-primary">Bloquear</button>
       </form>
-    <?php else: ?>
+    <?php elseif (!$viewOnly): ?>
       <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <input type="hidden" name="return_to" value="<?= e($modalClose) ?>">

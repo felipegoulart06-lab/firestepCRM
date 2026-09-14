@@ -741,7 +741,7 @@ function app_return_url(?string $raw, string $fallback = '/app/agenda'): string
     $query = parse_url($raw, PHP_URL_QUERY);
     $params = [];
     if ($query) parse_str($query, $params);
-    unset($params['edit'], $params['new'], $params['block'], $params['convert']);
+    unset($params['edit'], $params['ver'], $params['new'], $params['block'], $params['convert']);
     $query = http_build_query($params);
     return $path . ($query !== '' ? '?'.$query : '');
 }
