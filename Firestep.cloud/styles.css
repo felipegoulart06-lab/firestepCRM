@@ -95,9 +95,13 @@ button { color: inherit; cursor: pointer }
   margin: 22px auto 28px; box-shadow: var(--shadow);
 }
 .hero-copy {
-  background: var(--navy); color: #fff;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(37, 99, 235, 0.28), transparent 46%),
+    var(--navy);
+  color: #fff;
   padding: 48px 44px; display: flex; flex-direction: column; justify-content: space-between;
 }
+.site-head.is-scrolled { box-shadow: 0 4px 18px rgba(16, 24, 40, 0.06) }
 .kicker {
   font-size: 11px; letter-spacing: .12em; font-weight: 700; color: #84adff;
 }
@@ -274,13 +278,90 @@ footer {
 }
 .mobile-nav a { display: block; padding: 10px 0; color: var(--text); font-weight: 500 }
 
+.logo img { width: 28px; height: 28px; border-radius: 6px }
+.map {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.map a, .map article {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); min-height: 148px;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.map a:hover, .map article:hover {
+  transform: translateY(-1px); box-shadow: var(--shadow-hover); border-color: #c5d0e0;
+}
+.ico-box {
+  width: 32px; height: 32px; border-radius: 6px; background: var(--primary-soft); color: var(--primary);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.ico-box svg { width: 16px; height: 16px }
+.map h3 { margin: 0; font-size: 14px }
+.map p { margin: 0; color: var(--muted); font-size: 13px; flex: 1 }
+.map .tag { font-size: 11px; font-weight: 600; color: var(--primary) }
+
+.cal {
+  margin-top: 12px; display: grid; grid-template-columns: 44px repeat(5, 1fr);
+  font-size: 11px; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; background: #fff;
+}
+.cal b, .cal i, .cal span {
+  padding: 7px 6px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft);
+  font-style: normal; font-weight: 500;
+}
+.cal b { background: var(--bg); color: var(--muted); font-weight: 600 }
+.cal .ev {
+  background: var(--primary-soft); color: #1d4ed8; border-radius: 3px; margin: 3px;
+  padding: 4px 5px; display: block; font-weight: 600;
+}
+.cal .ev2 { background: #fef3f2; color: #b91c1c }
+.cal .ev3 { background: #ecfdf3; color: #027a48 }
+
+.kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px }
+.col { background: var(--bg); border: 1px solid var(--line-soft); border-radius: 5px; padding: 8px; min-height: 160px }
+.col h4 { margin: 0 0 8px; font-size: 11px; letter-spacing: .06em; color: var(--muted); text-transform: uppercase }
+.pill { background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 8px; margin-bottom: 6px; font-size: 12px }
+.pill small { display: block; color: var(--muted); margin-top: 2px }
+
+.fx {
+  display: grid; grid-template-columns: 220px 1fr; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-height: 220px; background: #fff;
+}
+.fx-side { background: #fafbfc; border-right: 1px solid var(--line); padding: 12px }
+.fx-side strong { display: block; font-size: 12px; margin-bottom: 10px }
+.fx-side button {
+  display: block; width: 100%; text-align: left; border: 0; background: none;
+  padding: 7px 8px; border-radius: 5px; font-size: 13px; min-height: 34px;
+}
+.fx-side button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); font-weight: 600 }
+.fx-doc { padding: 20px }
+.fx-doc h3 { margin: 0 0 6px }
+.bars { display: grid; gap: 10px; margin-top: 16px }
+.bar-row { display: grid; grid-template-columns: 90px 1fr 36px; gap: 8px; align-items: center; font-size: 12px }
+.bar { height: 8px; background: var(--line-soft); border-radius: 99px; overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--primary); border-radius: 99px }
+
+.flow {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+}
+.flow em {
+  font-style: normal; background: #fff; border: 1px solid var(--line); border-radius: 5px;
+  padding: 8px 10px; font-size: 12px; font-weight: 600;
+}
+.flow span { color: var(--muted) }
+
+.onb { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px }
+.onb .n { font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: .08em }
+
 @media (max-width: 900px) {
   .nav-main, .head-cta { display: none }
   .hamb { display: inline-flex }
   .site-head.is-open .mobile-nav { display: block }
-  .hero, .tour, .fin-grid, .cta-box, .int-grid, .safe, .steps, .trust, .prob {
+  .hero, .tour, .fin-grid, .cta-box, .int-grid, .safe, .steps, .trust, .prob, .map, .kanban, .fx, .onb {
     grid-template-columns: 1fr;
   }
+  .map { grid-template-columns: 1fr 1fr }
+  .safe { grid-template-columns: 1fr 1fr }
+  .kanban { grid-template-columns: 1fr 1fr }
+  .onb { grid-template-columns: 1fr 1fr }
   .mock { grid-template-columns: 1fr; min-height: 0 }
   .mock-side { display: none }
   .hero-copy { padding: 32px 24px; min-height: 0 }

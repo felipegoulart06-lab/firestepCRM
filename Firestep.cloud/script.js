@@ -73,6 +73,26 @@
     });
   });
 
+  var docs = document.querySelectorAll("[data-doc]");
+  var dpanels = document.querySelectorAll("[data-doc-panel]");
+  docs.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      docs.forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+      var id = btn.getAttribute("data-doc");
+      dpanels.forEach(function (p) { p.hidden = p.getAttribute("data-doc-panel") !== id; });
+    });
+  });
+
+  var ticking = false;
+  window.addEventListener("scroll", function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      if (head) head.classList.toggle("is-scrolled", window.scrollY > 8);
+      ticking = false;
+    });
+  }, { passive: true });
+
   var form = document.getElementById("form-teste");
   if (form) {
     form.addEventListener("submit", function (e) {
