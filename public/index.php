@@ -580,6 +580,7 @@ if (str_starts_with($path, '/app')) {
                 if ($prev && $prev['status'] !== post('status') && post('status')==='CONFIRMED') emit_outbound($tid, 'appointment.confirmed', ['id'=>$id]);
                 if (post('status')==='CANCELLED') { notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.'); emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]); }
                 push_google_sheets($tid, 'appointment', 'upsert', $id);
+                sync_appointment_finance($tid, $id);
                 flash('Agendamento atualizado.');
             } else {
                 $res = create_appointment($tenant, [
@@ -666,6 +667,9 @@ if (str_starts_with($path, '/app')) {
                     array_merge([$id, $tid], $fields, [now()]));
             }
             push_google_sheets($tid, 'service', 'upsert', $id);
+            foreach (all("SELECT id FROM appointments WHERE tenant_id=? AND service_id=? AND status!='CANCELLED'", [$tid, $id]) as $ap) {
+                sync_appointment_finance($tid, $ap['id']);
+            }
             flash('Serviço salvo.');
             redirect('/app/servicos');
         }
@@ -849,9 +853,9 @@ if (str_starts_with($path, '/app')) {
             }
             $flow = $kind === 'payable' ? 'out' : ($kind === 'receivable' ? 'in' : (post('flow', 'in') === 'out' ? 'out' : 'in'));
             $status = $kind === 'entry' ? 'paid' : 'open';
-            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                 uid(), $tid, $kind, $flow, $status, $desc, $amount, post('due_date') ?: null,
-                $status === 'paid' ? now() : null, $clientId, post('notes'), now(), now(),
+                $status === 'paid' ? now() : null, $clientId, post('notes'), 'manual', null, now(), now(),
             ]);
             flash('Registro financeiro salvo.');
             redirect(finance_back(post('back')));
@@ -864,8 +868,11 @@ if (str_starts_with($path, '/app')) {
                 flash('Não foi possível atualizar este registro.', 'error');
                 redirect(finance_back(post('back')));
             }
-            q('UPDATE finance_entries SET status=?, paid_at=?, updated_at=? WHERE id=? AND tenant_id=?', [
-                $st, $st === 'paid' ? now() : ($row['paid_at'] ?? null), now(), $row['id'], $tid,
+            q('UPDATE finance_entries SET status=?, paid_at=?, amount_paid=?, updated_at=? WHERE id=? AND tenant_id=?', [
+                $st,
+                $st === 'paid' ? now() : ($row['paid_at'] ?? null),
+                $st === 'paid' ? (float)$row['amount'] : (float)($row['amount_paid'] ?? 0),
+                now(), $row['id'], $tid,
             ]);
             flash('Status atualizado.');
             redirect(finance_back(post('back')));
@@ -1214,6 +1221,7 @@ if (str_starts_with($path, '/app')) {
     }
     if ($path === '/app/financeiro' || str_starts_with($path, '/app/financeiro/')) {
         ensure_finance_schema();
+        finance_backfill_appointments($tenant['id']);
         $clients = all('SELECT id,name FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'], 'ACTIVE']);
         $page = 'dashboard';
         if ($path === '/app/financeiro/lancamentos') $page = 'lancamentos';
@@ -1231,19 +1239,25 @@ if (str_starts_with($path, '/app')) {
                   AND COALESCE(f.due_date, substr(f.created_at,1,10))>=? AND COALESCE(f.due_date, substr(f.created_at,1,10))<=?
                 ORDER BY COALESCE(f.due_date, f.created_at)", [$tenant['id'], $from, $to]);
             $business = $tenant['display_name'] ?: $tenant['business_name'];
+            $ov = finance_overview($tenant['id'], $from.' 00:00:00', $to.' 23:59:59');
             $lines = ['Empresa: '.$business, 'Período: '.date('d/m/Y', strtotime($from)).' a '.date('d/m/Y', strtotime($to)), str_repeat('-', 80)];
-            $in = 0; $out = 0;
+            $cashIn = 0; $cashOut = 0;
             foreach ($rows as $r) {
                 $st = FINANCE_STATUS[$r['status']][0] ?? $r['status'];
                 $sign = $r['flow'] === 'out' ? '-' : '+';
-                if ($r['flow'] === 'out') $out += (float)$r['amount'];
-                else $in += (float)$r['amount'];
-                $lines[] = date('d/m/Y', strtotime($r['due_date'] ?: $r['created_at'])).' | '.$sign.number_format((float)$r['amount'], 2, ',', '.').' | '.$r['description'].' | '.$st;
+                if ($r['status'] === 'paid') {
+                    if ($r['flow'] === 'out') $cashOut += (float)$r['amount'];
+                    else $cashIn += (float)$r['amount'];
+                }
+                $orig = finance_source_label($r['source_type'] ?? null, $r['source_id'] ?? null);
+                $lines[] = date('d/m/Y', strtotime($r['due_date'] ?: $r['created_at'])).' | '.$sign.number_format((float)$r['amount'], 2, ',', '.').' | '.$r['description'].' | '.$st.' | '.$orig;
             }
             $lines[] = str_repeat('-', 80);
-            $lines[] = 'Entradas: '.money($in);
-            $lines[] = 'Saídas: '.money($out);
-            $lines[] = 'Saldo: '.money($in - $out);
+            $lines[] = 'Previsto: '.money($ov['previsto']);
+            $lines[] = 'A receber: '.money($ov['receber']);
+            $lines[] = 'Recebido no período: '.money($ov['recebido']);
+            $lines[] = 'Caixa (pagos no período, lista): '.money($cashIn).' / saídas '.money($cashOut);
+            $lines[] = 'Saldo do período: '.money($ov['saldo']);
             download_pdf('Relatório financeiro', $lines, 'financeiro-'.$from.'-'.$to.'.pdf');
         }
         if ($path !== '/app/financeiro' && $page === 'dashboard') {

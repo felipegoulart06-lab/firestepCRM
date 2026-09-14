@@ -13,7 +13,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=explorer1">
+<link rel="stylesheet" href="/assets/app.css?v=nav2">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -33,7 +33,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <a href="/app/clientes" class="<?= str_starts_with($path,'/app/clientes')?'active':'' ?>"><?= icon('users') ?> <?= e($terms['clients']) ?></a>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
-    <details class="nav-group" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>
+    <details class="nav-group<?= str_starts_with($path,'/app/financeiro')?' nav-on':'' ?>" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>
       <summary><?= icon('wallet') ?> Financeiro</summary>
       <div class="nav-sub">
         <?php foreach (finance_pages() as $href): ?>

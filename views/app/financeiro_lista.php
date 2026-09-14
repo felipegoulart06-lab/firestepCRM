@@ -34,6 +34,7 @@ $listPath = finance_pages()[$page][1];
   <thead>
     <tr>
       <th>Descrição</th>
+      <th>Origem</th>
       <th>Cliente</th>
       <th>Valor</th>
       <th>Vencimento</th>
@@ -50,6 +51,7 @@ $listPath = finance_pages()[$page][1];
           <div style="font-size:12px;color:#667085"><?= $row['flow']==='out' ? 'Saída' : 'Entrada' ?></div>
         <?php endif; ?>
       </td>
+      <td><?= e(finance_source_label($row['source_type'] ?? null, $row['source_id'] ?? null)) ?></td>
       <td><?= e($row['client_name'] ?: '—') ?></td>
       <td><?= e(money((float)$row['amount'])) ?></td>
       <td><?= e($row['due_date'] ? date('d/m/Y', strtotime($row['due_date'])) : '—') ?></td>

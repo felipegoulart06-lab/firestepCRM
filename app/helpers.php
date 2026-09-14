@@ -110,6 +110,9 @@ function db(): PDO
     ];
 
     $url = database_url();
+    if (env_str('FIRESTEP_SQLITE')) {
+        $url = null;
+    }
     if ($url) {
         $parts = parse_url($url);
         if (!$parts || empty($parts['host'])) {
@@ -141,7 +144,7 @@ function db(): PDO
         missing_database_config();
     }
 
-    $path = storage_dir() . '/nexo.sqlite';
+    $path = env_str('FIRESTEP_SQLITE') ?: (storage_dir() . '/nexo.sqlite');
     $fresh = !file_exists($path);
     $pdo = new PDO('sqlite:' . $path, null, null, $options);
     $pdo->exec('PRAGMA journal_mode=WAL');
@@ -347,6 +350,12 @@ function migrate_database(PDO $pdo): void
             'client_instructions' => 'TEXT',
             'internal_notes' => 'TEXT',
         ],
+        'finance_entries' => [
+            'source_type' => 'TEXT',
+            'source_id' => 'TEXT',
+            'amount_paid' => 'REAL DEFAULT 0',
+            'payment_method' => 'TEXT',
+        ],
     ];
     foreach ($columns as $table => $wanted) {
         $existing = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
@@ -370,10 +379,15 @@ function migrate_database(PDO $pdo): void
       paid_at TEXT,
       client_id TEXT,
       notes TEXT,
+      source_type TEXT,
+      source_id TEXT,
+      amount_paid REAL DEFAULT 0,
+      payment_method TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )");
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries(tenant_id, kind, status)');
+    $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries(tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL');
 }
 
 function security_headers(): void

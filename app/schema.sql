@@ -241,7 +241,12 @@ CREATE TABLE IF NOT EXISTS finance_entries (
   paid_at TEXT,
   client_id TEXT,
   notes TEXT,
+  source_type TEXT,
+  source_id TEXT,
+  amount_paid REAL DEFAULT 0,
+  payment_method TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries(tenant_id, kind, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries(tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL;

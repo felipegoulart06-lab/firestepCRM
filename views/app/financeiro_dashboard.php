@@ -1,15 +1,8 @@
 <?php
 $page = $page ?? 'dashboard';
-$pages = finance_pages();
 $monthStart = date('Y-m-01 00:00:00');
 $monthEnd = date('Y-m-t 23:59:59');
-$receber = finance_sum($tenant['id'], 'receivable', ['open', 'billed']);
-$faturado = finance_sum($tenant['id'], 'receivable', ['billed']);
-$pagar = finance_sum($tenant['id'], 'payable', ['open']);
-$entradas = finance_sum($tenant['id'], 'entry', ['paid'], 'in', $monthStart, $monthEnd)
-    + finance_sum($tenant['id'], 'receivable', ['paid'], 'in', $monthStart, $monthEnd);
-$saidas = finance_sum($tenant['id'], 'entry', ['paid'], 'out', $monthStart, $monthEnd)
-    + finance_sum($tenant['id'], 'payable', ['paid'], 'out', $monthStart, $monthEnd);
+$ov = finance_overview($tenant['id'], $monthStart, $monthEnd);
 $recent = all("SELECT f.*, c.name client_name FROM finance_entries f
     LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
     WHERE f.tenant_id=? AND f.status!='cancelled'
@@ -23,10 +16,10 @@ $recent = all("SELECT f.*, c.name client_name FROM finance_entries f
   <a class="btn btn-primary" href="/app/financeiro/lancamentos?novo=1"><?= icon('plus') ?> Novo lançamento</a>
 </div>
 <div class="grid g4">
-  <div class="card stat"><span class="stat-label">A receber</span><b><?= e(money($receber)) ?></b><div class="stat-foot">Em aberto e faturado</div></div>
-  <div class="card stat"><span class="stat-label">Faturado</span><b><?= e(money($faturado)) ?></b><div class="stat-foot">Aguardando recebimento</div></div>
-  <div class="card stat"><span class="stat-label">A pagar</span><b><?= e(money($pagar)) ?></b><div class="stat-foot">Contas em aberto</div></div>
-  <div class="card stat"><span class="stat-label">Saldo do mês</span><b><?= e(money($entradas - $saidas)) ?></b><div class="stat-foot">Entradas <?= e(money($entradas)) ?> · Saídas <?= e(money($saidas)) ?></div></div>
+  <div class="card stat"><span class="stat-label">Previsto</span><b><?= e(money($ov['previsto'])) ?></b><div class="stat-foot">Recebíveis (abertos + recebidos)</div></div>
+  <div class="card stat"><span class="stat-label">A receber</span><b><?= e(money($ov['receber'])) ?></b><div class="stat-foot">Ainda não entrou no caixa<?= $ov['vencido']>0 ? ' · vencido '.e(money($ov['vencido'])) : '' ?></div></div>
+  <div class="card stat"><span class="stat-label">Recebido no mês</span><b><?= e(money($ov['recebido'])) ?></b><div class="stat-foot">Somente valores pagos</div></div>
+  <div class="card stat"><span class="stat-label">Saldo do mês</span><b><?= e(money($ov['saldo'])) ?></b><div class="stat-foot">A pagar <?= e(money($ov['pagar'])) ?> · Saídas <?= e(money($ov['saidas'])) ?></div></div>
 </div>
 <div class="grid g3" style="margin-top:14px">
   <a class="card card-hover insight" href="/app/financeiro/receber"><?= icon('inbox') ?><div><b>Contas a receber</b><div style="color:#667085">O que os clientes ainda devem.</div></div></a>

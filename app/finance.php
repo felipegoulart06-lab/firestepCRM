@@ -68,6 +68,15 @@ function finance_back(?string $raw): string
     return '/app/financeiro';
 }
 
+function finance_try(string $sql): void
+{
+    try {
+        q($sql);
+    } catch (Throwable $e) {
+        // coluna ou índice já existe
+    }
+}
+
 function ensure_finance_schema(): void
 {
     static $ready = false;
@@ -90,12 +99,145 @@ function ensure_finance_schema(): void
         updated_at VARCHAR(40) NOT NULL
     )";
     q($sql);
-    try {
-        q('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries (tenant_id, kind, status)');
-    } catch (Throwable $e) {
-        // índice já existe
-    }
+    finance_try('ALTER TABLE finance_entries ADD COLUMN source_type VARCHAR(40)');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN source_id VARCHAR(64)');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN amount_paid DECIMAL(12,2) DEFAULT 0');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN payment_method VARCHAR(40)');
+    finance_try('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries (tenant_id, kind, status)');
+    finance_try('CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries (tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL');
     $ready = true;
+}
+
+function finance_source_label(?string $type, ?string $id): string
+{
+    if ($type === 'appointment' && $id) {
+        return 'Agendamento #'.substr($id, 0, 8);
+    }
+    if ($type === 'appointment_reversal' && $id) {
+        return 'Estorno agendamento #'.substr($id, 0, 8);
+    }
+    if ($type === 'manual' || !$type) {
+        return 'Manual';
+    }
+    return (string)$type;
+}
+
+function finance_find_source(string $tenantId, string $type, string $sourceId): ?array
+{
+    return one('SELECT * FROM finance_entries WHERE tenant_id=? AND source_type=? AND source_id=? LIMIT 1', [$tenantId, $type, $sourceId]);
+}
+
+function finance_overview(string $tenantId, ?string $from = null, ?string $to = null): array
+{
+    $receber = finance_sum($tenantId, 'receivable', ['open', 'billed']);
+    $previsto = finance_sum($tenantId, 'receivable', ['open', 'billed', 'paid']);
+    $recebido = finance_sum($tenantId, 'receivable', ['paid'], 'in', $from, $to)
+        + finance_sum($tenantId, 'entry', ['paid'], 'in', $from, $to);
+    $pagar = finance_sum($tenantId, 'payable', ['open']);
+    $saidas = finance_sum($tenantId, 'entry', ['paid'], 'out', $from, $to)
+        + finance_sum($tenantId, 'payable', ['paid'], 'out', $from, $to);
+    $today = date('Y-m-d');
+    $vencido = (float)(one(
+        "SELECT COALESCE(SUM(amount),0) c FROM finance_entries WHERE tenant_id=? AND kind='receivable' AND status IN ('open','billed') AND due_date IS NOT NULL AND due_date<?",
+        [$tenantId, $today]
+    )['c'] ?? 0);
+    return [
+        'previsto' => $previsto,
+        'receber' => $receber,
+        'recebido' => $recebido,
+        'vencido' => $vencido,
+        'pagar' => $pagar,
+        'saidas' => $saidas,
+        'saldo' => $recebido - $saidas,
+        'faturado' => finance_sum($tenantId, 'receivable', ['billed']),
+    ];
+}
+
+function sync_appointment_finance(string $tenantId, string $appointmentId): void
+{
+    ensure_finance_schema();
+    if ($tenantId === '' || $appointmentId === '') {
+        return;
+    }
+    $appt = one(
+        "SELECT a.*, s.name service_name, s.price service_price
+         FROM appointments a
+         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+         WHERE a.id=? AND a.tenant_id=?",
+        [$appointmentId, $tenantId]
+    );
+    if (!$appt) {
+        return;
+    }
+    $amount = round((float)($appt['service_price'] ?? 0), 2);
+    $due = substr((string)$appt['starts_at'], 0, 10);
+    $desc = trim('Agendamento · '.((string)($appt['service_name'] ?? 'Serviço')));
+    $row = finance_find_source($tenantId, 'appointment', $appointmentId);
+    $cancelled = ($appt['status'] ?? '') === 'CANCELLED';
+
+    if ($cancelled) {
+        if ($row && in_array($row['status'], ['open', 'billed'], true)) {
+            q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
+        } elseif ($row && $row['status'] === 'paid' && !finance_find_source($tenantId, 'appointment_reversal', $appointmentId)) {
+            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                uid(), $tenantId, 'entry', 'out', 'paid', 'Estorno · '.$desc, (float)$row['amount'], $due, now(),
+                $appt['client_id'], 'Cancelamento após recebimento', 'appointment_reversal', $appointmentId, now(), now(),
+            ]);
+        }
+        return;
+    }
+
+    if ($amount <= 0) {
+        if ($row && in_array($row['status'], ['open', 'billed'], true)) {
+            q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
+        }
+        return;
+    }
+
+    if (!$row) {
+        q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            uid(), $tenantId, 'receivable', 'in', 'open', $desc, $amount, $due, null,
+            $appt['client_id'], 'Gerado automaticamente pelo agendamento', 'appointment', $appointmentId, now(), now(),
+        ]);
+        return;
+    }
+    if (in_array($row['status'], ['open', 'billed'], true)) {
+        q('UPDATE finance_entries SET description=?, amount=?, due_date=?, client_id=?, updated_at=? WHERE id=? AND tenant_id=? AND status IN (?,?)', [
+            $desc, $amount, $due, $appt['client_id'], now(), $row['id'], $tenantId, 'open', 'billed',
+        ]);
+    }
+}
+
+function finance_backfill_appointments(string $tenantId): void
+{
+    static $done = [];
+    if (isset($done[$tenantId])) {
+        return;
+    }
+    $done[$tenantId] = true;
+    ensure_finance_schema();
+    $rows = all(
+        "SELECT a.id FROM appointments a
+         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+         WHERE a.tenant_id=? AND COALESCE(s.price,0)>0
+           AND NOT EXISTS (
+             SELECT 1 FROM finance_entries f
+             WHERE f.tenant_id=a.tenant_id AND f.source_type='appointment' AND f.source_id=a.id
+           )",
+        [$tenantId]
+    );
+    foreach ($rows as $row) {
+        sync_appointment_finance($tenantId, $row['id']);
+    }
+    $cancel = all(
+        "SELECT a.id FROM appointments a
+         JOIN finance_entries f ON f.tenant_id=a.tenant_id AND f.source_type='appointment' AND f.source_id=a.id
+         WHERE a.tenant_id=? AND a.status='CANCELLED' AND f.status IN ('open','billed')",
+        [$tenantId]
+    );
+    foreach ($cancel as $row) {
+        sync_appointment_finance($tenantId, $row['id']);
+    }
 }
 
 function finance_query(string $tenantId, string $page, string $search = ''): array

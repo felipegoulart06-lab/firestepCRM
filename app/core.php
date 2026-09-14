@@ -225,6 +225,7 @@ function create_appointment(array $tenant, array $in): array
     notify($tenant['id'], 'Novo agendamento', ($cli['name'] ?? '') . ' · ' . $in['date'] . ' ' . $in['start']);
     emit_outbound($tenant['id'], 'appointment.created', ['id'=>$id]);
     push_google_sheets($tenant['id'], 'appointment', 'upsert', $id);
+    sync_appointment_finance($tenant['id'], $id);
     if (!empty($in['request_id'])) {
         q('UPDATE requests SET status=?, client_id=? WHERE id=? AND tenant_id=?', ['SCHEDULED', $in['client_id'], $in['request_id'], $tenant['id']]);
         audit($tenant['id'], $in['user_id'] ?? null, 'request.converted', 'request', $in['request_id']);
