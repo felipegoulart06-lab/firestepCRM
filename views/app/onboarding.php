@@ -88,22 +88,19 @@ $old = $old ?? [];
         <li>Solicitações só de origem externa (site ou webhook)</li>
       </ul>
     <?php endif; ?>
-
-    <div class="onboard-actions">
-      <?php if ($step > 1): ?>
-        <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
-      <?php else: ?>
-        <span></span>
-      <?php endif; ?>
-      <button class="btn btn-primary" type="submit"><?= $step < 4 ? 'Continuar' : 'Entrar no painel' ?></button>
-    </div>
   </form>
 
   <form method="post" action="/logout" class="onboard-out">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-    <button class="btn btn-ghost">Sair</button>
+    <button class="btn btn-ghost" type="submit">Sair</button>
   </form>
 </section>
+<div class="onboard-dock" style="position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;justify-content:center;align-items:center;gap:10px;padding:12px 16px;background:#fff;border-top:1px solid #e4e7ec">
+  <?php if ($step > 1): ?>
+    <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
+  <?php endif; ?>
+  <button class="btn btn-primary" type="submit" form="onboard-form" style="min-height:46px;min-width:240px;flex:1;max-width:520px;font-size:15px"><?= $step < 4 ? 'Avançar' : 'Entrar no painel' ?></button>
+</div>
 <script>
 (function () {
   var copy = document.getElementById('copy-wa');
