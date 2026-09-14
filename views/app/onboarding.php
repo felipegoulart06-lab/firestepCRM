@@ -10,28 +10,23 @@ $titles = [
     4 => 'Tudo pronto para começar',
 ];
 $subs = [
-    1 => 'Esse nome aparece no menu, nos agendamentos e no dossiê. Confirme telefone e WhatsApp para contato.',
-    2 => 'A agenda só libera horários dentro deste expediente. Você pode mudar depois em Configurações.',
-    3 => 'Já deixamos modelos do seu segmento. Preço e duração entram automaticamente ao marcar um horário.',
-    4 => 'Clientes, agenda e solicitações já estão no seu CRM. Solicitações entram só de fora — pelo site ou webhook.',
+    1 => 'Confirme o nome, o telefone e o WhatsApp.',
+    2 => 'A agenda só libera horários neste expediente.',
+    3 => 'Modelos do seu segmento. Você altera depois em Serviços.',
+    4 => 'Clientes, agenda e solicitações já estão no CRM.',
 ];
-$pct = (int) round(($step / 4) * 100);
+$go = $step < 4 ? 'Avançar' : 'Entrar no painel';
 $old = $old ?? [];
 ?>
-<section class="lock-card card onboard-card">
-  <p class="lock-kicker">Primeiro acesso · <?= $step ?> de 4</p>
-  <ol class="onboard-steps" aria-label="Progresso">
-    <?php foreach ($labels as $i => $lab): $n = $i + 1; $cls = $n < $step ? 'is-done' : ($n === $step ? 'is-current' : ''); ?>
-      <li class="<?= $cls ?>"><span><?= $n ?></span><?= e($lab) ?></li>
-    <?php endforeach; ?>
-  </ol>
-  <div class="onboard-bar" aria-hidden="true"><i style="width:<?= $pct ?>%"></i></div>
-  <h1><?= e($titles[$step]) ?></h1>
+<section class="card" style="padding:22px 22px 18px">
+  <p class="lock-kicker">Passo <?= $step ?> de 4 · <?= e($labels[$step-1]) ?></p>
+  <h1 style="margin:0 0 6px;font-size:22px"><?= e($titles[$step]) ?></h1>
   <p class="subtitle"><?= e($subs[$step]) ?></p>
 
-  <form method="post" action="/app/onboarding" class="onboard-form" id="onboard-form">
+  <form method="post" action="/app/onboarding" id="onboard-form">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
     <input type="hidden" name="step" value="<?= $step ?>">
+    <input class="onboard-go" type="submit" value="<?= e($go) ?>">
 
     <?php if ($step === 1): ?>
       <label class="label" for="ob-name">Nome comercial</label>
@@ -40,23 +35,20 @@ $old = $old ?? [];
       <label class="label" for="ob-phone">Telefone</label>
       <input class="input" id="ob-phone" name="phone" required inputmode="tel" autocomplete="tel" value="<?= e(old_fill($old, 'phone', $tenant['phone'])) ?>" placeholder="(47) 99999-0000">
 
-      <label class="label" for="ob-wa">WhatsApp <span class="onboard-opt">opcional</span></label>
+      <label class="label" for="ob-wa">WhatsApp <span style="color:#98a2b3;font-weight:500">opcional</span></label>
       <input class="input" id="ob-wa" name="whatsapp" inputmode="tel" value="<?= e(old_fill($old, 'whatsapp', $tenant['whatsapp'])) ?>" placeholder="Se vazio, usamos o telefone">
-      <button type="button" class="onboard-link" id="copy-wa">Usar o mesmo número do telefone</button>
     <?php endif; ?>
 
     <?php if ($step === 2): ?>
       <div class="onboard-presets">
-        <span>Atalho</span>
         <button type="button" class="btn btn-ghost" data-preset="weekdays">Seg–sex 8h–18h</button>
         <button type="button" class="btn btn-ghost" data-preset="sat">+ sábado de manhã</button>
       </div>
-      <div class="onboard-hours-head"><span>Dia</span><span>Fecha</span><span>Abre</span><span>Fecha</span></div>
       <?php for ($d = 0; $d <= 6; $d++):
           $h = $hours[$d] ?? $hours[(string)$d] ?? ['closed' => false, 'start' => '08:00', 'end' => '18:00'];
           $closed = !empty($h['closed']);
       ?>
-        <div class="onboard-hours-row" data-day="<?= $d ?>">
+        <div class="onboard-hours-row" data-day="<?= $d ?>" style="margin-top:8px">
           <b><?= $days[$d] ?></b>
           <label class="check-row onboard-closed"><input type="checkbox" name="closed_<?= $d ?>" class="js-closed" <?= $closed ? 'checked' : '' ?>> Fechado</label>
           <input class="input js-start" type="time" name="start_<?= $d ?>" value="<?= e($h['start'] ?? '08:00') ?>" <?= $closed ? 'disabled' : '' ?>>
@@ -67,7 +59,7 @@ $old = $old ?? [];
 
     <?php if ($step === 3): ?>
       <?php if (!$services): ?>
-        <p class="onboard-empty">Nenhum serviço modelo ainda. Você cadastra depois em <strong>Serviços</strong>.</p>
+        <p class="onboard-empty">Nenhum serviço modelo ainda. Cadastre depois em Serviços.</p>
       <?php else: ?>
         <ul class="onboard-services">
           <?php foreach ($services as $s): ?>
@@ -78,7 +70,6 @@ $old = $old ?? [];
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
-      <p class="onboard-hint">Nada é cobrado daqui. É só a lista usada na agenda.</p>
     <?php endif; ?>
 
     <?php if ($step === 4): ?>
@@ -88,29 +79,22 @@ $old = $old ?? [];
         <li>Solicitações só de origem externa (site ou webhook)</li>
       </ul>
     <?php endif; ?>
+
+    <div class="onboard-nav">
+      <?php if ($step > 1): ?>
+        <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
+      <?php endif; ?>
+      <input class="onboard-go" type="submit" value="<?= e($go) ?>">
+    </div>
   </form>
 
-  <form method="post" action="/logout" class="onboard-out">
+  <form method="post" action="/logout" style="margin-top:12px;text-align:center">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
     <button class="btn btn-ghost" type="submit">Sair</button>
   </form>
 </section>
-<div class="onboard-dock" style="position:fixed;left:0;right:0;bottom:0;z-index:9999;display:flex;justify-content:center;align-items:center;gap:10px;padding:12px 16px;background:#fff;border-top:1px solid #e4e7ec">
-  <?php if ($step > 1): ?>
-    <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
-  <?php endif; ?>
-  <button class="btn btn-primary" type="submit" form="onboard-form" style="min-height:46px;min-width:240px;flex:1;max-width:520px;font-size:15px"><?= $step < 4 ? 'Avançar' : 'Entrar no painel' ?></button>
-</div>
 <script>
 (function () {
-  var copy = document.getElementById('copy-wa');
-  if (copy) {
-    copy.addEventListener('click', function () {
-      var p = document.getElementById('ob-phone');
-      var w = document.getElementById('ob-wa');
-      if (p && w) w.value = p.value;
-    });
-  }
   document.querySelectorAll('.js-closed').forEach(function (box) {
     box.addEventListener('change', function () {
       var row = box.closest('.onboard-hours-row');
@@ -123,11 +107,9 @@ $old = $old ?? [];
       document.querySelectorAll('.onboard-hours-row').forEach(function (row) {
         var d = parseInt(row.getAttribute('data-day'), 10);
         var closed = d === 0 || (!sat && d === 6);
-        var start = (sat && d === 6) ? '08:00' : '08:00';
-        var end = (sat && d === 6) ? '12:00' : '18:00';
         row.querySelector('.js-closed').checked = closed;
-        row.querySelector('.js-start').value = start;
-        row.querySelector('.js-end').value = end;
+        row.querySelector('.js-start').value = '08:00';
+        row.querySelector('.js-end').value = (sat && d === 6) ? '12:00' : '18:00';
         row.querySelectorAll('.js-start, .js-end').forEach(function (el) { el.disabled = closed; });
       });
     });
