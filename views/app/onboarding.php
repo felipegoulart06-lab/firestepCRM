@@ -10,23 +10,26 @@ $titles = [
     4 => 'Tudo pronto para começar',
 ];
 $subs = [
-    1 => 'Confirme o nome, o telefone e o WhatsApp.',
-    2 => 'A agenda só libera horários neste expediente.',
-    3 => 'Modelos do seu segmento. Você altera depois em Serviços.',
+    1 => 'Esse nome aparece no menu e nos agendamentos. Confirme telefone e WhatsApp.',
+    2 => 'A agenda só libera horários dentro deste expediente. Você pode mudar depois.',
+    3 => 'Modelos do seu segmento. Preço e duração entram ao marcar um horário.',
     4 => 'Clientes, agenda e solicitações já estão no CRM.',
 ];
 $go = $step < 4 ? 'Avançar' : 'Entrar no painel';
 $old = $old ?? [];
 ?>
-<section class="card" style="padding:22px 22px 18px">
-  <p class="lock-kicker">Passo <?= $step ?> de 4 · <?= e($labels[$step-1]) ?></p>
-  <h1 style="margin:0 0 6px;font-size:22px"><?= e($titles[$step]) ?></h1>
+<section class="card onboard-card">
+  <ol class="onboard-steps" aria-label="Progresso">
+    <?php foreach ($labels as $i => $lab): $n = $i + 1; $cls = $n < $step ? 'is-done' : ($n === $step ? 'is-current' : ''); ?>
+      <li class="<?= $cls ?>"><span><?= $n ?></span><?= e($lab) ?></li>
+    <?php endforeach; ?>
+  </ol>
+  <h1><?= e($titles[$step]) ?></h1>
   <p class="subtitle"><?= e($subs[$step]) ?></p>
 
-  <form method="post" action="/app/onboarding" id="onboard-form">
+  <form method="post" action="/app/onboarding" class="onboard-form" id="onboard-form">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
     <input type="hidden" name="step" value="<?= $step ?>">
-    <input class="onboard-go" type="submit" value="<?= e($go) ?>">
 
     <?php if ($step === 1): ?>
       <label class="label" for="ob-name">Nome comercial</label>
@@ -35,7 +38,7 @@ $old = $old ?? [];
       <label class="label" for="ob-phone">Telefone</label>
       <input class="input" id="ob-phone" name="phone" required inputmode="tel" autocomplete="tel" value="<?= e(old_fill($old, 'phone', $tenant['phone'])) ?>" placeholder="(47) 99999-0000">
 
-      <label class="label" for="ob-wa">WhatsApp <span style="color:#98a2b3;font-weight:500">opcional</span></label>
+      <label class="label" for="ob-wa">WhatsApp <span class="onboard-opt">opcional</span></label>
       <input class="input" id="ob-wa" name="whatsapp" inputmode="tel" value="<?= e(old_fill($old, 'whatsapp', $tenant['whatsapp'])) ?>" placeholder="Se vazio, usamos o telefone">
     <?php endif; ?>
 
@@ -44,11 +47,12 @@ $old = $old ?? [];
         <button type="button" class="btn btn-ghost" data-preset="weekdays">Seg–sex 8h–18h</button>
         <button type="button" class="btn btn-ghost" data-preset="sat">+ sábado de manhã</button>
       </div>
+      <div class="onboard-hours-head"><span>Dia</span><span></span><span>Abre</span><span>Fecha</span></div>
       <?php for ($d = 0; $d <= 6; $d++):
           $h = $hours[$d] ?? $hours[(string)$d] ?? ['closed' => false, 'start' => '08:00', 'end' => '18:00'];
           $closed = !empty($h['closed']);
       ?>
-        <div class="onboard-hours-row" data-day="<?= $d ?>" style="margin-top:8px">
+        <div class="onboard-hours-row" data-day="<?= $d ?>">
           <b><?= $days[$d] ?></b>
           <label class="check-row onboard-closed"><input type="checkbox" name="closed_<?= $d ?>" class="js-closed" <?= $closed ? 'checked' : '' ?>> Fechado</label>
           <input class="input js-start" type="time" name="start_<?= $d ?>" value="<?= e($h['start'] ?? '08:00') ?>" <?= $closed ? 'disabled' : '' ?>>
@@ -59,7 +63,7 @@ $old = $old ?? [];
 
     <?php if ($step === 3): ?>
       <?php if (!$services): ?>
-        <p class="onboard-empty">Nenhum serviço modelo ainda. Cadastre depois em Serviços.</p>
+        <p class="onboard-empty">Nenhum serviço modelo ainda. Você cadastra depois em Serviços.</p>
       <?php else: ?>
         <ul class="onboard-services">
           <?php foreach ($services as $s): ?>
@@ -80,17 +84,17 @@ $old = $old ?? [];
       </ul>
     <?php endif; ?>
 
-    <div class="onboard-nav">
+    <div class="onboard-foot">
       <?php if ($step > 1): ?>
         <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
       <?php endif; ?>
-      <input class="onboard-go" type="submit" value="<?= e($go) ?>">
+      <button class="btn btn-primary" type="submit"><?= e($go) ?></button>
     </div>
   </form>
 
-  <form method="post" action="/logout" style="margin-top:12px;text-align:center">
+  <form method="post" action="/logout" class="onboard-exit">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-    <button class="btn btn-ghost" type="submit">Sair</button>
+    <button type="submit">Sair</button>
   </form>
 </section>
 <script>
