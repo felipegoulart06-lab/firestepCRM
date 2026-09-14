@@ -1,5 +1,9 @@
-<h1>Pipeline de solicitações</h1>
-<p style="color:#667085">Use as setas de cada card para avançar ou retornar o status.</p>
+<div class="page-head">
+  <div>
+    <h1>Pipeline de solicitações</h1>
+    <p class="subtitle">Use as setas de cada card para avançar ou retornar o status.</p>
+  </div>
+</div>
 <?php
 $cols = ['NEW'=>'Novas','CONTACTED'=>'Em contato','WAITING_CLIENT'=>'Aguardando','SCHEDULED'=>'Agendadas','DONE'=>'Finalizadas'];
 $statuses = array_keys($cols);
@@ -8,14 +12,14 @@ foreach ($items as $i) { $by[$i['status']][] = $i; }
 ?>
 <div class="kanban">
 <?php foreach ($cols as $st=>$title): $list = $by[$st] ?? []; $position = array_search($st, $statuses, true); ?>
-  <div class="card" style="padding:10px;min-height:420px;background:#fbfcfe">
-    <div style="display:flex;justify-content:space-between;padding:4px 6px"><b><?= $title ?></b><span class="badge" style="background:#eef2ff;color:#3730a3"><?= count($list) ?></span></div>
+  <section class="card kanban-col">
+    <div class="kanban-col-head"><b><?= $title ?></b><span class="badge" style="background:#eef2ff;color:#3730a3"><?= count($list) ?></span></div>
     <?php foreach ($list as $i): ?>
-      <div class="card kcard">
+      <article class="card kcard">
         <b><?= e($i['name']) ?></b>
-        <div style="font-size:12px;color:#667085;margin-top:4px"><?= e($i['service_name'] ?: 'Serviço a definir') ?></div>
-        <div style="font-size:12px;margin-top:6px"><?= e($i['source']) ?> · <?= e($i['phone'] ?: 'sem telefone') ?></div>
-        <div style="font-size:11px;color:#98a2b3;margin-top:6px">Recebido: <?= e(date('d/m H:i', strtotime($i['created_at']))) ?></div>
+        <p><?= e($i['service_name'] ?: 'Serviço a definir') ?></p>
+        <p><?= e($i['source']) ?> · <?= e($i['phone'] ?: 'sem telefone') ?></p>
+        <span><?= e(date('d/m H:i', strtotime($i['created_at']))) ?></span>
         <div class="kanban-actions">
           <?php if ($position > 0): ?>
             <form method="post" action="/app/kanban">
@@ -31,8 +35,8 @@ foreach ($items as $i) { $by[$i['status']][] = $i; }
             </form>
           <?php else: ?><span></span><?php endif; ?>
         </div>
-      </div>
+      </article>
     <?php endforeach; ?>
-  </div>
+  </section>
 <?php endforeach; ?>
 </div>
