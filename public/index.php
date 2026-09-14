@@ -67,7 +67,7 @@ function require_master(): array
 function require_tenant(): array
 {
     $u = require_login();
-    if ($u['role'] !== 'TENANT_ADMIN' || !$u['tenant_id']) redirect('/master');
+    if ($u['role'] !== 'TENANT_ADMIN' || empty($u['tenant_id'])) redirect('/master');
     $t = one('SELECT * FROM tenants WHERE id=?', [$u['tenant_id']]);
     if (!$t || $t['status'] === 'CANCELLED') {
         $_SESSION = [];
@@ -141,11 +141,11 @@ if ($path === '/login' && $method === 'GET') {
 }
 if ($path === '/login' && $method === 'POST') {
     csrf_check();
-    if (!rate_ok('login:'.$ip, 8, 900)) {
+    $login = strtolower(post('login', ''));
+    if (!rate_ok('login:'.$ip, 8, 900) || ($login !== '' && !rate_ok('loginu:'.$login, 8, 900))) {
         view('login', ['error'=>'Muitas tentativas. Aguarde alguns minutos.']);
         exit;
     }
-    $login = strtolower(post('login', ''));
     $user = one('SELECT * FROM users WHERE lower(username)=? AND '.sql_true('active'), [$login]);
     if (!$user) {
         $user = one('SELECT * FROM users WHERE lower(email)=? AND '.sql_true('active'), [$login]);
@@ -177,6 +177,17 @@ if ($path === '/login' && $method === 'POST') {
 if ($path === '/logout' && $method === 'POST') {
     csrf_check();
     $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $p = session_get_cookie_params();
+        setcookie(session_name(), '', [
+            'expires' => time() - 42000,
+            'path' => $p['path'] ?? '/',
+            'domain' => $p['domain'] ?? '',
+            'secure' => (bool)($p['secure'] ?? false),
+            'httponly' => true,
+            'samesite' => $p['samesite'] ?? 'Lax',
+        ]);
+    }
     session_destroy();
     redirect('/login');
 }
@@ -445,7 +456,12 @@ if (str_starts_with($path, '/app')) {
             flash('Falha na autenticação Google. Tente novamente.');
             redirect('/app/configuracoes?tab=integracoes');
         }
+        $oauthTid = (string)($_SESSION['google_oauth_tenant'] ?? '');
         unset($_SESSION['google_oauth_state'], $_SESSION['google_oauth_tenant']);
+        if ($oauthTid === '' || !hash_equals((string)$tenant['id'], $oauthTid)) {
+            flash('Falha na autenticação Google. Tente novamente.');
+            redirect('/app/configuracoes?tab=integracoes');
+        }
         $token = google_exchange_code($code);
         if (empty($token['json']['access_token'])) {
             flash('O Google não autorizou o acesso. Verifique as credenciais da plataforma.');
@@ -474,9 +490,10 @@ if (str_starts_with($path, '/app')) {
                 flash('A senha precisa ter no mínimo 10 caracteres, com letras e números. Os demais dados não foram alterados.', 'error');
                 redirect('/app/senha');
             }
-            q('UPDATE users SET password_hash=?, must_change_password='.sql_lit_bool(false).', last_login_at=? WHERE id=?', [
-                password_hash($pw, PASSWORD_DEFAULT), now(), $user['id'],
+            q('UPDATE users SET password_hash=?, must_change_password='.sql_lit_bool(false).', last_login_at=? WHERE id=? AND tenant_id=?', [
+                password_hash($pw, PASSWORD_DEFAULT), now(), $user['id'], $tid,
             ]);
+            session_regenerate_id(true);
             flash('Senha definida. Bem-vindo ao painel.');
             redirect('/app/agenda');
         }
@@ -613,8 +630,8 @@ if (str_starts_with($path, '/app')) {
             }
             foreach (all('SELECT * FROM custom_fields WHERE tenant_id=?', [$tid]) as $f) {
                 $val = post('cf_'.$f['key']);
-                $ex = one('SELECT id FROM custom_field_values WHERE field_id=? AND client_id=?', [$f['id'], $id]);
-                if ($ex) q('UPDATE custom_field_values SET value=? WHERE id=?', [$val, $ex['id']]);
+                $ex = one('SELECT id FROM custom_field_values WHERE field_id=? AND client_id=? AND tenant_id=?', [$f['id'], $id, $tid]);
+                if ($ex) q('UPDATE custom_field_values SET value=? WHERE id=? AND tenant_id=?', [$val, $ex['id'], $tid]);
                 else q('INSERT INTO custom_field_values(id,tenant_id,field_id,client_id,value) VALUES(?,?,?,?,?)', [uid(),$tid,$f['id'],$id,$val]);
             }
             push_google_sheets($tid, 'client', 'upsert', $id);
@@ -693,9 +710,14 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/webhooks/saida') {
             $ex = one('SELECT * FROM webhooks WHERE tenant_id=? AND direction=?', [$tid,'OUTBOUND']);
             $events = json_encode($_POST['events'] ?? []);
-            if ($ex) q('UPDATE webhooks SET url=?, events=?, active=? WHERE id=?', [post('url'), $events, db_bool(isset($_POST['active'])), $ex['id']]);
+            $outUrl = trim((string)post('url'));
+            if ($outUrl !== '' && !webhook_url_allowed($outUrl)) {
+                flash('URL de webhook inválida. Use HTTPS público (sem localhost ou rede interna).');
+                redirect('/app/webhooks');
+            }
+            if ($ex) q('UPDATE webhooks SET url=?, events=?, active=? WHERE id=? AND tenant_id=?', [$outUrl, $events, db_bool(isset($_POST['active'])), $ex['id'], $tid]);
             else q('INSERT INTO webhooks(id,tenant_id,name,direction,token,secret,url,events,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                [uid(),$tid,'Saída','OUTBOUND',bin2hex(random_bytes(8)),bin2hex(random_bytes(16)),post('url'),$events,db_bool(isset($_POST['active'])),now()]);
+                [uid(),$tid,'Saída','OUTBOUND',bin2hex(random_bytes(8)),bin2hex(random_bytes(16)),$outUrl,$events,db_bool(isset($_POST['active'])),now()]);
             flash('Webhook de saída salvo.');
             redirect('/app/webhooks');
         }
@@ -763,8 +785,12 @@ if (str_starts_with($path, '/app')) {
                     redirect('/app/configuracoes?tab=conta');
                 }
             }
-            if ($pw) q('UPDATE users SET name=?, password_hash=?, must_change_password='.sql_lit_bool(false).' WHERE id=?', [post('name'), password_hash($pw, PASSWORD_DEFAULT), $user['id']]);
-            else q('UPDATE users SET name=? WHERE id=?', [post('name'), $user['id']]);
+            if ($pw) {
+                q('UPDATE users SET name=?, password_hash=?, must_change_password='.sql_lit_bool(false).' WHERE id=? AND tenant_id=?', [post('name'), password_hash($pw, PASSWORD_DEFAULT), $user['id'], $tid]);
+                session_regenerate_id(true);
+            } else {
+                q('UPDATE users SET name=? WHERE id=? AND tenant_id=?', [post('name'), $user['id'], $tid]);
+            }
             flash('Conta atualizada.');
             redirect($mustChange && $pw ? '/app/agenda' : '/app/configuracoes?tab=conta');
         }
@@ -917,7 +943,7 @@ if (str_starts_with($path, '/app')) {
             'contactRequests'=>$contactRequests,'finishedRequests'=>$finishedRequests,
             'appointmentTotal'=>$appointmentTotal,'doneAppointments'=>$doneAppointments,
             'sources'=>all("SELECT COALESCE(NULLIF(utm_source,''),source,'Não informado') source, COUNT(*) total FROM clients WHERE tenant_id=? AND created_at>=? GROUP BY COALESCE(NULLIF(utm_source,''),source,'Não informado') ORDER BY total DESC", [$tid,$from]),
-            'topServices'=>all("SELECT s.name, COUNT(a.id) total FROM appointments a LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' GROUP BY s.name ORDER BY total DESC LIMIT 6", [$tid,$from]),
+            'topServices'=>all("SELECT s.name, COUNT(a.id) total FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' GROUP BY s.name ORDER BY total DESC LIMIT 6", [$tid,$from]),
             'utmCampaigns'=>(int)one("SELECT COUNT(DISTINCT utm_campaign) c FROM requests WHERE tenant_id=? AND created_at>=? AND utm_campaign IS NOT NULL AND utm_campaign!=''", [$tid,$from])['c'],
         ]);
         layout_end('app');
@@ -938,7 +964,7 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/relatorios/atendimentos.pdf') {
             $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') ? $_GET['from'] : date('Y-m-01');
             $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to'] ?? '') ? $_GET['to'] : date('Y-m-d');
-            $rows = all("SELECT a.*,c.name client_name,s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=? ORDER BY a.starts_at", [$tid,$from.' 00:00:00',$to.' 23:59:59']);
+            $rows = all("SELECT a.*,c.name client_name,s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=? ORDER BY a.starts_at", [$tid,$from.' 00:00:00',$to.' 23:59:59']);
             $lines = ["Empresa: $business", "Período: ".date('d/m/Y',strtotime($from))." a ".date('d/m/Y',strtotime($to)), str_repeat('-',80)];
             foreach ($rows as $r) {
                 $status = APPT_STATUS[$r['status']][0] ?? $r['status'];
@@ -982,7 +1008,7 @@ if (str_starts_with($path, '/app')) {
         require_once dirname(__DIR__) . '/app/pdf.php';
         $client = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['id'] ?? '', $tenant['id']]);
         if (!$client) { http_response_code(404); exit('Cadastro não encontrado.'); }
-        $rows = all("SELECT a.*,s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$client['id']]);
+        $rows = all("SELECT a.*,s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$client['id']]);
         $lines = [
             'Empresa: '.($tenant['display_name'] ?: $tenant['business_name']),
             'Nome: '.$client['name'],
@@ -1009,8 +1035,8 @@ if (str_starts_with($path, '/app')) {
             'weekCount'=>one("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND starts_at>=? AND starts_at<? AND status!='CANCELLED'", [$tenant['id'], $today.' 00:00:00', $week.' 23:59:59'])['c'],
             'newReq'=>one("SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND status='NEW'", [$tenant['id']])['c'],
             'cliCount'=>one('SELECT COUNT(*) c FROM clients WHERE tenant_id=?', [$tenant['id']])['c'],
-            'upcoming'=>all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' ORDER BY a.starts_at LIMIT 6", [$tenant['id'], now()]),
-            'recentReq'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? ORDER BY r.created_at DESC LIMIT 5", [$tenant['id']]),
+            'upcoming'=>all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' ORDER BY a.starts_at LIMIT 6", [$tenant['id'], now()]),
+            'recentReq'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? ORDER BY r.created_at DESC LIMIT 5", [$tenant['id']]),
         ]);
         layout_end('app');
         exit;
@@ -1019,12 +1045,12 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/agenda') {
         $from = date('Y-m-d', strtotime('-31 days')).' 00:00:00';
         $to = date('Y-m-d', strtotime('+62 days')).' 23:59:59';
-        $ap = all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=?", [$tenant['id'],$from,$to]);
+        $ap = all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=?", [$tenant['id'],$from,$to]);
         $bl = all('SELECT * FROM calendar_blocks WHERE tenant_id=? AND starts_at>=? AND starts_at<=?', [$tenant['id'],$from,$to]);
         $events = [];
         foreach ($ap as $a) $events[] = ['id'=>$a['id'],'kind'=>'appointment','title'=>$a['client_name'],'subtitle'=>$a['service_name'],'status'=>$a['status'],'source'=>$a['source'],'start'=>$a['starts_at'],'end'=>$a['ends_at']];
         foreach ($bl as $b) $events[] = ['id'=>$b['id'],'kind'=>'block','title'=>$b['reason']?:'Bloqueio','start'=>$b['starts_at'],'end'=>$b['ends_at']];
-        $pendingReq = all("SELECT r.*, s.name service_name, s.duration_minutes FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? AND r.status NOT IN ('SCHEDULED','DONE','ARCHIVED','LOST') AND ".sql_not_blank('r.desired_date'), [$tenant['id']]);
+        $pendingReq = all("SELECT r.*, s.name service_name, s.duration_minutes FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? AND r.status NOT IN ('SCHEDULED','DONE','ARCHIVED','LOST') AND ".sql_not_blank('r.desired_date'), [$tenant['id']]);
         foreach ($pendingReq as $r) {
             $time = substr((string)($r['desired_time'] ?: '09:00'), 0, 5);
             $start = $r['desired_date'].' '.$time.':00';
@@ -1044,13 +1070,13 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/solicitacoes') {
         $detail = null;
         if (!empty($_GET['ver'])) {
-            $detail = one("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.id=? AND r.tenant_id=?", [$_GET['ver'], $tenant['id']]);
+            $detail = one("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.id=? AND r.tenant_id=?", [$_GET['ver'], $tenant['id']]);
             if (!$detail) flash('Solicitação não encontrada.');
         }
         layout_start('app', compact('user','tenant','path'));
         view('app/solicitacoes', [
             'tenant'=>$tenant,
-            'requests'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? ORDER BY r.created_at DESC", [$tenant['id']]),
+            'requests'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? ORDER BY r.created_at DESC", [$tenant['id']]),
             'services'=>all('SELECT * FROM services WHERE tenant_id=? AND status=?', [$tenant['id'],'ACTIVE']),
             'detail'=>$detail,
             'confirmConvert'=>(bool)($detail && !empty($_GET['converter'])),
@@ -1063,7 +1089,7 @@ if (str_starts_with($path, '/app')) {
         $st = $_GET['s'] ?? 'ALL';
         $src = $_GET['origem'] ?? 'ALL';
         $sql = "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name
-                FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id
+                FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
                 WHERE a.tenant_id=? AND (c.name LIKE ? OR COALESCE(c.phone,'') LIKE ? OR COALESCE(c.email,'') LIKE ? OR COALESCE(s.name,'') LIKE ? OR COALESCE(a.source,'') LIKE ?)";
         $p = [$tenant['id'], $q, $q, $q, $q, $q];
         if ($st !== 'ALL') { $sql .= ' AND a.status=?'; $p[] = $st; }
@@ -1093,7 +1119,7 @@ if (str_starts_with($path, '/app')) {
     }
     if ($path === '/app/kanban') {
         layout_start('app', compact('user','tenant','path'));
-        view('app/kanban', ['items'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id WHERE r.tenant_id=? AND r.status NOT IN ('ARCHIVED','LOST') ORDER BY r.created_at DESC", [$tenant['id']])]);
+        view('app/kanban', ['items'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? AND r.status NOT IN ('ARCHIVED','LOST') ORDER BY r.created_at DESC", [$tenant['id']])]);
         layout_end('app');
         exit;
     }
@@ -1128,7 +1154,7 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/clientes/ver') {
         $c = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['id']??'', $tenant['id']]);
         if (!$c) { http_response_code(404); echo 'Não encontrado'; exit; }
-        $appts = all("SELECT a.*, s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$c['id']]);
+        $appts = all("SELECT a.*, s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$c['id']]);
         $now = now();
         $last = null; $next = null;
         foreach ($appts as $a) {

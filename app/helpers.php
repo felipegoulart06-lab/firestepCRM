@@ -5,6 +5,9 @@ const ROOT = __DIR__ . '/..';
 const VIEWS = ROOT . '/views';
 
 date_default_timezone_set('America/Sao_Paulo');
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+require_once __DIR__ . '/security.php';
 
 function env_str(string $key, ?string $default = null): ?string
 {
@@ -379,7 +382,13 @@ function security_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'");
+    header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+        || (function_exists('is_vercel') && is_vercel());
+    if ($https) {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
 }
 
 class PgSessionHandler implements SessionHandlerInterface
@@ -442,6 +451,7 @@ function boot_session(): void
         'samesite' => 'Lax',
     ]);
     session_start();
+    harden_request();
 }
 
 function slugify(string $value, string $fallback = 'negocio'): string
@@ -528,7 +538,7 @@ function lower(string $value): string
 
 function redirect(string $to): never
 {
-    header('Location: ' . $to);
+    header('Location: ' . safe_internal_path($to));
     exit;
 }
 
@@ -588,8 +598,10 @@ function csrf(): string
 
 function csrf_check(): void
 {
-    $t = $_POST['_csrf'] ?? '';
-    if (!hash_equals($_SESSION['csrf'] ?? '', $t)) {
+    $t = (string)($_POST['_csrf'] ?? '');
+    $s = (string)($_SESSION['csrf'] ?? '');
+    $ok = $s !== '' && $t !== '' && hash_equals($s, $t) && request_origin_ok();
+    if (!$ok) {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
         if ($path === '/app/onboarding') {
             flash('Sessão expirada. Clique em Continuar novamente.', 'error');

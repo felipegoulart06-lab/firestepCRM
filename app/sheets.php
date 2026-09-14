@@ -250,7 +250,7 @@ function sheets_service_row(array $s): array
 function sheets_load_appointment(string $tenantId, string $id): ?array
 {
     return one("SELECT a.*, c.name client_name, c.phone client_phone, c.email client_email, s.name service_name
-        FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id
+        FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
 }
 
@@ -395,7 +395,7 @@ function sync_google_sheets_all(string $tenantId): array
     $sets = [
         'client' => array_map('sheets_client_row', all('SELECT * FROM clients WHERE tenant_id=? ORDER BY created_at', [$tenantId])),
         'service' => array_map('sheets_service_row', all('SELECT * FROM services WHERE tenant_id=? ORDER BY name', [$tenantId])),
-        'appointment' => array_map('sheets_appointment_row', all("SELECT a.*, c.name client_name, c.phone client_phone, c.email client_email, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? ORDER BY a.starts_at", [$tenantId])),
+        'appointment' => array_map('sheets_appointment_row', all("SELECT a.*, c.name client_name, c.phone client_phone, c.email client_email, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? ORDER BY a.starts_at", [$tenantId])),
     ];
     foreach ($sets as $entity => $rows) {
         $values = [sheets_headers()[$entity]];

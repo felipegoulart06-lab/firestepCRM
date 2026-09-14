@@ -100,6 +100,12 @@ function emit_outbound(string $tenant, string $event, array $payload): void
     foreach (all('SELECT * FROM webhooks WHERE tenant_id=? AND direction=? AND '.sql_true('active'), [$tenant, 'OUTBOUND']) as $hook) {
         $events = json_arr($hook['events'] ?: '[]');
         if (!in_array($event, $events, true) || !$hook['url']) continue;
+        if (!webhook_url_allowed((string)$hook['url'])) {
+            q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,response,http_status,status,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
+                uid(), $tenant, $hook['id'], $event, json_encode($payload), 'URL bloqueada (SSRF)', null, 'error', 'outbound', now(),
+            ]);
+            continue;
+        }
         $ok = false; $code = null; $resp = '';
         $ctx = stream_context_create(['http'=>[
             'method'=>'POST','header'=>"Content-Type: application/json\r\nX-Firestep-Event: $event\r\nX-Firestep-Token: {$hook['secret']}\r\n",
@@ -202,13 +208,19 @@ function create_appointment(array $tenant, array $in): array
         }
         $in['status'] = 'WAITING';
     }
+    $cli = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$in['client_id'] ?? '', $tenant['id']]);
+    if (!$cli) {
+        return ['ok'=>false,'message'=>'Cliente inválido.'];
+    }
+    if (!empty($in['request_id']) && !one('SELECT id FROM requests WHERE id=? AND tenant_id=?', [$in['request_id'], $tenant['id']])) {
+        return ['ok'=>false,'message'=>'Solicitação inválida.'];
+    }
     $id = uid();
     q('INSERT INTO appointments(id,tenant_id,client_id,service_id,request_id,starts_at,ends_at,status,source,notes,metadata,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
-        $id, $tenant['id'], $in['client_id'], $svc['id'] ?? null, $in['request_id'] ?? null, $start, $end,
+        $id, $tenant['id'], $cli['id'], $svc['id'] ?? null, $in['request_id'] ?? null, $start, $end,
         $in['status'] ?? 'SCHEDULED', $in['source'] ?? 'Manual', $in['notes'] ?? null,
         isset($in['metadata']) ? json_encode($in['metadata'], JSON_UNESCAPED_UNICODE) : null, now(),
     ]);
-    $cli = one('SELECT name FROM clients WHERE id=? AND tenant_id=?', [$in['client_id'], $tenant['id']]);
     audit($tenant['id'], $in['user_id'] ?? null, 'appointment.created', 'appointment', $id);
     notify($tenant['id'], 'Novo agendamento', ($cli['name'] ?? '') . ' · ' . $in['date'] . ' ' . $in['start']);
     emit_outbound($tenant['id'], 'appointment.created', ['id'=>$id]);
@@ -252,6 +264,7 @@ function ingest_webhook(string $token, array $body, string $ip): array
     $tenant = one('SELECT * FROM tenants WHERE id=?', [$hook['tenant_id']]);
     if (!$tenant || $tenant['status'] !== 'ACTIVE') return [403, ['error'=>'Conta indisponível.']];
     if (empty($tenant['webhook_access'])) return [403, ['error'=>'Integração aguardando autorização.']];
+    unset($body['tenant_id'], $body['company_id'], $body['role'], $body['is_admin']);
     $type = strtolower((string)($body['type'] ?? 'request'));
     if ($type === 'analytics') {
         $event = strtolower(trim((string)($body['event'] ?? 'visitor_active')));
@@ -285,7 +298,8 @@ function ingest_webhook(string $token, array $body, string $ip): array
     $source = normalize_source((string)($body['source'] ?? 'Website'));
     $svc = null;
     if (!empty($body['service'])) {
-        $svc = one('SELECT * FROM services WHERE tenant_id=? AND name LIKE ? AND status=?', [$tenant['id'], '%'.$body['service'].'%', 'ACTIVE']);
+        $needle = str_replace(['%', '_'], ['\\%', '\\_'], (string)$body['service']);
+        $svc = one('SELECT * FROM services WHERE tenant_id=? AND name LIKE ? AND status=?', [$tenant['id'], '%'.$needle.'%', 'ACTIVE']);
     }
     $attribution = [
         'utm_source' => $body['utm_source'] ?? null,
@@ -387,7 +401,7 @@ function assistant_feed(array $tenant): array
         ];
     }
 
-    $next = one("SELECT a.id,a.starts_at,c.name client_name,s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id LEFT JOIN services s ON s.id=a.service_id WHERE a.tenant_id=? AND a.status NOT IN ('CANCELLED','DONE') AND a.starts_at BETWEEN ? AND ? ORDER BY a.starts_at LIMIT 1", [
+    $next = one("SELECT a.id,a.starts_at,c.name client_name,s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.status NOT IN ('CANCELLED','DONE') AND a.starts_at BETWEEN ? AND ? ORDER BY a.starts_at LIMIT 1", [
         $tid, now(), date('Y-m-d H:i:s', time()+3600),
     ]);
     if ($next) {
