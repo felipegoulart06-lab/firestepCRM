@@ -95,7 +95,7 @@ $old = $old ?? [];
       <?php else: ?>
         <span></span>
       <?php endif; ?>
-      <button class="btn btn-primary"><?= $step < 4 ? 'Continuar' : 'Entrar no painel' ?></button>
+      <button class="btn btn-primary" type="submit"><?= $step < 4 ? 'Continuar' : 'Entrar no painel' ?></button>
     </div>
   </form>
 

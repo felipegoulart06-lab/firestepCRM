@@ -801,23 +801,29 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/onboarding') {
             $step = (int)($_POST['step'] ?? 1);
-            if ($step === 1) {
-                $name = trim((string)post('business_name', $tenant['business_name']));
-                $phone = trim((string)post('phone'));
-                $wa = trim((string)post('whatsapp'));
-                if ($name === '' || $phone === '') {
-                    bounce_form('/app/onboarding?step=1', 'Informe o nome comercial e o telefone para continuar.');
+            try {
+                if ($step === 1) {
+                    $name = trim((string)post('business_name', $tenant['business_name']));
+                    $phone = trim((string)post('phone'));
+                    $wa = trim((string)post('whatsapp'));
+                    if ($name === '' || $phone === '') {
+                        bounce_form('/app/onboarding?step=1', 'Informe o nome comercial e o telefone para continuar.');
+                    }
+                    if ($wa === '') {
+                        $wa = $phone;
+                    }
+                    q('UPDATE tenants SET business_name=?, display_name=?, phone=?, whatsapp=?, updated_at=? WHERE id=?', [$name, $name, $phone, $wa, now(), $tid]);
                 }
-                if ($wa === '') {
-                    $wa = $phone;
+                if ($step === 2) {
+                    q('UPDATE tenants SET business_hours=?, updated_at=? WHERE id=?', [collect_hours(), now(), $tid]);
                 }
-                q('UPDATE tenants SET business_name=?, display_name=?, phone=?, whatsapp=?, updated_at=? WHERE id=?', [$name, $name, $phone, $wa, now(), $tid]);
-            }
-            if ($step === 2) q('UPDATE tenants SET business_hours=?, updated_at=? WHERE id=?', [collect_hours(), now(), $tid]);
-            if ($step >= 4) {
-                q('UPDATE tenants SET onboarding_done='.sql_lit_bool(true).', updated_at=? WHERE id=?', [now(), $tid]);
-                flash('Painel configurado. Você já pode agendar.');
-                redirect('/app');
+                if ($step >= 4) {
+                    q('UPDATE tenants SET onboarding_done='.sql_lit_bool(true).', updated_at=? WHERE id=?', [now(), $tid]);
+                    flash('Painel configurado. Você já pode agendar.');
+                    redirect('/app');
+                }
+            } catch (Throwable $e) {
+                bounce_form('/app/onboarding?step='.$step, 'Não foi possível salvar este passo. Tente de novo.');
             }
             redirect('/app/onboarding?step='.($step+1));
         }

@@ -574,6 +574,11 @@ function csrf_check(): void
 {
     $t = $_POST['_csrf'] ?? '';
     if (!hash_equals($_SESSION['csrf'] ?? '', $t)) {
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+        if ($path === '/app/onboarding') {
+            flash('Sessão expirada. Clique em Continuar novamente.', 'error');
+            redirect('/app/onboarding?step='.(int)($_POST['step'] ?? 1));
+        }
         http_response_code(419);
         exit('Sessão expirada. Volte e tente novamente.');
     }
