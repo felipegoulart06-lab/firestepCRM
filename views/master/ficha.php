@@ -59,7 +59,7 @@ $seg = trim(($segment['category'] ?? '').' · '.($segment['name'] ?? ''), ' ·')
 
 <?php if (!$viewed && !$confirmed): ?>
 <div class="token-modal" id="token-modal" hidden>
-  <div class="card" style="max-width:420px;width:100%;padding:22px;margin-top:12vh">
+  <div class="card overlay-panel" style="max-width:420px;width:100%;padding:22px;margin-top:12vh">
     <h2 style="margin:0 0 8px;font-size:18px">Gerar token?</h2>
     <p class="muted">Isso cria o acesso temporário. Você verá usuário e senha só agora. Depois não será possível mostrar de novo.</p>
     <form method="post" action="/master/clientes/token">
@@ -82,9 +82,9 @@ $seg = trim(($segment['category'] ?? '').' · '.($segment['name'] ?? ''), ' ·')
   const open = document.getElementById('open-token');
   const close = document.getElementById('close-token');
   if (!modal || !open) return;
-  open.addEventListener('click', ()=> { modal.hidden = false; });
-  close?.addEventListener('click', ()=> { modal.hidden = true; });
-  modal.addEventListener('click', (e)=> { if (e.target === modal) modal.hidden = true; });
+  open.addEventListener('click', ()=> { modal.hidden = false; document.body.classList.add('is-modal-open'); document.documentElement.classList.add('is-modal-open'); });
+  close?.addEventListener('click', ()=> { modal.hidden = true; document.body.classList.remove('is-modal-open'); document.documentElement.classList.remove('is-modal-open'); });
+  modal.addEventListener('click', (e)=> { if (e.target === modal) { modal.hidden = true; document.body.classList.remove('is-modal-open'); document.documentElement.classList.remove('is-modal-open'); } });
 })();
 </script>
 <?php endif; ?>

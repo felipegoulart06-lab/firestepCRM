@@ -4,9 +4,23 @@ function closeModal(){
   ['ver','converter','nova','new','edit','block','convert','delblock','client_id','from'].forEach(k => url.searchParams.delete(k));
   location.href = url.pathname + url.search;
 }
+function lockBehindModal(){
+  const overlay = document.querySelector('.overlay') || document.querySelector('.token-modal:not([hidden])');
+  const on = !!overlay;
+  document.documentElement.classList.toggle('is-modal-open', on);
+  document.body.classList.toggle('is-modal-open', on);
+}
+function blockScrollBehindModal(e){
+  if (!document.body.classList.contains('is-modal-open')) return;
+  if (e.target.closest('.overlay-panel')) return;
+  e.preventDefault();
+}
 document.addEventListener('click', e=>{
   if(e.target.classList.contains('overlay')) closeModal();
 });
+document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
+document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
+document.addEventListener('DOMContentLoaded', lockBehindModal);
 function copyTxt(id){ const el=document.getElementById(id); navigator.clipboard.writeText(el.value); }
 
 function maskCpf(v){

@@ -78,8 +78,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
 <?php if (!empty($_GET['novo']) || !empty($_GET['edit'])):
   $s = !empty($_GET['edit']) ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$_GET['edit'], $tenant['id']]) : [];
 ?>
-<div class="overlay">
-  <form method="post" action="/app/servicos/salvar" class="card service-form">
+<div class="overlay" role="presentation">
+  <form method="post" action="/app/servicos/salvar" class="card service-form overlay-panel" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:17px"><?= $s ? 'Editar serviço' : 'Novo serviço' ?></h2>
       <a class="btn btn-ghost" href="/app/servicos">Fechar</a>

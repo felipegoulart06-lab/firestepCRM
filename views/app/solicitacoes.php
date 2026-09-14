@@ -84,8 +84,8 @@ if (!$show): ?>
       $payload = is_array($decoded) ? $decoded : [];
   }
 ?>
-<div class="overlay">
-  <div class="card" style="width:100%;max-width:560px;padding:18px" onclick="event.stopPropagation()">
+<div class="overlay" role="presentation">
+  <div class="card overlay-panel" style="max-width:560px;padding:18px" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:17px">Detalhes da solicitação</h2>
       <a class="btn btn-ghost" href="/app/solicitacoes">Fechar</a>
@@ -117,8 +117,8 @@ if (!$show): ?>
   </div>
 </div>
 <?php elseif ($confirmConvert && $detail): ?>
-<div class="overlay">
-  <div class="card" style="width:100%;max-width:460px;padding:18px" onclick="event.stopPropagation()">
+<div class="overlay" role="presentation">
+  <div class="card overlay-panel" style="max-width:460px;padding:18px" onclick="event.stopPropagation()">
     <h2 style="margin-top:0;font-size:17px">Converter solicitação?</h2>
     <p style="color:#475467">Deseja realmente converter a solicitação de <b><?= e($detail['name']) ?></b> em agendamento?</p>
     <p style="color:#667085;font-size:13px">O horário <?= e(trim((!empty($detail['desired_date']) ? date('d/m/Y', strtotime($detail['desired_date'])) : date('d/m/Y')).' '.($detail['desired_time'] ?: '09:00'))) ?> será criado na agenda e o registro aparecerá em Agendamentos.</p>

@@ -7,8 +7,8 @@ $forcedClient = $forcedClient ?? null;
 $clients = $clients ?? [];
 $services = $services ?? [];
 ?>
-<div class="overlay">
-  <div class="card" style="width:100%;max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
+<div class="overlay" role="presentation">
+  <div class="card overlay-panel" style="max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:17px"><?= $edit ? 'Detalhes do agendamento' : ($mode ? 'Bloquear horário' : 'Novo agendamento') ?></h2>
       <a class="btn btn-ghost" href="<?= e($modalClose) ?>">Fechar</a>

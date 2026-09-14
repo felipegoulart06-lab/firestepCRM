@@ -85,7 +85,12 @@ table.data tbody tr:hover td{background:#fcfcfd}
 .empty{text-align:center;padding:50px 18px;color:var(--muted)}
 .empty-icon{width:42px;height:42px;border-radius:6px;background:#f2f4f7;color:#667085;display:grid;place-items:center;margin:0 auto 12px}
 .flash{background:#ecfdf3;color:#027a48;border:1px solid #abefc6;padding:9px 12px;border-radius:5px;margin-bottom:12px;font-weight:500}
-.overlay{position:fixed;inset:0;background:rgba(16,24,40,.56);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:45px 16px;z-index:50;overflow:auto}
+.overlay{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:400;overflow:hidden;overscroll-behavior:none;isolation:isolate;pointer-events:auto}
+.overlay-panel{width:100%;max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain;pointer-events:auto;-webkit-overflow-scrolling:touch}
+html.is-modal-open,body.is-modal-open{overflow:hidden!important;overscroll-behavior:none}
+body.is-modal-open .wrap{pointer-events:none}
+body.is-modal-open .overlay,body.is-modal-open .token-modal{pointer-events:auto}
+body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-open .sidebar,body.is-modal-open .table-wrap{overflow:hidden!important}
 .calendar-shell{overflow:auto;border-color:#667085;background:#182230}
 .cal{display:grid;min-width:940px;background:#182230}
 .cal-head{padding:9px;text-align:center;font-weight:700;font-size:12px;color:#f2f4f7;background:#101828;border-bottom:1px solid #667085;border-left:1px solid #667085}
@@ -212,7 +217,7 @@ table.data tbody tr:hover td{background:#fcfcfd}
 .token-once{padding:20px;margin-bottom:16px;background:#ecfdf3;border:1px solid #bbf7d0}
 .token-confirm{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;font-weight:600;color:#344054}
 .token-confirm input{margin-top:3px}
-.token-modal{position:fixed;inset:0;background:rgba(16,24,40,.56);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px;z-index:60}
+.token-modal{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px;z-index:410;overflow:hidden;overscroll-behavior:none}
 .token-modal[hidden]{display:none!important}
 @media(max-width:1050px){.g3{grid-template-columns:1fr 1fr}.user-info{display:none}}
 @media(max-width:900px){
