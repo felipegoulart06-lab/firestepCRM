@@ -1,4 +1,12 @@
+<?php $pendingIntegrations = $pendingIntegrations ?? []; ?>
 <h1>Dashboard</h1>
+<?php if ($pendingIntegrations): ?>
+<div class="card" style="padding:16px;margin-bottom:14px;border-color:#f79009">
+  <b><?= count($pendingIntegrations) === 1 ? '1 cliente pediu integração' : count($pendingIntegrations).' clientes pediram integração' ?></b>
+  <p class="muted" style="margin:6px 0 10px">Aprove em Integrações para liberar Webhooks só naquele painel.</p>
+  <a class="btn btn-primary" href="/master/integracoes">Abrir pedidos</a>
+</div>
+<?php endif; ?>
 <div class="grid g4">
   <div class="card stat"><span>Clientes cadastrados</span><b><?= (int)$total ?></b></div>
   <div class="card stat"><span>Ativos</span><b><?= (int)$active ?></b></div>

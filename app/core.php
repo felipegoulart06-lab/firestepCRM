@@ -33,8 +33,8 @@ function create_tenant_panel(array $in, ?string $actor = null): array
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        q('INSERT INTO tenants(id,name,business_name,slug,segment,document,email,phone,whatsapp,city,state,status,plan,primary_color,display_name,timezone,terminology,business_hours,onboarding_done,created_at,updated_at)
-           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'.sql_lit_bool(false).',?,?)', [
+        q('INSERT INTO tenants(id,name,business_name,slug,segment,document,email,phone,whatsapp,city,state,status,plan,primary_color,display_name,timezone,terminology,business_hours,webhook_access,onboarding_done,created_at,updated_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'.sql_lit_bool(false).','.sql_lit_bool(false).',?,?)', [
             $tid, $in['name'], $in['business_name'], $slug, $in['segment'] ?? 'outros',
             $in['document'] ?? null, $email, $in['phone'] ?? null, $in['whatsapp'] ?? null,
             $in['city'] ?? null, $in['state'] ?? null, $in['status'] ?? 'ACTIVE', $in['plan'] ?? 'starter',
@@ -91,7 +91,7 @@ function find_or_create_client(string $tenant, string $name, ?string $phone, ?st
     audit($tenant, null, 'client.created', 'client', $id);
     emit_outbound($tenant, 'client.created', ['id'=>$id,'name'=>$name]);
     push_google_sheets($tenant, 'client', 'upsert', $id);
-    return one('SELECT * FROM clients WHERE id=?', [$id]);
+    return one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$id, $tenant]);
 }
 
 function emit_outbound(string $tenant, string $event, array $payload): void
@@ -121,8 +121,8 @@ function find_slot_conflict(string $tenant, string $start, string $end, ?string 
 {
     $sql = "SELECT a.id, a.starts_at, a.ends_at, c.name client_name, s.name service_name
             FROM appointments a
-            JOIN clients c ON c.id=a.client_id
-            LEFT JOIN services s ON s.id=a.service_id
+            JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+            LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
             WHERE a.tenant_id=? AND a.status!=? AND a.starts_at<? AND a.ends_at>?";
     $p = [$tenant, 'CANCELLED', $end, $start];
     if ($ignoreAppt) {
@@ -208,7 +208,7 @@ function create_appointment(array $tenant, array $in): array
         $in['status'] ?? 'SCHEDULED', $in['source'] ?? 'Manual', $in['notes'] ?? null,
         isset($in['metadata']) ? json_encode($in['metadata'], JSON_UNESCAPED_UNICODE) : null, now(),
     ]);
-    $cli = one('SELECT name FROM clients WHERE id=?', [$in['client_id']]);
+    $cli = one('SELECT name FROM clients WHERE id=? AND tenant_id=?', [$in['client_id'], $tenant['id']]);
     audit($tenant['id'], $in['user_id'] ?? null, 'appointment.created', 'appointment', $id);
     notify($tenant['id'], 'Novo agendamento', ($cli['name'] ?? '') . ' · ' . $in['date'] . ' ' . $in['start']);
     emit_outbound($tenant['id'], 'appointment.created', ['id'=>$id]);

@@ -260,7 +260,12 @@ if (str_starts_with($path, '/master')) {
             redirect('/master/clientes');
         }
         if ($path === '/master/clientes/webhook-access') {
-            $tenantId = post('id');
+            $tenantId = (string)post('id', '');
+            $row = $tenantId !== '' ? one('SELECT id, business_name, webhook_access FROM tenants WHERE id=?', [$tenantId]) : null;
+            if (!$row) {
+                flash('Cliente não encontrado.', 'error');
+                redirect('/master/integracoes');
+            }
             $allow = post('action') === 'approve';
             if ($allow) {
                 q('UPDATE tenants SET webhook_access='.sql_lit_bool(true).', webhook_approved_at=?, webhook_approved_by=?, updated_at=? WHERE id=?', [now(), $user['id'], now(), $tenantId]);
@@ -269,8 +274,8 @@ if (str_starts_with($path, '/master')) {
             }
             notify($tenantId, $allow ? 'Integração aprovada' : 'Acesso a Webhooks removido', $allow ? 'O Admin Master liberou o menu Webhooks.' : 'Solicite uma nova autorização para acessar Webhooks.');
             audit($tenantId, $user['id'], $allow ? 'webhook.access_approved' : 'webhook.access_revoked', 'tenant', $tenantId);
-            flash($allow ? 'Acesso a Webhooks aprovado.' : 'Acesso a Webhooks removido.');
-            redirect('/master/clientes');
+            flash($allow ? 'Acesso a Webhooks aprovado. O cliente já pode usar Integrações no painel dele.' : 'Acesso a Webhooks removido.');
+            redirect('/master/integracoes');
         }
         if ($path === '/master/configuracoes/google') {
             $clientId = trim((string)post('google_client_id', ''));
@@ -328,6 +333,10 @@ if (str_starts_with($path, '/master')) {
             'lastTenants'=>all('SELECT * FROM tenants ORDER BY created_at DESC LIMIT 6'),
             'audits'=>all('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 8'),
             'errors'=>all("SELECT * FROM webhook_logs WHERE status='error' ORDER BY created_at DESC LIMIT 6"),
+            'pendingIntegrations'=>all("SELECT t.id, t.business_name, t.name, t.email, t.webhook_requested_at
+                FROM tenants t
+                WHERE ".sql_not_blank('t.webhook_requested_at')." AND ".sql_false('t.webhook_access')."
+                ORDER BY t.webhook_requested_at DESC"),
         ]);
         layout_end('master');
         exit;
@@ -387,7 +396,23 @@ if (str_starts_with($path, '/master')) {
     if ($path === '/master/planos') {
         redirect('/master');
     }
-    if ($path === '/master/integracoes') { layout_start('master', compact('user','path')); view('master/integracoes'); layout_end('master'); exit; }
+    if ($path === '/master/integracoes') {
+        layout_start('master', compact('user','path'));
+        view('master/integracoes', [
+            'pending'=>all("SELECT t.*, u.username login_username, u.email login_email
+                FROM tenants t
+                LEFT JOIN users u ON u.tenant_id=t.id AND u.role='TENANT_ADMIN'
+                WHERE ".sql_not_blank('t.webhook_requested_at')." AND ".sql_false('t.webhook_access')."
+                ORDER BY t.webhook_requested_at DESC"),
+            'approved'=>all("SELECT t.*, u.username login_username
+                FROM tenants t
+                LEFT JOIN users u ON u.tenant_id=t.id AND u.role='TENANT_ADMIN'
+                WHERE ".sql_true('t.webhook_access')."
+                ORDER BY t.updated_at DESC"),
+        ]);
+        layout_end('master');
+        exit;
+    }
     if ($path === '/master/logs') { layout_start('master', compact('user','path')); view('master/logs', ['logs'=>all('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 80')]); layout_end('master'); exit; }
     if ($path === '/master/configuracoes') { layout_start('master', compact('user','path')); view('master/config'); layout_end('master'); exit; }
     if ($path === '/master/configuracoes/tecnico') { layout_start('master', compact('user','path')); view('master/tecnico'); layout_end('master'); exit; }
@@ -456,10 +481,14 @@ if (str_starts_with($path, '/app')) {
             redirect('/app');
         }
         if ($path === '/app/webhooks/solicitar') {
-            if (empty($tenant['webhook_access']) && empty($tenant['webhook_requested_at'])) {
+            if (!empty($tenant['webhook_access'])) {
+                flash('As integrações deste painel já estão liberadas.');
+                redirect('/app/webhooks');
+            }
+            if (empty($tenant['webhook_requested_at'])) {
                 q('UPDATE tenants SET webhook_requested_at=?, updated_at=? WHERE id=?', [now(), now(), $tid]);
                 audit($tid, $user['id'], 'webhook.access_requested', 'tenant', $tid);
-                flash('Solicitação enviada ao Admin Master.');
+                flash('Solicitação enviada ao Admin Master. O acesso só abre depois da aprovação.');
             }
             redirect('/app/webhooks');
         }

@@ -721,9 +721,9 @@ function appointment_detail(string $tenantId, string $id): ?array
 {
     return one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign
         FROM appointments a
-        JOIN clients c ON c.id=a.client_id
-        LEFT JOIN services s ON s.id=a.service_id
-        LEFT JOIN requests r ON r.id=a.request_id
+        JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+        LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+        LEFT JOIN requests r ON r.id=a.request_id AND r.tenant_id=a.tenant_id
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
 }
 

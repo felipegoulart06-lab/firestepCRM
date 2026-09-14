@@ -20,7 +20,10 @@
     <a href="/master/clientes/novo" class="<?= $path==='/master/clientes/novo'?'active':'' ?>"><?= icon('plus') ?> Criar cliente</a>
     <a href="/master/segmentos" class="<?= $path==='/master/segmentos'?'active':'' ?>"><?= icon('tag') ?> Segmentos</a>
     <div class="nav-cat">SISTEMA</div>
-    <a href="/master/integracoes" class="<?= $path==='/master/integracoes'?'active':'' ?>"><?= icon('webhook') ?> Integrações</a>
+    <a href="/master/integracoes" class="<?= $path==='/master/integracoes'?'active':'' ?>"><?= icon('webhook') ?> Integrações<?php
+      $pendHook = (int)(one("SELECT COUNT(*) c FROM tenants WHERE ".sql_not_blank('webhook_requested_at')." AND ".sql_false('webhook_access'))['c'] ?? 0);
+      if ($pendHook > 0) echo ' <span class="badge" style="background:#fffaeb;color:#b54708">'.$pendHook.'</span>';
+    ?></a>
     <a href="/master/logs" class="<?= $path==='/master/logs'?'active':'' ?>"><?= icon('list') ?> Logs</a>
     <a href="/master/configuracoes" class="<?= $path==='/master/configuracoes'?'active':'' ?>"><?= icon('settings') ?> Configurações</a>
     <div class="sidebar-foot"><form method="post" action="/logout">
