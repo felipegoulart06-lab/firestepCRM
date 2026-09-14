@@ -97,6 +97,8 @@ function ensure_finance_schema(): void
     }
     $ready = true;
 }
+
+function finance_query(string $tenantId, string $page, string $search = ''): array
 {
     $sql = "SELECT f.*, c.name client_name FROM finance_entries f
             LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
