@@ -661,6 +661,8 @@ function icon(string $name, int $size = 18): string
         'arrow-up' => '<path d="m18 15-6-6-6 6"/>',
         'tag' => '<path d="M20 13 13 20 4 11V4h7z"/><circle cx="8.5" cy="8.5" r="1"/>',
         'wallet' => '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 14h2"/>',
+        'folder' => '<path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h5l2 2"/>',
+        'pdf' => '<path d="M14 2H7a2 2 0 0 0-2 2v16h14V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
     ];
     $body = $paths[$name] ?? $paths['list'];
     return '<svg class="ico" width="'.$size.'" height="'.$size.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.$body.'</svg>';

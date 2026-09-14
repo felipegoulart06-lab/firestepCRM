@@ -224,7 +224,53 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .onboard-foot .btn-primary{flex:1;min-height:42px}
 .onboard-exit{margin-top:14px;text-align:center}
 .onboard-exit button{background:none;border:0;color:#98a2b3;font-size:13px;cursor:pointer;padding:4px 8px}
-.token-once{padding:20px;margin-bottom:16px;background:#ecfdf3;border:1px solid #bbf7d0}
+.fx{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:min(72vh,640px);background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 8px 28px rgba(16,24,40,.06)}
+.fx-pick{position:absolute;opacity:0;pointer-events:none}
+.fx-tree{background:#f4f6f8;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.fx-tree-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:#eef1f5;font-size:12px;font-weight:700;color:#344054}
+.fx-tree-bar .ico{color:#d97706}
+.fx-tree-body{padding:8px 6px 16px;overflow:auto;flex:1;font-size:13px}
+.fx-folder{margin:0}
+.fx-folder>summary{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;cursor:pointer;list-style:none;color:#1d2939;font-weight:650}
+.fx-folder>summary::-webkit-details-marker,.fx-folder>summary::marker{display:none;content:""}
+.fx-folder>summary:hover{background:#e8eef7}
+.fx-twist{width:13px;height:13px;flex:0 0 13px;border:1px solid #98a2b3;border-radius:2px;background:#fff;color:#344054;display:grid;place-items:center;font-size:11px;line-height:1;font-weight:700}
+.fx-twist::before{content:"+"}
+.fx-folder[open]>summary .fx-twist::before{content:"−"}
+.fx-ico{width:16px;height:16px;flex:0 0 16px;color:#d97706}
+.fx-kids{margin:0;padding:0 0 4px 14px;list-style:none;border-left:1px dotted #d0d5dd;margin-left:14px}
+.fx-file{display:flex;align-items:center;gap:7px;padding:5px 8px;margin:1px 0;border-radius:4px;cursor:pointer;color:#344054}
+.fx-file .ico{color:#b42318;flex:0 0 16px}
+.fx-file:hover{background:#e8eef7}
+.fx:has(#fx-atend:checked) label[for=fx-atend],
+.fx:has(#fx-cli:checked) label[for=fx-cli],
+.fx:has(#fx-orig:checked) label[for=fx-orig],
+.fx:has(#fx-fin:checked) label[for=fx-fin],
+.fx:has(#fx-caixa:checked) label[for=fx-caixa]{background:#2563eb;color:#fff}
+.fx:has(#fx-atend:checked) label[for=fx-atend] .ico,
+.fx:has(#fx-cli:checked) label[for=fx-cli] .ico,
+.fx:has(#fx-orig:checked) label[for=fx-orig] .ico,
+.fx:has(#fx-fin:checked) label[for=fx-fin] .ico,
+.fx:has(#fx-caixa:checked) label[for=fx-caixa] .ico{color:#fff}
+.fx-stage{display:flex;flex-direction:column;min-width:0;background:#fbfcfd}
+.fx-path{display:flex;align-items:center;gap:6px;padding:9px 16px;border-bottom:1px solid var(--line);background:#fff;font-size:12px;color:#667085}
+.fx-path b{color:#101828}
+.fx-path span{opacity:.45}
+.fx-doc{display:none;padding:28px 32px 24px;flex:1}
+.fx:has(#fx-atend:checked) .fx-doc[data-for=fx-atend],
+.fx:has(#fx-cli:checked) .fx-doc[data-for=fx-cli],
+.fx:has(#fx-orig:checked) .fx-doc[data-for=fx-orig],
+.fx:has(#fx-fin:checked) .fx-doc[data-for=fx-fin],
+.fx:has(#fx-caixa:checked) .fx-doc[data-for=fx-caixa]{display:block}
+.fx-filehead{display:flex;gap:16px;align-items:flex-start;margin-bottom:22px}
+.fx-big{width:56px;height:64px;border-radius:6px;background:linear-gradient(180deg,#fee4e2,#fecdca);color:#b42318;display:grid;place-items:center;box-shadow:0 6px 14px rgba(180,35,24,.12);flex:0 0 56px}
+.fx-filehead h2{margin:0 0 4px;font-size:20px;letter-spacing:-.03em}
+.fx-filehead p{margin:0;color:#667085;font-size:13px}
+.fx-meta{display:flex;gap:16px;margin-top:10px;font-size:12px;color:#98a2b3}
+.fx-meta i{font-style:normal;color:#344054;font-weight:650}
+.fx-doc .grid{max-width:420px}
+.fx-status{margin-top:auto;padding:8px 14px;border-top:1px solid var(--line);background:#eef1f5;font-size:11px;color:#667085}
+@media(max-width:900px){.fx{grid-template-columns:1fr}.fx-tree{border-right:0;border-bottom:1px solid var(--line);max-height:280px}}
 .token-confirm{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;font-weight:600;color:#344054}
 .token-confirm input{margin-top:3px}
 .token-modal{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px;z-index:410;overflow:hidden;overscroll-behavior:none}
