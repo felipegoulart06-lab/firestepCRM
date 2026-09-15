@@ -10,17 +10,25 @@ function pdf_text(string $value): string
 function download_pdf(string $title, array $lines, string $filename, ?array $tenant = null): never
 {
     $lh = null;
+    $sig = null;
     if ($tenant && !empty($tenant['id']) && function_exists('letterhead_active')) {
         letterhead_ensure_schema();
-        $row = one('SELECT letterhead_config FROM tenants WHERE id=?', [$tenant['id']]);
+        $row = one('SELECT letterhead_config, signature_config FROM tenants WHERE id=?', [$tenant['id']]);
         if ($row) {
             $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
+            $tenant['signature_config'] = $row['signature_config'] ?? '{}';
         }
         if (letterhead_active($tenant)) {
             $lh = letterhead_config($tenant);
         }
+        if (function_exists('signature_active') && signature_active($tenant)) {
+            $sig = signature_config($tenant);
+        }
     }
     $perPage = $lh ? 34 : 43;
+    if ($sig) {
+        $perPage -= 5;
+    }
     $chunks = array_chunk($lines, $perPage);
     if (!$chunks) {
         $chunks = [[]];
@@ -31,16 +39,25 @@ function download_pdf(string $title, array $lines, string $filename, ?array $ten
     $objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
     $objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
     $imgId = 0;
+    $sigId = 0;
     $nextId = 5;
     $jpeg = $lh ? letterhead_jpeg($lh) : null;
+    $sigJpeg = $sig ? contract_data_image((string)($sig['image'] ?? '')) : null;
     if ($jpeg) {
         $imgId = $nextId++;
         $objects[$imgId] = '<< /Type /XObject /Subtype /Image /Width '.$jpeg['w'].' /Height '.$jpeg['h']
             .' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($jpeg['bytes'])
             ." >>\nstream\n".$jpeg['bytes']."\nendstream";
     }
+    if ($sigJpeg) {
+        $sigId = $nextId++;
+        $objects[$sigId] = '<< /Type /XObject /Subtype /Image /Width '.$sigJpeg['w'].' /Height '.$sigJpeg['h']
+            .' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($sigJpeg['bytes'])
+            ." >>\nstream\n".$sigJpeg['bytes']."\nendstream";
+    }
 
-    foreach ($chunks as $chunk) {
+    $total = count($chunks);
+    foreach ($chunks as $index => $chunk) {
         $contentId = $nextId++;
         $pageId = $nextId++;
         $pageRefs[] = "$pageId 0 R";
@@ -73,7 +90,23 @@ function download_pdf(string $title, array $lines, string $filename, ?array $ten
             $stream .= '('.pdf_text((string)$line).") Tj\n0 -16 Td\n";
         }
         $stream .= "ET";
-        $xobj = $imgId ? '/XObject << /ImH '.$imgId.' 0 R >>' : '';
+        if ($sigId && $sigJpeg && $index === $total - 1) {
+            $sh = 40;
+            $sw = $sigJpeg['w'] > 0 ? (int)round($sh * $sigJpeg['w'] / $sigJpeg['h']) : 90;
+            $sw = max(48, min(140, $sw));
+            $sx = 595 - 48 - $sw;
+            $stream .= "0 0 0 rg\n";
+            $stream .= sprintf("q %d 0 0 %d %d 42 cm /ImS Do Q\n", $sw, $sh, $sx);
+            $stream .= "BT /F1 7 Tf $sx 32 Td (Assinatura eletronica) Tj ET\n";
+        }
+        $xparts = [];
+        if ($imgId) {
+            $xparts[] = '/ImH '.$imgId.' 0 R';
+        }
+        if ($sigId) {
+            $xparts[] = '/ImS '.$sigId.' 0 R';
+        }
+        $xobj = $xparts ? '/XObject << '.implode(' ', $xparts).' >>' : '';
         $objects[$contentId] = "<< /Length ".strlen($stream)." >>\nstream\n$stream\nendstream";
         $objects[$pageId] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> $xobj >> /Contents $contentId 0 R >>";
     }

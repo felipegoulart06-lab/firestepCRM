@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   analytics_config TEXT DEFAULT '{}',
   sheets_config TEXT DEFAULT '{}',
   letterhead_config TEXT DEFAULT '{}',
+  signature_config TEXT DEFAULT '{}',
   webhook_access INTEGER DEFAULT 0,
   webhook_requested_at TEXT,
   webhook_approved_at TEXT,

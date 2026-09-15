@@ -355,6 +355,7 @@ function report_build(array $tenant, array $filters): array
         'generated' => date('d/m/Y H:i'),
         'sections' => $sections,
         'letterhead' => letterhead_preview($tenant),
+        'signature' => signature_preview($tenant),
     ];
 }
 
@@ -383,9 +384,10 @@ function report_to_lines(array $doc): array
 function report_send_pdf(array $tenant): never
 {
     letterhead_ensure_schema();
-    $row = one('SELECT letterhead_config FROM tenants WHERE id=?', [$tenant['id']]);
+    $row = one('SELECT letterhead_config, signature_config FROM tenants WHERE id=?', [$tenant['id']]);
     if ($row) {
         $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
+        $tenant['signature_config'] = $row['signature_config'] ?? '{}';
     }
     $doc = report_build($tenant, report_filters_from_request());
     download_pdf($doc['title'], report_to_lines($doc), $doc['filename'], $tenant);
@@ -394,9 +396,10 @@ function report_send_pdf(array $tenant): never
 function report_send_preview(array $tenant): never
 {
     letterhead_ensure_schema();
-    $row = one('SELECT letterhead_config FROM tenants WHERE id=?', [$tenant['id']]);
+    $row = one('SELECT letterhead_config, signature_config FROM tenants WHERE id=?', [$tenant['id']]);
     if ($row) {
         $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
+        $tenant['signature_config'] = $row['signature_config'] ?? '{}';
     }
     $doc = report_build($tenant, report_filters_from_request());
     header('Content-Type: application/json; charset=utf-8');

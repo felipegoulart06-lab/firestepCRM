@@ -796,6 +796,34 @@ if (str_starts_with($path, '/app')) {
             flash($on ? 'Cabeçalho ativo: todos os contratos passam a usá-lo.' : 'Cabeçalho desativado nos contratos.');
             redirect('/app/configuracoes?tab=avancado');
         }
+        if ($path === '/app/configuracoes/assinatura') {
+            letterhead_ensure_schema();
+            $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]);
+            $current = signature_config($fresh ?: $tenant);
+            try {
+                $cfg = signature_from_post($current);
+            } catch (Throwable $e) {
+                flash($e->getMessage());
+                redirect('/app/configuracoes?tab=avancado&edit=assinatura');
+            }
+            signature_save($tid, $cfg);
+            flash('Assinatura eletrônica salva. Agora você pode ativá-la nos contratos.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
+        if ($path === '/app/configuracoes/assinatura/ativar') {
+            letterhead_ensure_schema();
+            $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]);
+            $cfg = signature_config($fresh ?: $tenant);
+            $on = post('active') === '1';
+            if ($on && !signature_complete($cfg)) {
+                flash('Envie e salve a imagem da assinatura antes de ativar.');
+                redirect('/app/configuracoes?tab=avancado&edit=assinatura');
+            }
+            $cfg['active'] = $on;
+            signature_save($tid, $cfg);
+            flash($on ? 'Assinatura ativa: aparece no rodapé dos contratos.' : 'Assinatura desativada nos contratos.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
         if ($path === '/app/configuracoes/conta') {
             $pw = post('password');
             $confirm = post('password_confirm');

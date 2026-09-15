@@ -208,7 +208,7 @@ function bindReportsExplorer(){
     const wrap = document.getElementById('fx-a4-wrap');
     const esc = (s)=> String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const lh = doc.letterhead;
-    let html = '<article class="fx-a4'+(lh && lh.active ? ' has-lh' : '')+'">';
+    let html = '<article class="fx-a4'+(lh && lh.active ? ' has-lh' : '')+(doc.signature && doc.signature.active ? ' has-sig' : '')+'">';
     if (lh && lh.active) {
       html += '<header class="lh-banner" style="background:'+esc(lh.color)+';color:'+esc(lh.ink)+'">';
       if (lh.logo) html += '<img src="'+String(lh.logo).replace(/"/g,'')+'" alt="">';
@@ -234,6 +234,10 @@ function bindReportsExplorer(){
         html += '</table>';
       }
     });
+    const sg = doc.signature;
+    if (sg && sg.active && sg.image) {
+      html += '<div class="sig-mark"><img src="'+String(sg.image).replace(/"/g,'')+'" alt=""><small>Assinatura eletrônica</small></div>';
+    }
     html += '</article>';
     wrap.innerHTML = html;
     filters.hidden = true;

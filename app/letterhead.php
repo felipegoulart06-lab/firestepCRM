@@ -16,11 +16,15 @@ function letterhead_ensure_schema(): void
     try {
         if (is_pgsql()) {
             db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS letterhead_config jsonb NOT NULL DEFAULT '{}'::jsonb");
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS signature_config jsonb NOT NULL DEFAULT '{}'::jsonb");
             return;
         }
         $cols = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
         if (!in_array('letterhead_config', $cols, true)) {
             db()->exec("ALTER TABLE tenants ADD COLUMN letterhead_config TEXT DEFAULT '{}'");
+        }
+        if (!in_array('signature_config', $cols, true)) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN signature_config TEXT DEFAULT '{}'");
         }
     } catch (Throwable $e) {
         $done = false;
@@ -93,7 +97,11 @@ function letterhead_cep(string $raw): ?string
 
 function letterhead_jpeg(array $cfg): ?array
 {
-    $data = (string)($cfg['logo'] ?? '');
+    return contract_data_image((string)($cfg['logo'] ?? ''));
+}
+
+function contract_data_image(string $data): ?array
+{
     if ($data === '' || !preg_match('#^data:image/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=\s]+)$#i', $data, $m)) {
         return null;
     }
@@ -124,6 +132,89 @@ function letterhead_jpeg(array $cfg): ?array
         return null;
     }
     return ['bytes' => $jpeg, 'w' => (int)$info2[0], 'h' => (int)$info2[1]];
+}
+
+function signature_config(array $tenant): array
+{
+    letterhead_ensure_schema();
+    $cfg = json_arr($tenant['signature_config'] ?? '{}');
+    return $cfg + [
+        'image' => '',
+        'saved' => false,
+        'active' => false,
+    ];
+}
+
+function signature_complete(array $cfg): bool
+{
+    return !empty($cfg['saved']) && trim((string)($cfg['image'] ?? '')) !== '';
+}
+
+function signature_active(array $tenant): bool
+{
+    $cfg = signature_config($tenant);
+    return !empty($cfg['active']) && signature_complete($cfg);
+}
+
+function signature_preview(array $tenant): ?array
+{
+    if (!signature_active($tenant)) {
+        return null;
+    }
+    $cfg = signature_config($tenant);
+    return [
+        'active' => true,
+        'image' => (string)$cfg['image'],
+    ];
+}
+
+function signature_from_post(array $current): array
+{
+    $hasUpload = is_array($_FILES['signature'] ?? null) && (($_FILES['signature']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE);
+    $image = $hasUpload
+        ? contract_read_image('signature', $current['image'] ?? '', 'assinatura')
+        : (string)($current['image'] ?? '');
+    if (!$hasUpload && !empty($_POST['remove_signature'])) {
+        $image = '';
+    }
+    if ($image === '') {
+        throw new RuntimeException('Envie uma imagem da assinatura (JPEG, PNG ou WEBP).');
+    }
+    return [
+        'image' => $image,
+        'saved' => true,
+        'active' => !empty($current['active']),
+    ];
+}
+
+function signature_save(string $tenantId, array $cfg): void
+{
+    letterhead_ensure_schema();
+    q('UPDATE tenants SET signature_config=?, updated_at=? WHERE id=?', [
+        json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tenantId,
+    ]);
+}
+
+function contract_read_image(string $field, ?string $existing, string $label): string
+{
+    $file = $_FILES[$field] ?? null;
+    if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return (string)$existing;
+    }
+    if (($file['error'] ?? 0) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Não foi possível enviar a '.$label.'.');
+    }
+    if (($file['size'] ?? 0) > 220000) {
+        throw new RuntimeException('A '.$label.' deve ter no máximo 200 KB.');
+    }
+    $tmp = (string)($file['tmp_name'] ?? '');
+    $bin = $tmp !== '' ? (string)file_get_contents($tmp) : '';
+    $info = $bin !== '' ? @getimagesizefromstring($bin) : false;
+    $mime = is_array($info) ? (string)($info['mime'] ?? '') : '';
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        throw new RuntimeException('A '.$label.' precisa ser JPEG, PNG ou WEBP.');
+    }
+    return 'data:'.$mime.';base64,'.base64_encode($bin);
 }
 
 function letterhead_preview(array $tenant): ?array

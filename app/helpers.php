@@ -329,6 +329,7 @@ function migrate_database(PDO $pdo): void
             'webhook_approved_by' => 'TEXT',
             'sheets_config' => "TEXT DEFAULT '{}'",
             'letterhead_config' => "TEXT DEFAULT '{}'",
+            'signature_config' => "TEXT DEFAULT '{}'",
             'access_token_generated_at' => 'TEXT',
             'access_token_viewed_at' => 'TEXT',
         ],

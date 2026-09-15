@@ -58,5 +58,17 @@ expect($prev['color'] === '#0F766E', 'cor da paleta normalizada');
 expect(letterhead_cep('01310100') === '01310-100', 'CEP formatado');
 expect(letterhead_cep('123') === null, 'CEP inválido');
 
+$png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X6ZkAAAAASUVORK5CYII=';
+$sigEmpty = signature_config($tenant);
+expect($sigEmpty['active'] === false, 'assinatura inativa por padrão');
+expect(signature_complete($sigEmpty) === false, 'assinatura incompleta sem imagem');
+signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => false]);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(signature_complete(signature_config($tenant)), 'assinatura completa após salvar');
+expect(signature_preview($tenant) === null, 'assinatura oculta até ativar');
+signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => true]);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(signature_preview($tenant)['image'] === $png, 'assinatura visível nos contratos quando ativa');
+
 @unlink($tmp);
 exit($fail ? 1 : 0);
