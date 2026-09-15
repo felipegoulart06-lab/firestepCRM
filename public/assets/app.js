@@ -69,3 +69,164 @@ function bindDocFields(root){
   });
 }
 document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
+
+function bindReportsExplorer(){
+  const root = document.getElementById('fx-root');
+  if (!root) return;
+  const pathEl = document.getElementById('fx-path');
+  const filters = document.getElementById('fx-filters');
+  const preview = document.getElementById('fx-preview');
+  const form = document.getElementById('fx-form');
+  const err = document.getElementById('fx-err');
+  const typesAll = document.getElementById('fx-types-all');
+  const usersAll = document.getElementById('fx-users-all');
+  const servicesAll = document.getElementById('fx-services-all');
+  const lock = (on)=>{
+    document.documentElement.classList.toggle('is-modal-open', on);
+    document.body.classList.toggle('is-modal-open', on);
+  };
+  const openOverlay = (el)=>{ el.hidden = false; lock(true); };
+  const closeOverlays = ()=>{
+    if (filters) filters.hidden = true;
+    if (preview) preview.hidden = true;
+    lock(false);
+  };
+  const toggleFolder = (folder, force)=>{
+    const open = force === undefined ? !folder.classList.contains('is-open') : force;
+    folder.classList.toggle('is-open', open);
+    const kids = folder.querySelector('.fx-kids');
+    if (kids) kids.hidden = !open;
+  };
+  const setChecks = (box, on)=>{
+    box.querySelectorAll('input[type=checkbox]').forEach(i=>{ i.checked = on; });
+  };
+  const qsFromForm = ()=>{
+    const data = new FormData(form);
+    if (usersAll?.checked) data.delete('users[]');
+    if (servicesAll?.checked) data.delete('services[]');
+    if (!form.querySelector('[name=totals]')?.checked) data.set('totals', '0');
+    const qs = new URLSearchParams();
+    for (const [k, v] of data.entries()) {
+      if (v === '' || v === null) continue;
+      qs.append(k, v);
+    }
+    return qs;
+  };
+
+  root.querySelectorAll('.fx-folder').forEach(folder=>{
+    const twist = folder.querySelector('.fx-twist');
+    const name = folder.querySelector('.fx-folder-name');
+    twist?.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if (e.detail > 1) return;
+      toggleFolder(folder);
+    });
+    name?.addEventListener('dblclick', (e)=>{
+      e.preventDefault();
+      toggleFolder(folder);
+    });
+    folder.querySelector('.fx-folder-row')?.addEventListener('click', ()=>{
+      root.querySelectorAll('.fx-folder-on').forEach(n=> n.classList.remove('fx-folder-on'));
+      folder.classList.add('fx-folder-on');
+    });
+  });
+
+  const openFile = (btn)=>{
+    root.querySelectorAll('.fx-file.is-on').forEach(n=> n.classList.remove('is-on'));
+    btn.classList.add('is-on');
+    const file = btn.dataset.file || 'arquivo.pdf';
+    const folder = btn.dataset.folderName || '';
+    const kind = btn.dataset.kind || 'atendimentos';
+    if (pathEl) {
+      pathEl.innerHTML = '';
+      pathEl.append(root.dataset.root || 'Relatórios', document.createTextNode(' '));
+      const s1 = document.createElement('span'); s1.textContent = '›';
+      const s2 = document.createElement('span'); s2.textContent = '›';
+      const b = document.createElement('b'); b.textContent = file;
+      pathEl.append(s1, ' ' + folder + ' ', s2, ' ', b);
+    }
+    document.getElementById('fx-filter-title').textContent = file;
+    document.getElementById('fx-filter-hint').textContent = btn.dataset.hint || 'Defina o recorte e o que entra no documento.';
+    form.querySelectorAll('input[name="types[]"]').forEach(i=>{ i.checked = i.value === kind; });
+    if (typesAll) typesAll.checked = false;
+    if (kind === 'cliente_resumo') form.querySelector('[name=client_summary]').checked = true;
+    openOverlay(filters);
+  };
+
+  root.querySelectorAll('.fx-file').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      root.querySelectorAll('.fx-file.is-on').forEach(n=> n.classList.remove('is-on'));
+      btn.classList.add('is-on');
+    });
+    btn.addEventListener('dblclick', (e)=>{
+      e.preventDefault();
+      openFile(btn);
+    });
+  });
+
+  typesAll?.addEventListener('change', ()=> setChecks(document.getElementById('fx-types'), typesAll.checked));
+  usersAll?.addEventListener('change', ()=>{
+    if (usersAll.checked) setChecks(document.getElementById('fx-users'), false);
+  });
+  servicesAll?.addEventListener('change', ()=>{
+    if (servicesAll.checked) setChecks(document.getElementById('fx-services'), false);
+  });
+  document.getElementById('fx-users')?.addEventListener('change', (e)=>{
+    if (e.target.matches('input[name="users[]"]') && e.target.checked && usersAll) usersAll.checked = false;
+  });
+  document.getElementById('fx-services')?.addEventListener('change', (e)=>{
+    if (e.target.matches('input[name="services[]"]') && e.target.checked && servicesAll) servicesAll.checked = false;
+  });
+
+  document.querySelectorAll('.js-fx-close').forEach(btn=> btn.addEventListener('click', closeOverlays));
+  [filters, preview].forEach(el=>{
+    el?.addEventListener('click', (e)=>{ if (e.target === el) closeOverlays(); });
+  });
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'Escape' && (filters && !filters.hidden || preview && !preview.hidden)) closeOverlays();
+  });
+
+  form?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const types = [...form.querySelectorAll('input[name="types[]"]:checked')];
+    if (!types.length) {
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    const qs = qsFromForm();
+    const res = await fetch('/app/relatorios/preview?' + qs.toString(), { credentials: 'same-origin' });
+    if (!res.ok) {
+      err.hidden = false;
+      err.textContent = 'Não foi possível gerar a prévia.';
+      return;
+    }
+    const doc = await res.json();
+    document.getElementById('fx-preview-title').textContent = doc.title || 'Prévia';
+    document.getElementById('fx-preview-meta').textContent = (doc.company || '') + ' · ' + (doc.period || '');
+    document.getElementById('fx-download').href = '/app/relatorios/arquivo.pdf?' + qs.toString();
+    const wrap = document.getElementById('fx-a4-wrap');
+    const esc = (s)=> String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    let html = '<article class="fx-a4"><div class="fx-a4-brand">FirestepCRM</div><h1>'+esc(doc.title)+'</h1>';
+    html += '<p class="fx-a4-sub">'+esc(doc.company)+' · Período '+esc(doc.period)+' · Gerado em '+esc(doc.generated)+'</p>';
+    (doc.sections || []).forEach(sec=>{
+      html += '<h2>'+esc(sec.title)+'</h2>';
+      if (!sec.rows || !sec.rows.length) {
+        html += '<p class="fx-a4-empty">Sem registros neste filtro.</p>';
+      } else {
+        html += '<table><thead><tr>'+(sec.headers||[]).map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>';
+        sec.rows.forEach(row=>{ html += '<tr>'+row.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>'; });
+        html += '</tbody>';
+        if (sec.foot && sec.foot.length) {
+          html += '<tfoot><tr><td colspan="'+(sec.headers||[]).length+'">'+sec.foot.map(esc).join(' · ')+'</td></tr></tfoot>';
+        }
+        html += '</table>';
+      }
+    });
+    html += '</article>';
+    wrap.innerHTML = html;
+    filters.hidden = true;
+    openOverlay(preview);
+  });
+}
+document.addEventListener('DOMContentLoaded', bindReportsExplorer);

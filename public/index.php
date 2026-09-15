@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/app/helpers.php';
 require dirname(__DIR__) . '/app/core.php';
 require dirname(__DIR__) . '/app/finance.php';
+require dirname(__DIR__) . '/app/reports.php';
 
 security_headers();
 
@@ -964,44 +965,13 @@ if (str_starts_with($path, '/app')) {
         exit;
     }
 
-    if (str_starts_with($path, '/app/relatorios/') && str_ends_with($path, '.pdf')) {
-        require_once dirname(__DIR__) . '/app/pdf.php';
-        $tid = $tenant['id'];
-        $business = $tenant['display_name'] ?: $tenant['business_name'];
-        if ($path === '/app/relatorios/atendimentos.pdf') {
-            $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from'] ?? '') ? $_GET['from'] : date('Y-m-01');
-            $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to'] ?? '') ? $_GET['to'] : date('Y-m-d');
-            $rows = all("SELECT a.*,c.name client_name,s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=? ORDER BY a.starts_at", [$tid,$from.' 00:00:00',$to.' 23:59:59']);
-            $lines = ["Empresa: $business", "Período: ".date('d/m/Y',strtotime($from))." a ".date('d/m/Y',strtotime($to)), str_repeat('-',80)];
-            foreach ($rows as $r) {
-                $status = APPT_STATUS[$r['status']][0] ?? $r['status'];
-                $lines[] = date('d/m/Y H:i',strtotime($r['starts_at'])).' | '.$r['client_name'].' | '.($r['service_name']?:'Sem serviço').' | '.$status;
-            }
-            $lines[] = str_repeat('-',80);
-            $lines[] = 'Total de atendimentos: '.count($rows);
-            download_pdf('Resumo de atendimentos', $lines, 'atendimentos-'.date('Y-m-d').'.pdf');
-        }
-        if ($path === '/app/relatorios/clientes.pdf') {
-            $status = $_GET['status'] ?? 'ALL';
-            $sql = "SELECT c.*,COUNT(a.id) total FROM clients c LEFT JOIN appointments a ON a.client_id=c.id AND a.status!='CANCELLED' WHERE c.tenant_id=?";
-            $params = [$tid];
-            if (in_array($status,['ACTIVE','INACTIVE'],true)) { $sql .= ' AND c.status=?'; $params[]=$status; }
-            $sql .= ' GROUP BY c.id ORDER BY c.name';
-            $rows = all($sql,$params);
-            $lines = ["Empresa: $business", 'Cadastros: '.count($rows), str_repeat('-',80)];
-            foreach ($rows as $r) {
-                $lines[] = $r['name'].' | '.($r['phone']?:$r['email']?:'sem contato').' | Origem: '.$r['source'].' | Atend.: '.$r['total'];
-            }
-            download_pdf('Resumo de clientes', $lines, 'clientes-'.date('Y-m-d').'.pdf');
-        }
-        if ($path === '/app/relatorios/origens.pdf') {
-            $period = max(1,min(365,(int)($_GET['period']??30)));
-            $from = date('Y-m-d 00:00:00',strtotime("-$period days"));
-            $rows = all("SELECT COALESCE(NULLIF(utm_source,''),source,'Não informado') source,COUNT(*) total FROM clients WHERE tenant_id=? AND created_at>=? GROUP BY COALESCE(NULLIF(utm_source,''),source,'Não informado') ORDER BY total DESC",[$tid,$from]);
-            $lines = ["Empresa: $business","Período: últimos $period dias",str_repeat('-',80)];
-            foreach($rows as $r) $lines[] = $r['source'].' | '.$r['total'].' contatos';
-            download_pdf('Resumo de origens', $lines, 'origens-'.date('Y-m-d').'.pdf');
-        }
+    if ($path === '/app/relatorios/preview') {
+        report_send_preview($tenant);
+    }
+
+    if ($path === '/app/relatorios/arquivo.pdf'
+        || (str_starts_with($path, '/app/relatorios/') && str_ends_with($path, '.pdf'))) {
+        report_send_pdf($tenant);
     }
 
     if ($path === '/app/agendamentos/reserva.pdf') {
@@ -1230,35 +1200,10 @@ if (str_starts_with($path, '/app')) {
         elseif ($path === '/app/financeiro/pagar') $page = 'pagar';
         elseif ($path === '/app/financeiro/relatorios') $page = 'relatorios';
         elseif ($path === '/app/financeiro/relatorio.pdf') {
-            require_once dirname(__DIR__) . '/app/pdf.php';
-            $from = $_GET['from'] ?? date('Y-m-01');
-            $to = $_GET['to'] ?? date('Y-m-d');
-            $rows = all("SELECT f.*, c.name client_name FROM finance_entries f
-                LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
-                WHERE f.tenant_id=? AND f.status!='cancelled'
-                  AND COALESCE(f.due_date, substr(f.created_at,1,10))>=? AND COALESCE(f.due_date, substr(f.created_at,1,10))<=?
-                ORDER BY COALESCE(f.due_date, f.created_at)", [$tenant['id'], $from, $to]);
-            $business = $tenant['display_name'] ?: $tenant['business_name'];
-            $ov = finance_overview($tenant['id'], $from.' 00:00:00', $to.' 23:59:59');
-            $lines = ['Empresa: '.$business, 'Período: '.date('d/m/Y', strtotime($from)).' a '.date('d/m/Y', strtotime($to)), str_repeat('-', 80)];
-            $cashIn = 0; $cashOut = 0;
-            foreach ($rows as $r) {
-                $st = FINANCE_STATUS[$r['status']][0] ?? $r['status'];
-                $sign = $r['flow'] === 'out' ? '-' : '+';
-                if ($r['status'] === 'paid') {
-                    if ($r['flow'] === 'out') $cashOut += (float)$r['amount'];
-                    else $cashIn += (float)$r['amount'];
-                }
-                $orig = finance_source_label($r['source_type'] ?? null, $r['source_id'] ?? null);
-                $lines[] = date('d/m/Y', strtotime($r['due_date'] ?: $r['created_at'])).' | '.$sign.number_format((float)$r['amount'], 2, ',', '.').' | '.$r['description'].' | '.$st.' | '.$orig;
+            if (empty($_GET['types']) && empty($_GET['type'])) {
+                $_GET['types'] = ['financeiro'];
             }
-            $lines[] = str_repeat('-', 80);
-            $lines[] = 'Previsto: '.money($ov['previsto']);
-            $lines[] = 'A receber: '.money($ov['receber']);
-            $lines[] = 'Recebido no período: '.money($ov['recebido']);
-            $lines[] = 'Caixa (pagos no período, lista): '.money($cashIn).' / saídas '.money($cashOut);
-            $lines[] = 'Saldo do período: '.money($ov['saldo']);
-            download_pdf('Relatório financeiro', $lines, 'financeiro-'.$from.'-'.$to.'.pdf');
+            report_send_pdf($tenant);
         }
         if ($path !== '/app/financeiro' && $page === 'dashboard') {
             http_response_code(404);
