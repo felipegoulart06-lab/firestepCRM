@@ -1,5 +1,5 @@
 <?php
-$display = ($_GET['view'] ?? 'cards') === 'table' ? 'table' : 'cards';
+$display = ($_GET['view'] ?? 'table') === 'cards' ? 'cards' : 'table';
 $statusFilter = $_GET['status'] ?? 'ALL';
 $search = trim($_GET['q'] ?? '');
 $visible = array_values(array_filter($services, function ($s) use ($statusFilter, $search) {
@@ -29,8 +29,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
   </select>
   <button class="btn btn-ghost">Filtrar</button>
   <div class="view-switch" aria-label="Modo de visualização">
-    <a class="<?= $display==='cards'?'active':'' ?>" href="/app/servicos?view=cards&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Cartões</a>
     <a class="<?= $display==='table'?'active':'' ?>" href="/app/servicos?view=table&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Tabela</a>
+    <a class="<?= $display==='cards'?'active':'' ?>" href="/app/servicos?view=cards&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Cartões</a>
   </div>
 </form>
 
