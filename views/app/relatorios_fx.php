@@ -17,9 +17,26 @@ $fxFolders = $fxFolders ?? [
     ['name' => 'Financeiro', 'files' => [
         ['kind' => 'financeiro', 'file' => 'Resumo do caixa.pdf', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
     ]],
-    ['name' => 'Contratos', 'files' => [
-        ['kind' => 'contratos', 'file' => 'Contrato de prestação.pdf', 'hint' => 'Cabeçalho, serviços, valores, cláusulas da categoria e rodapé.'],
-    ]],
+    ['name' => 'Contratos', 'files' => (static function () use ($tenant) {
+        $files = [];
+        foreach (clauses_lists($tenant) as $list) {
+            $files[] = [
+                'kind' => 'contratos',
+                'file' => $list['name'].'.pdf',
+                'hint' => 'Cabeçalho, agendamentos desta lista, valores, cláusulas e rodapé.',
+                'contract_id' => $list['id'],
+            ];
+        }
+        if (!$files) {
+            $files[] = [
+                'kind' => 'contratos',
+                'file' => 'Contrato de prestação.pdf',
+                'hint' => 'Crie listas em Configurações → Contratos de agendamentos. Sem lista, o PDF usa o período filtrado.',
+                'contract_id' => '',
+            ];
+        }
+        return $files;
+    })()],
 ];
 $fileCount = 0;
 foreach ($fxFolders as $folder) {
@@ -40,7 +57,7 @@ foreach ($fxFolders as $folder) {
           <ul class="fx-kids" hidden>
             <?php foreach ($folder['files'] as $file): ?>
               <li>
-                <button type="button" class="fx-file" data-kind="<?= e($file['kind']) ?>" data-file="<?= e($file['file']) ?>" data-folder-name="<?= e($folder['name']) ?>" data-hint="<?= e($file['hint']) ?>">
+                <button type="button" class="fx-file" data-kind="<?= e($file['kind']) ?>" data-file="<?= e($file['file']) ?>" data-folder-name="<?= e($folder['name']) ?>" data-hint="<?= e($file['hint']) ?>" data-contract-id="<?= e((string)($file['contract_id'] ?? '')) ?>">
                   <?= icon('pdf', 16) ?> <?= e($file['file']) ?>
                 </button>
               </li>
@@ -72,6 +89,7 @@ foreach ($fxFolders as $folder) {
       <button type="button" class="fx-x js-fx-close" aria-label="Fechar"><?= icon('x', 18) ?></button>
     </div>
     <form id="fx-form" class="fx-form">
+      <input type="hidden" name="contract_id" id="fx-contract-id" value="">
       <div class="fx-fields">
         <div class="fx-block-title">Período</div>
         <div class="grid g2">

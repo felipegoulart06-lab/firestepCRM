@@ -150,6 +150,8 @@ function bindReportsExplorer(){
     form.querySelectorAll('input[name="types[]"]').forEach(i=>{ i.checked = i.value === kind; });
     if (typesAll) typesAll.checked = false;
     if (kind === 'cliente_resumo') form.querySelector('[name=client_summary]').checked = true;
+    const cid = document.getElementById('fx-contract-id');
+    if (cid) cid.value = btn.dataset.contractId || '';
     openOverlay(filters);
   };
 
@@ -227,8 +229,8 @@ function bindReportsExplorer(){
         });
         html += '</tbody><tfoot><tr><td colspan="6">Subtotal '+esc(brl(ct.subtotal))+' · Taxas '+esc(brl(ct.fees))+' · Total '+esc(brl(ct.total))+'</td></tr></tfoot></table>';
       }
-      html += '<h2>Cláusulas básicas'+(ct.segment? ' · '+esc(ct.segment):'')+'</h2>';
-      html += '<div class="cl-body">'+(ct.clauses_html || '<p class="fx-a4-empty">Nenhuma cláusula cadastrada para esta categoria.</p>')+'</div>';
+      html += '<h2>Cláusulas'+(ct.list_name? ' · '+esc(ct.list_name):(ct.segment? ' · '+esc(ct.segment):''))+'</h2>';
+      html += '<div class="cl-body">'+(ct.clauses_html || '<p class="fx-a4-empty">Nenhuma cláusula neste contrato.</p>')+'</div>';
     }
     (doc.sections || []).forEach(sec=>{
       html += '<h2>'+esc(sec.title)+'</h2>';
@@ -282,39 +284,123 @@ function bindClausesEditor(){
   const editor = document.getElementById('cl-editor');
   const hold = document.getElementById('cl-templates');
   const raw = document.getElementById('cl-data');
-  if (!form || !editor || !raw) return;
+  if (!form || !raw) return;
   document.documentElement.classList.add('is-modal-open');
   document.body.classList.add('is-modal-open');
-  let data = { own:'', map:{} };
-  try { data = JSON.parse(raw.textContent || '{}'); } catch (e) { data = { own:'', map:{} }; }
-  const map = data.map || {};
-  let current = '';
+  let data = { lists: [] };
+  try { data = JSON.parse(raw.textContent || '{}'); } catch (e) { data = { lists: [] }; }
+  const lists = Array.isArray(data.lists) ? data.lists : [];
+  const box = document.getElementById('cl-lists');
+  const empty = document.getElementById('cl-empty');
+  const pick = document.getElementById('cl-pick');
+  const work = document.getElementById('cl-work');
+  const nameEl = document.getElementById('cl-name');
   const label = document.getElementById('cl-current');
+  let current = '';
+  let drafting = false;
+  const boxes = ()=> [...form.querySelectorAll('#cl-pick input[type=checkbox]')];
+  const selectedIds = ()=> boxes().filter(i=> i.checked).map(i=> i.value);
+  const selectedLabels = ()=> boxes().filter(i=> i.checked).map(i=>{
+    const b = i.closest('label')?.querySelector('b');
+    return (b?.textContent || '').trim();
+  }).filter(Boolean);
   const saveCurrent = ()=>{
-    if (current) map[current] = editor.innerHTML;
+    if (!current) return;
+    const row = lists.find(l=> l.id === current);
+    if (!row) return;
+    row.html = editor ? editor.innerHTML : '';
+    if (nameEl) row.name = nameEl.value.trim() || row.name || 'Contrato';
   };
-  const load = (slug, name)=>{
+  const renderList = ()=>{
+    if (!box) return;
+    box.innerHTML = '';
+    lists.forEach(row=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cl-cat'+(row.id === current ? ' is-on' : '');
+      btn.dataset.id = row.id;
+      const n = document.createElement('span');
+      n.textContent = row.name || 'Contrato';
+      const i = document.createElement('i');
+      const nAp = (row.appointment_ids || []).length;
+      i.textContent = nAp === 1 ? '1 agendamento' : nAp+' agendamentos';
+      btn.append(n, i);
+      btn.addEventListener('click', ()=> load(row.id));
+      box.append(btn);
+    });
+    if (empty) empty.hidden = lists.length > 0;
+  };
+  const showPick = (ids)=>{
+    if (work) work.hidden = true;
+    if (pick) pick.hidden = false;
+    boxes().forEach(i=> { i.checked = (ids || []).includes(i.value); });
+  };
+  const showWork = ()=>{
+    if (pick) pick.hidden = true;
+    if (work) work.hidden = false;
+  };
+  const load = (id)=>{
     saveCurrent();
-    current = slug;
-    editor.innerHTML = map[slug] || '';
-    if (label) label.textContent = name || slug;
-    document.querySelectorAll('.cl-cat').forEach(b=> b.classList.toggle('is-on', b.dataset.slug === slug));
+    drafting = false;
+    current = id;
+    const row = lists.find(l=> l.id === id);
+    if (!row) return;
+    if (editor) editor.innerHTML = row.html || '';
+    if (nameEl) nameEl.value = row.name || '';
+    if (label) {
+      const n = (row.appointment_ids || []).length;
+      label.textContent = n === 1 ? '1 agendamento neste contrato' : n+' agendamentos neste contrato';
+    }
+    showWork();
+    renderList();
   };
-  document.querySelectorAll('.cl-cat').forEach(btn=>{
-    btn.addEventListener('click', ()=> load(btn.dataset.slug, btn.textContent.trim()));
+  document.getElementById('cl-new')?.addEventListener('click', ()=>{
+    saveCurrent();
+    drafting = true;
+    current = '';
+    renderList();
+    showPick([]);
+  });
+  document.getElementById('cl-change-appts')?.addEventListener('click', ()=>{
+    saveCurrent();
+    const row = lists.find(l=> l.id === current);
+    showPick(row ? row.appointment_ids || [] : []);
+  });
+  document.getElementById('cl-pick-ok')?.addEventListener('click', ()=>{
+    const ids = selectedIds();
+    if (!ids.length) {
+      alert('Selecione pelo menos um agendamento.');
+      return;
+    }
+    const names = selectedLabels();
+    const auto = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +'+(names.length-2) : '');
+    if (drafting || !current) {
+      const id = 'c'+Math.random().toString(36).slice(2, 10);
+      lists.push({ id, name: auto || 'Contrato', appointment_ids: ids, html: '' });
+      drafting = false;
+      load(id);
+      return;
+    }
+    const row = lists.find(l=> l.id === current);
+    if (row) {
+      row.appointment_ids = ids;
+      if (!row.name || row.name === 'Contrato') row.name = auto || row.name;
+    }
+    load(current);
   });
   form.querySelectorAll('[data-cl]').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.preventDefault();
       document.execCommand(btn.getAttribute('data-cl'), false, null);
-      editor.focus();
+      editor?.focus();
     });
   });
   form.addEventListener('submit', ()=>{
     saveCurrent();
-    hold.value = JSON.stringify(map);
+    hold.value = JSON.stringify({ lists });
   });
-  const first = document.querySelector('.cl-cat.is-on') || document.querySelector('.cl-cat');
-  if (first) load(first.dataset.slug, first.textContent.trim());
+  renderList();
+  if (lists[0]) load(lists[0].id);
+  else showPick([]);
 }
 document.addEventListener('DOMContentLoaded', bindClausesEditor);

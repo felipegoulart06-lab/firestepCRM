@@ -76,6 +76,18 @@ $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 q("UPDATE tenants SET segment='salao' WHERE id='ten-lh'");
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(str_contains(clauses_html_for($tenant), 'hora marcada'), 'cláusula da categoria do tenant');
+q("INSERT INTO appointments(id,tenant_id,client_id,service_id,starts_at,ends_at,status,source,created_at) VALUES(?,?,?,?,?,?,?,?,?)", [
+    'ap-lh', 'ten-lh', 'cli-lh', null, date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('+1 hour')), 'SCHEDULED', 'Manual', date('Y-m-d H:i:s'),
+]);
+clauses_save('ten-lh', ['lists' => [[
+    'id' => 'c-lh',
+    'name' => 'Pacote corte',
+    'appointment_ids' => ['ap-lh'],
+    'html' => '<p>Regra do <i>pacote</i>.</p>',
+]]]);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(clauses_html_for($tenant, 'c-lh') && str_contains(clauses_html_for($tenant, 'c-lh'), 'pacote'), 'cláusula da lista de agendamentos');
+expect(count(clauses_lists($tenant)) === 1, 'lista aparece para o tenant');
 
 @unlink($tmp);
 exit($fail ? 1 : 0);

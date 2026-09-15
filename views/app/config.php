@@ -14,11 +14,10 @@ $lh = letterhead_config($tenant);
 $lhReady = letterhead_complete($lh);
 $sig = signature_config($tenant);
 $sigReady = signature_complete($sig);
-$clauseSegs = clauses_segments();
-$clauseMap = [];
-foreach (clauses_config($tenant) as $slug => $row) {
-    $clauseMap[$slug] = is_array($row) ? (string)($row['html'] ?? '') : (string)$row;
-}
+$clauseLists = clauses_lists($tenant);
+$clauseAppts = $editClausulas ? clauses_appointments((string)$tenant['id']) : [];
+$segRow = one('SELECT name FROM segments WHERE slug=?', [(string)($tenant['segment'] ?? '')]);
+$segLabel = (string)($segRow['name'] ?? '');
 $sheets = sheets_config($tenant);
 $googleReady = google_oauth_ready();
 $connected = sheets_connected($sheets);
@@ -360,12 +359,12 @@ $hourLine = static function (array $h) {
 <div class="card settings-panel lh-panel" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
-      <h2>Cláusulas básicas por categoria</h2>
-      <p>Texto jurídico do contrato da categoria. Negrito e itálico entram no PDF de Contratos.</p>
+      <h2>Contratos de agendamentos</h2>
+      <p>Monte listas com um ou mais horários e escreva as cláusulas deste negócio<?= $segLabel ? ' ('.e($segLabel).')' : '' ?>.</p>
     </div>
     <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado&amp;edit=clausulas">Editar</a>
   </div>
-  <p class="settings-hint" style="margin-top:0">O conteúdo fica oculto. Abra o editor, escolha a categoria à esquerda e escreva as regras à direita.</p>
+  <p class="settings-hint" style="margin-top:0">O texto fica oculto. No editor, cada contrato criado aparece à esquerda. À direita você marca os agendamentos e escreve as regras.</p>
 </div>
 <?php endif; ?>
 
@@ -376,46 +375,55 @@ $hourLine = static function (array $h) {
     <input type="hidden" name="templates" id="cl-templates" value="">
     <div class="fx-modal-head">
       <div>
-        <h2>Cláusulas básicas por categoria</h2>
-        <p>Selecione a categoria e escreva as cláusulas. Esse texto entra no contrato da empresa daquela categoria.</p>
+        <h2>Contratos de agendamentos</h2>
+        <p>Crie uma lista com um ou mais horários. Ela aparece à esquerda. À direita, escreva as cláusulas deste contrato.</p>
       </div>
       <a class="fx-x" href="/app/configuracoes?tab=avancado" aria-label="Fechar"><?= icon('x', 18) ?></a>
     </div>
     <div class="cl-split">
       <aside class="cl-cats" id="cl-cats">
-        <?php
-        $own = (string)($tenant['segment'] ?? '');
-        $lastCat = '';
-        foreach ($clauseSegs as $sg):
-            $cat = (string)($sg['category'] ?: 'Outros');
-            if ($cat !== $lastCat) {
-                echo '<div class="cl-cat-label">'.e($cat).'</div>';
-                $lastCat = $cat;
-            }
-            $on = $sg['slug'] === $own ? ' is-on' : '';
-        ?>
-          <button type="button" class="cl-cat<?= $on ?>" data-slug="<?= e($sg['slug']) ?>"><?= e($sg['name']) ?><?php if ($sg['slug']===$own): ?> <i>sua</i><?php endif; ?></button>
-        <?php endforeach; ?>
-        <?php if (!$clauseSegs): ?>
-          <p class="settings-hint">Nenhuma categoria cadastrada no Master.</p>
-        <?php endif; ?>
+        <button type="button" class="cl-new" id="cl-new"><?= icon('plus', 14) ?> Novo contrato</button>
+        <div id="cl-lists"></div>
+        <p class="settings-hint" id="cl-empty">Nenhum contrato ainda. Use Novo contrato e marque os agendamentos.</p>
       </aside>
       <div class="cl-editor-wrap">
-        <div class="cl-tools">
-          <button type="button" class="btn btn-ghost" data-cl="bold"><b>N</b></button>
-          <button type="button" class="btn btn-ghost" data-cl="italic"><i>I</i></button>
-          <span id="cl-current" class="settings-hint" style="margin:0">Escolha uma categoria</span>
+        <div class="cl-pick" id="cl-pick" hidden>
+          <p>Marque os agendamentos que entram neste contrato. Pode ser mais de um.</p>
+          <div class="cl-pick-list">
+            <?php if (!$clauseAppts): ?>
+              <p class="settings-hint">Não há agendamentos. Cadastre horários na agenda primeiro.</p>
+            <?php else: foreach ($clauseAppts as $ap): ?>
+              <label class="cl-pick-row">
+                <input type="checkbox" value="<?= e($ap['id']) ?>">
+                <span>
+                  <b><?= e($ap['client_name']) ?></b>
+                  <?= e($ap['service_name'] ?: 'Serviço') ?>
+                  <i><?= e(date('d/m/Y H:i', strtotime((string)$ap['starts_at']))) ?></i>
+                </span>
+              </label>
+            <?php endforeach; endif; ?>
+          </div>
+          <button type="button" class="btn btn-primary" id="cl-pick-ok">Usar selecionados</button>
         </div>
-        <div id="cl-editor" class="cl-editor" contenteditable="true" data-placeholder="Digite cláusulas, regras e condições desta categoria."></div>
+        <div id="cl-work" hidden>
+          <div class="cl-tools">
+            <button type="button" class="btn btn-ghost" data-cl="bold"><b>N</b></button>
+            <button type="button" class="btn btn-ghost" data-cl="italic"><i>I</i></button>
+            <input class="input" id="cl-name" placeholder="Nome do contrato" maxlength="120">
+            <button type="button" class="btn btn-ghost" id="cl-change-appts">Agendamentos</button>
+            <span id="cl-current" class="settings-hint" style="margin:0"></span>
+          </div>
+          <div id="cl-editor" class="cl-editor" contenteditable="true" data-placeholder="Digite cláusulas, regras e condições deste contrato."></div>
+        </div>
       </div>
     </div>
     <div class="settings-actions">
       <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado">Cancelar</a>
-      <button class="btn btn-primary" id="cl-save">Salvar cláusulas</button>
+      <button class="btn btn-primary" id="cl-save">Salvar contratos</button>
     </div>
   </form>
 </div>
-<script type="application/json" id="cl-data"><?= json_encode(['own'=>$tenant['segment'] ?? '', 'map'=>$clauseMap], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
+<script type="application/json" id="cl-data"><?= json_encode(['lists'=>$clauseLists], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 <?php endif; ?>
 
 <?php if ($tab === 'integracoes'): ?>

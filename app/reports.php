@@ -91,6 +91,7 @@ function report_filters_from_request(): array
         'kinds' => report_kinds_from_request(),
         'include_totals' => ($_GET['totals'] ?? '1') !== '0',
         'include_client_summary' => ($_GET['client_summary'] ?? '') === '1',
+        'contract_id' => report_id_list($_GET['contract_id'] ?? [])[0] ?? '',
     ];
 }
 
@@ -350,7 +351,7 @@ function report_build(array $tenant, array $filters): array
         }
     }
     if ($contract && count($kinds) === 1) {
-        $title = 'Contrato de prestação de serviços';
+        $title = trim((string)($contract['list_name'] ?? '')) ?: 'Contrato de prestação de serviços';
     } elseif (count($kinds) === 1) {
         $title = $labels[$kinds[0]] ?? 'Relatório';
     } else {

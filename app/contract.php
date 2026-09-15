@@ -4,21 +4,33 @@ declare(strict_types=1);
 function contract_items(array $tenant, array $filters): array
 {
     $tid = $tenant['id'];
+    $listId = (string)($filters['contract_id'] ?? '');
+    $list = $listId !== '' ? clauses_list($tenant, $listId) : null;
     $sql = "SELECT a.starts_at, a.status, c.name client_name,
             s.name service_name, s.price, s.deposit, s.duration_minutes
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
-        WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=? AND a.status!='CANCELLED'";
-    $params = [$tid, $filters['from'].' 00:00:00', $filters['to'].' 23:59:59'];
-    if ($filters['appt_status'] !== 'ALL') {
-        $sql .= ' AND a.status=?';
-        $params[] = $filters['appt_status'];
-    }
-    if ($filters['service_ids']) {
-        $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
-        $sql .= " AND a.service_id IN ($ph)";
-        $params = array_merge($params, $filters['service_ids']);
+        WHERE a.tenant_id=? AND a.status!='CANCELLED'";
+    $params = [$tid];
+    $ids = $list['appointment_ids'] ?? [];
+    if ($ids) {
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $sql .= " AND a.id IN ($ph)";
+        $params = array_merge($params, $ids);
+    } else {
+        $sql .= ' AND a.starts_at>=? AND a.starts_at<=?';
+        $params[] = $filters['from'].' 00:00:00';
+        $params[] = $filters['to'].' 23:59:59';
+        if (($filters['appt_status'] ?? 'ALL') !== 'ALL') {
+            $sql .= ' AND a.status=?';
+            $params[] = $filters['appt_status'];
+        }
+        if (!empty($filters['service_ids'])) {
+            $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
+            $sql .= " AND a.service_id IN ($ph)";
+            $params = array_merge($params, $filters['service_ids']);
+        }
     }
     $sql .= ' ORDER BY a.starts_at';
     $rows = all($sql, $params);
@@ -48,7 +60,8 @@ function contract_items(array $tenant, array $filters): array
         'total' => $sum,
         'segment' => (string)($seg['name'] ?? $tenant['segment'] ?? ''),
         'category' => (string)($seg['category'] ?? ''),
-        'clauses_html' => clauses_html_for($tenant),
+        'list_name' => (string)($list['name'] ?? ''),
+        'clauses_html' => clauses_html_for($tenant, $listId !== '' ? $listId : null),
     ];
 }
 

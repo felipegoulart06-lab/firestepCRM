@@ -832,7 +832,7 @@ if (str_starts_with($path, '/app')) {
                 flash($e->getMessage());
                 redirect('/app/configuracoes?tab=avancado&edit=clausulas');
             }
-            flash('Cláusulas básicas por categoria salvas. Elas entram no contrato dessa categoria.');
+            flash('Contratos de agendamento salvos. Cada lista entra no PDF com serviços, valores e cláusulas.');
             redirect('/app/configuracoes?tab=avancado');
         }
         if ($path === '/app/configuracoes/conta') {
