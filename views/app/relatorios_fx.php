@@ -60,7 +60,7 @@ foreach ($fxFolders as $folder) {
 </div>
 
 <div class="fx-overlay" id="fx-filters" hidden>
-  <div class="card overlay-panel fx-filter-panel" onclick="event.stopPropagation()">
+  <div class="fx-filter-panel" onclick="event.stopPropagation()">
     <div class="fx-modal-head">
       <div>
         <h2 id="fx-filter-title">Filtros do relatório</h2>
