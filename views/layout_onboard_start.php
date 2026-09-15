@@ -11,4 +11,4 @@
 <body class="onboard-page">
 <main class="onboard-wrap">
 <?php $f = flash(); $fk = flash_kind(); ?>
-<?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>"><?= e($f) ?></div><?php endif; ?>
+<?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>" data-fs-log="<?= $fk==='error' ? 'error' : 'info' ?>"><?= e($f) ?></div><?php endif; ?>

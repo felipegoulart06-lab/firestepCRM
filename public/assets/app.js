@@ -1,3 +1,30 @@
+window.FIRESTEP_DEBUG = true;
+function fsLog(kind, area, message, extra){
+  const tag = '[Firestep '+area+']';
+  const args = extra !== undefined ? [tag, message, extra] : [tag, message];
+  if (kind === 'error') console.error.apply(console, args);
+  else if (kind === 'warn') console.warn.apply(console, args);
+  else console.log.apply(console, args);
+}
+window.addEventListener('error', function(e){
+  console.error('[Firestep erro JS]', e.message, {
+    arquivo: e.filename,
+    linha: e.lineno,
+    coluna: e.colno,
+    erro: e.error || null,
+  });
+});
+window.addEventListener('unhandledrejection', function(e){
+  console.error('[Firestep promise rejeitada]', e.reason);
+});
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('[data-fs-log]').forEach(function(el){
+    const kind = el.getAttribute('data-fs-log') === 'error' ? 'error' : 'log';
+    fsLog(kind, 'flash', el.textContent.trim());
+  });
+  fsLog('log', 'boot', 'JS carregado', {path: location.pathname, search: location.search});
+});
+
 function toggleSide(){ document.querySelector('.sidebar').classList.toggle('open'); }
 function closeModal(){
   const url = new URL(location.href);
@@ -187,6 +214,7 @@ function bindReportsExplorer(){
     const types = [...form.querySelectorAll('input[name="types[]"]:checked')];
     if (!types.length) {
       err.hidden = false;
+      fsLog('warn', 'relatorios', 'nenhum tipo selecionado para a prévia');
       return;
     }
     err.hidden = true;
@@ -195,6 +223,7 @@ function bindReportsExplorer(){
     if (!res.ok) {
       err.hidden = false;
       err.textContent = 'Não foi possível gerar a prévia.';
+      fsLog('error', 'relatorios', 'prévia HTTP '+res.status, qs.toString());
       return;
     }
     const doc = await res.json();
@@ -284,12 +313,20 @@ function bindClausesEditor(){
   const editor = document.getElementById('cl-editor');
   const hold = document.getElementById('cl-templates');
   const raw = document.getElementById('cl-data');
-  if (!form || !raw) return;
+  if (!form || !raw) {
+    fsLog('log', 'contratos', 'editor ausente nesta página');
+    return;
+  }
+  fsLog('log', 'contratos', 'editor iniciado');
   document.documentElement.classList.add('is-modal-open');
   document.body.classList.add('is-modal-open');
   let data = { lists: [] };
-  try { data = JSON.parse(raw.textContent || '{}'); } catch (e) { data = { lists: [] }; }
+  try { data = JSON.parse(raw.textContent || '{}'); } catch (e) {
+    fsLog('error', 'contratos', 'JSON de listas inválido', e);
+    data = { lists: [] };
+  }
   const lists = Array.isArray(data.lists) ? data.lists : [];
+  fsLog('log', 'contratos', 'listas carregadas', lists);
   const box = document.getElementById('cl-lists');
   const empty = document.getElementById('cl-empty');
   const pick = document.getElementById('cl-pick');
@@ -297,6 +334,10 @@ function bindClausesEditor(){
   const idle = document.getElementById('cl-idle');
   const nameEl = document.getElementById('cl-name');
   const label = document.getElementById('cl-current');
+  const newBtn = document.getElementById('cl-new');
+  if (!newBtn) fsLog('error', 'contratos', 'botão #cl-new não encontrado');
+  if (!pick) fsLog('error', 'contratos', 'painel #cl-pick não encontrado');
+  if (!work) fsLog('error', 'contratos', 'painel #cl-work não encontrado');
   let current = '';
   let drafting = false;
   const boxes = ()=> [...form.querySelectorAll('#cl-pick input[type=checkbox]')];
@@ -308,12 +349,19 @@ function bindClausesEditor(){
   const saveCurrent = ()=>{
     if (!current) return;
     const row = lists.find(l=> l.id === current);
-    if (!row) return;
+    if (!row) {
+      fsLog('warn', 'contratos', 'saveCurrent sem linha', current);
+      return;
+    }
     row.html = editor ? editor.innerHTML : '';
     if (nameEl) row.name = nameEl.value.trim() || row.name || 'Contrato';
+    fsLog('log', 'contratos', 'rascunho salvo', {id: current, name: row.name});
   };
   const renderList = ()=>{
-    if (!box) return;
+    if (!box) {
+      fsLog('error', 'contratos', '#cl-lists ausente');
+      return;
+    }
     box.innerHTML = '';
     lists.forEach(row=>{
       const btn = document.createElement('button');
@@ -330,29 +378,36 @@ function bindClausesEditor(){
       box.append(btn);
     });
     if (empty) empty.hidden = lists.length > 0;
+    fsLog('log', 'contratos', 'lista renderizada', lists.map(l=> ({id:l.id, name:l.name, appts:(l.appointment_ids||[]).length})));
   };
   const showIdle = ()=>{
     if (idle) idle.hidden = false;
     if (work) work.hidden = true;
     if (pick) pick.hidden = true;
+    fsLog('log', 'contratos', 'tela: idle', {idle: !!idle, hiddenIdle: idle ? idle.hidden : null});
   };
   const showPick = (ids)=>{
     if (idle) idle.hidden = true;
     if (work) work.hidden = true;
     if (pick) pick.hidden = false;
     boxes().forEach(i=> { i.checked = (ids || []).includes(i.value); });
+    fsLog('log', 'contratos', 'tela: escolher agendamentos', {ids: ids || [], checkboxes: boxes().length, pickHidden: pick ? pick.hidden : null});
   };
   const showWork = ()=>{
     if (idle) idle.hidden = true;
     if (pick) pick.hidden = true;
     if (work) work.hidden = false;
+    fsLog('log', 'contratos', 'tela: editor', {workHidden: work ? work.hidden : null});
   };
   const load = (id)=>{
     saveCurrent();
     drafting = false;
     current = id;
     const row = lists.find(l=> l.id === id);
-    if (!row) return;
+    if (!row) {
+      fsLog('error', 'contratos', 'contrato não encontrado ao carregar', id);
+      return;
+    }
     if (editor) editor.innerHTML = row.html || '';
     if (nameEl) nameEl.value = row.name || '';
     if (label) {
@@ -361,34 +416,45 @@ function bindClausesEditor(){
     }
     showWork();
     renderList();
+    fsLog('log', 'contratos', 'contrato aberto', row);
   };
   const createContract = (ids)=>{
     const names = selectedLabels();
     const auto = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +'+(names.length-2) : '');
     const id = 'c'+Math.random().toString(36).slice(2, 10);
-    lists.push({ id, name: auto || 'Novo contrato', appointment_ids: ids || [], html: '' });
+    const row = { id, name: auto || 'Novo contrato', appointment_ids: ids || [], html: '' };
+    lists.push(row);
     drafting = false;
+    fsLog('log', 'contratos', 'contrato criado', row);
     load(id);
   };
-  document.getElementById('cl-new')?.addEventListener('click', ()=>{
-    saveCurrent();
-    if (!boxes().length) {
-      createContract([]);
-      return;
+  newBtn?.addEventListener('click', (ev)=>{
+    fsLog('log', 'contratos', 'clique Novo contrato', {checkboxes: boxes().length, current, drafting, type: ev.type});
+    try {
+      saveCurrent();
+      if (!boxes().length) {
+        createContract([]);
+        return;
+      }
+      drafting = true;
+      current = '';
+      renderList();
+      showPick([]);
+    } catch (err) {
+      fsLog('error', 'contratos', 'falha no Novo contrato', err);
     }
-    drafting = true;
-    current = '';
-    renderList();
-    showPick([]);
   });
   document.getElementById('cl-change-appts')?.addEventListener('click', ()=>{
+    fsLog('log', 'contratos', 'clique Agendamentos', current);
     saveCurrent();
     const row = lists.find(l=> l.id === current);
     showPick(row ? row.appointment_ids || [] : []);
   });
   document.getElementById('cl-pick-ok')?.addEventListener('click', ()=>{
     const ids = selectedIds();
+    fsLog('log', 'contratos', 'clique Usar selecionados', {ids, drafting, current});
     if (!ids.length && boxes().length) {
+      fsLog('warn', 'contratos', 'nenhum agendamento marcado');
       alert('Selecione pelo menos um agendamento.');
       return;
     }
@@ -415,9 +481,13 @@ function bindClausesEditor(){
   form.addEventListener('submit', ()=>{
     saveCurrent();
     hold.value = JSON.stringify({ lists });
+    fsLog('log', 'contratos', 'submit salvar', lists);
   });
   renderList();
   if (lists[0]) load(lists[0].id);
   else showIdle();
 }
-document.addEventListener('DOMContentLoaded', bindClausesEditor);
+document.addEventListener('DOMContentLoaded', function(){
+  try { bindClausesEditor(); }
+  catch (err) { fsLog('error', 'contratos', 'bindClausesEditor quebrou', err); }
+});
