@@ -291,15 +291,30 @@ if (str_starts_with($path, '/master')) {
             redirect('/master/integracoes');
         }
         if ($path === '/master/configuracoes/google') {
+            $settings = platform_settings();
+            $currentId = trim((string)($settings['google_client_id'] ?? ''));
             $clientId = trim((string)post('google_client_id', ''));
+            if ($clientId === '') {
+                $clientId = $currentId;
+            }
             if ($clientId !== '' && !str_contains($clientId, '.apps.googleusercontent.com')) {
                 flash('O Client ID deve terminar com .apps.googleusercontent.com. Não use nome de pessoa nem e-mail.');
-                redirect('/master/configuracoes/tecnico');
+                redirect('/master/configuracoes/tecnico?edit=google');
             }
-            $settings = platform_settings();
+            if ($currentId !== '' && $clientId !== $currentId && post('confirm_id_change') !== '1') {
+                flash('Marque a confirmação para trocar o Client ID. Nada foi alterado.');
+                redirect('/master/configuracoes/tecnico?edit=google');
+            }
             $settings['google_client_id'] = $clientId;
-            $secret = post('google_client_secret');
-            if ($secret) $settings['google_client_secret'] = $secret;
+            $hasSecret = trim((string)($settings['google_client_secret'] ?? '')) !== '';
+            $replace = post('replace_secret') === '1' || !$hasSecret;
+            $secret = trim((string)post('google_client_secret', ''));
+            if ($replace && $secret !== '') {
+                $settings['google_client_secret'] = $secret;
+            } elseif ($replace && $hasSecret && $secret === '') {
+                flash('Para substituir o secret, cole o valor novo. O atual foi mantido.');
+                redirect('/master/configuracoes/tecnico?edit=google');
+            }
             save_platform_settings($settings);
             flash('Credenciais técnicas do Google salvas. O login dos profissionais fica no painel de cada cliente.');
             redirect('/master/configuracoes/tecnico');
