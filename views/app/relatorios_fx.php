@@ -66,7 +66,7 @@ foreach ($fxFolders as $folder) {
         <h2 id="fx-filter-title">Filtros do relatório</h2>
         <p id="fx-filter-hint">Defina o recorte e o que entra no documento.</p>
       </div>
-      <button type="button" class="btn btn-ghost js-fx-close">Fechar</button>
+      <button type="button" class="fx-x js-fx-close" aria-label="Fechar"><?= icon('x', 18) ?></button>
     </div>
     <form id="fx-form" class="fx-form">
       <div class="fx-fields">
@@ -176,7 +176,7 @@ foreach ($fxFolders as $folder) {
       </div>
       <div class="fx-preview-actions">
         <a class="btn btn-primary" id="fx-download" href="#"><?= icon('download') ?> Baixar PDF</a>
-        <button type="button" class="btn btn-ghost js-fx-close">Fechar</button>
+        <button type="button" class="fx-x js-fx-close" aria-label="Fechar"><?= icon('x', 18) ?></button>
       </div>
     </div>
     <div class="fx-a4-wrap" id="fx-a4-wrap"></div>

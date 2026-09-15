@@ -684,6 +684,7 @@ function icon(string $name, int $size = 18): string
         'bell' => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
         'download' => '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
         'plus' => '<path d="M12 5v14M5 12h14"/>',
+        'x' => '<path d="M18 6 6 18M6 6l12 12"/>',
         'logout' => '<path d="M10 17l5-5-5-5M15 12H3M15 3h6v18h-6"/>',
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'arrow-up' => '<path d="m18 15-6-6-6 6"/>',

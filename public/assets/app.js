@@ -179,12 +179,6 @@ function bindReportsExplorer(){
   });
 
   document.querySelectorAll('.js-fx-close').forEach(btn=> btn.addEventListener('click', closeOverlays));
-  [filters, preview].forEach(el=>{
-    el?.addEventListener('click', (e)=>{ if (e.target === el) closeOverlays(); });
-  });
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === 'Escape' && (filters && !filters.hidden || preview && !preview.hidden)) closeOverlays();
-  });
 
   form?.addEventListener('submit', async (e)=>{
     e.preventDefault();

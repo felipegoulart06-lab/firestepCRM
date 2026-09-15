@@ -285,6 +285,8 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .fx-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
 .fx-modal-head h2{margin:0 0 4px;font-size:18px}
 .fx-modal-head p{margin:0;color:#667085;font-size:13px}
+.fx-x{width:36px;height:36px;flex:0 0 36px;display:inline-grid;place-items:center;border:1px solid #d0d5dd;border-radius:8px;background:#fff;color:#344054;cursor:pointer;padding:0}
+.fx-x:hover{background:#f2f4f7;border-color:#98a2b3}
 .fx-block-title{font-size:12px;font-weight:700;color:#344054;margin-bottom:10px}
 .fx-block-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .fx-block-head .fx-block-title{margin:0}
