@@ -15,7 +15,6 @@ $subs = [
     3 => 'Modelos do seu segmento. Preço e duração entram ao marcar um horário.',
     4 => 'Clientes, agenda e solicitações já estão no CRM.',
 ];
-$go = $step < 4 ? 'Avançar' : 'Entrar no painel';
 $old = $old ?? [];
 ?>
 <section class="card onboard-card">
@@ -33,13 +32,13 @@ $old = $old ?? [];
 
     <?php if ($step === 1): ?>
       <label class="label" for="ob-name">Nome comercial</label>
-      <input class="input" id="ob-name" name="business_name" required maxlength="120" value="<?= e(old_fill($old, 'business_name', $tenant['business_name'] ?: $tenant['display_name'])) ?>" placeholder="Como aparece no painel">
+      <input class="input" id="ob-name" name="business_name" required maxlength="120" value="<?= e(old_fill($old, 'business_name', $tenant['business_name'] ?: $tenant['display_name'] ?: '')) ?>" placeholder="Como aparece no painel">
 
       <label class="label" for="ob-phone">Telefone</label>
-      <input class="input" id="ob-phone" name="phone" required inputmode="tel" autocomplete="tel" value="<?= e(old_fill($old, 'phone', $tenant['phone'])) ?>" placeholder="(47) 99999-0000">
+      <input class="input" id="ob-phone" name="phone" required inputmode="tel" autocomplete="tel" value="<?= e(old_fill($old, 'phone', $tenant['phone'] ?? '')) ?>" placeholder="(47) 99999-0000">
 
       <label class="label" for="ob-wa">WhatsApp <span class="onboard-opt">opcional</span></label>
-      <input class="input" id="ob-wa" name="whatsapp" inputmode="tel" value="<?= e(old_fill($old, 'whatsapp', $tenant['whatsapp'])) ?>" placeholder="Se vazio, usamos o telefone">
+      <input class="input" id="ob-wa" name="whatsapp" inputmode="tel" value="<?= e(old_fill($old, 'whatsapp', $tenant['whatsapp'] ?? '')) ?>" placeholder="Se vazio, usamos o telefone">
     <?php endif; ?>
 
     <?php if ($step === 2): ?>
@@ -88,7 +87,7 @@ $old = $old ?? [];
       <?php if ($step > 1): ?>
         <a class="btn btn-ghost" href="/app/onboarding?step=<?= $step - 1 ?>">Voltar</a>
       <?php endif; ?>
-      <button class="btn btn-primary" type="submit"><?= e($go) ?></button>
+      <button class="btn btn-primary" type="submit"><?= $step === 1 ? 'Continuar para horários' : ($step === 2 ? 'Continuar para serviços' : ($step === 3 ? 'Continuar' : 'Entrar no painel')) ?></button>
     </div>
   </form>
 

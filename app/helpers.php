@@ -602,10 +602,11 @@ function take_old_form(): array
     return is_array($old) ? $old : [];
 }
 
-function old_fill(array $old, string $key, string $default = ''): string
+function old_fill(array $old, string $key, ?string $default = ''): string
 {
-    $v = $old[$key] ?? $default;
-    return is_scalar($v) ? (string)$v : $default;
+    $fallback = (string)($default ?? '');
+    $v = $old[$key] ?? $fallback;
+    return is_scalar($v) ? (string)$v : $fallback;
 }
 
 function csrf(): string

@@ -267,9 +267,9 @@ a.fx-x{text-decoration:none;color:#344054}
 .onboard-ready li{position:relative;padding:8px 0 8px 22px;color:#344054;font-size:14px;line-height:1.45;border-bottom:1px solid var(--line-soft)}
 .onboard-ready li:last-child{border-bottom:0}
 .onboard-ready li::before{content:"";position:absolute;left:0;top:14px;width:8px;height:8px;border-radius:50%;background:#12b76a}
-.onboard-foot{display:flex;gap:10px;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.onboard-foot{display:flex;gap:10px;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--line-soft);position:sticky;bottom:0;background:#fff;z-index:2}
 .onboard-foot .btn-ghost{flex:0 0 auto}
-.onboard-foot .btn-primary{flex:1;min-height:42px}
+.onboard-foot .btn-primary{flex:1;min-height:48px;width:100%;font-size:15px}
 .onboard-exit{margin-top:14px;text-align:center}
 .onboard-exit button{background:none;border:0;color:#98a2b3;font-size:13px;cursor:pointer;padding:4px 8px}
 .fx{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:min(72vh,640px);background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 8px 28px rgba(16,24,40,.06)}

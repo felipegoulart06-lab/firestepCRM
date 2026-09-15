@@ -534,7 +534,7 @@ if (str_starts_with($path, '/app')) {
             ]);
             session_regenerate_id(true);
             flash('Senha definida. Bem-vindo ao painel.');
-            redirect('/app/agenda');
+            redirect(empty($tenant['onboarding_done']) ? '/app/onboarding' : '/app/agenda');
         }
         if ($path === '/app/notificacoes/ler') {
             q('UPDATE notifications SET read_flag='.sql_lit_bool(true).' WHERE tenant_id=?', [$tid]);
