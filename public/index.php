@@ -61,14 +61,14 @@ function require_login(): array
 function require_master(): array
 {
     $u = require_login();
-    if ($u['role'] !== 'MASTER') redirect('/app');
+    if (!is_user_admin($u)) redirect('/app');
     return $u;
 }
 
 function require_tenant(): array
 {
     $u = require_login();
-    if ($u['role'] !== 'TENANT_ADMIN' || empty($u['tenant_id'])) redirect('/master');
+    if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
     $t = one('SELECT * FROM tenants WHERE id=?', [$u['tenant_id']]);
     if (!$t || $t['status'] === 'CANCELLED') {
         $_SESSION = [];
@@ -135,7 +135,7 @@ if ($path === '/' ) redirect('/login');
 if ($path === '/login' && $method === 'GET') {
     if (current_user()) {
         $u = current_user();
-        redirect($u['role']==='MASTER' ? '/master' : (!empty($u['must_change_password']) ? '/app/senha' : '/app/agenda'));
+        redirect(is_user_admin($u) ? '/master' : (!empty($u['must_change_password']) ? '/app/senha' : '/app/agenda'));
     }
     view('login', ['error' => null]);
     exit;
@@ -167,7 +167,7 @@ if ($path === '/login' && $method === 'POST') {
     if (empty($user['must_change_password'])) {
         q('UPDATE users SET last_login_at=? WHERE id=?', [now(), $user['id']]);
     }
-    if ($user['role'] === 'MASTER') {
+    if (is_user_admin($user)) {
         redirect('/master');
     }
     if (!empty($user['must_change_password'])) {
@@ -396,7 +396,7 @@ if (str_starts_with($path, '/master')) {
         layout_start('master', compact('user','path'));
         view('master/clientes', ['tenants'=>all("SELECT t.*, u.username login_username, u.email login_email, u.id login_user_id, u.must_change_password, u.last_login_at
             FROM tenants t
-            LEFT JOIN users u ON u.tenant_id=t.id AND u.role='TENANT_ADMIN'
+            LEFT JOIN users u ON ".sql_tenant_admin_join()."
             ORDER BY t.created_at DESC")]);
         layout_end('master');
         exit;
@@ -452,12 +452,12 @@ if (str_starts_with($path, '/master')) {
         view('master/integracoes', [
             'pending'=>all("SELECT t.*, u.username login_username, u.email login_email
                 FROM tenants t
-                LEFT JOIN users u ON u.tenant_id=t.id AND u.role='TENANT_ADMIN'
+                LEFT JOIN users u ON ".sql_tenant_admin_join()."
                 WHERE ".sql_not_blank('t.webhook_requested_at')." AND ".sql_false('t.webhook_access')."
                 ORDER BY t.webhook_requested_at DESC"),
             'approved'=>all("SELECT t.*, u.username login_username
                 FROM tenants t
-                LEFT JOIN users u ON u.tenant_id=t.id AND u.role='TENANT_ADMIN'
+                LEFT JOIN users u ON ".sql_tenant_admin_join()."
                 WHERE ".sql_true('t.webhook_access')."
                 ORDER BY t.updated_at DESC"),
         ]);
@@ -477,8 +477,12 @@ if (str_starts_with($path, '/app')) {
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
         redirect('/app/senha');
     }
-    if (empty($tenant['onboarding_done']) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding'], true)) {
+    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding'], true)) {
         redirect('/app/onboarding');
+    }
+    if (is_user_agent($user) && agent_route_forbidden($path)) {
+        flash('Este menu é exclusivo do administrador da empresa.', 'error');
+        redirect('/app/agenda');
     }
 
     if ($path === '/app/google/connect' && $method === 'GET') {
@@ -684,6 +688,78 @@ if (str_starts_with($path, '/app')) {
             push_google_sheets($tid, 'client', 'delete', $delId);
             flash('Cadastro excluído.');
             redirect('/app/clientes');
+        }
+        if ($path === '/app/agentes/salvar') {
+            if (!is_user_crm($user)) {
+                flash('Somente o administrador da empresa gerencia agentes.', 'error');
+                redirect('/app/agenda');
+            }
+            $id = trim((string)post('id', ''));
+            $name = trim((string)post('name', ''));
+            $email = strtolower(trim((string)post('email', '')));
+            $username = strtolower(trim((string)post('username', '')));
+            $phone = trim((string)post('phone', ''));
+            $password = (string)post('password', '');
+            $back = $id ? '/app/agentes?id='.urlencode($id) : '/app/agentes?novo=1';
+            if ($name === '' || $email === '' || $username === '') {
+                bounce_form($back, 'Informe nome, e-mail e usuário do agente.');
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                bounce_form($back, 'Informe um e-mail válido.');
+            }
+            if (login_taken($email, $username, $id !== '' ? $id : null)) {
+                bounce_form($back, 'E-mail ou usuário já está em uso.');
+            }
+            $existing = $id !== '' ? one("SELECT * FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$id, $tid]) : null;
+            if ($id !== '' && !$existing) {
+                flash('Agente não encontrado.', 'error');
+                redirect('/app/agentes');
+            }
+            if (!$existing && $password === '') {
+                bounce_form($back, 'Defina a senha inicial do agente.');
+            }
+            if ($password !== '' && !password_is_strong($password)) {
+                bounce_form($back, 'A senha precisa ter pelo menos 10 caracteres, com letra e número.');
+            }
+            $active = isset($_POST['active']) ? db_bool(true) : db_bool(false);
+            if ($existing) {
+                if ($password !== '') {
+                    q('UPDATE users SET name=?, email=?, username=?, phone=?, password_hash=?, must_change_password='.sql_lit_bool(true).', active=? WHERE id=? AND tenant_id=? AND role=?',
+                        [$name, $email, $username, $phone !== '' ? $phone : null, password_hash($password, PASSWORD_DEFAULT), $active, $id, $tid, 'user_agent']);
+                } else {
+                    q('UPDATE users SET name=?, email=?, username=?, phone=?, active=? WHERE id=? AND tenant_id=? AND role=?',
+                        [$name, $email, $username, $phone !== '' ? $phone : null, $active, $id, $tid, 'user_agent']);
+                }
+                audit($tid, $user['id'], 'agent.updated', 'user', $id);
+                flash('Agente atualizado.');
+            } else {
+                $id = uid();
+                q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,phone,must_change_password,active,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,'.sql_lit_bool(true).',?,?)', [
+                    $id, $tid, $name, $email, $username, password_hash($password, PASSWORD_DEFAULT), 'user_agent',
+                    $phone !== '' ? $phone : null, $active, now(),
+                ]);
+                audit($tid, $user['id'], 'agent.created', 'user', $id);
+                flash('Agente criado. Ele entra no mesmo login do CRM, com o usuário informado.');
+            }
+            unset($_SESSION['form_old']);
+            redirect('/app/agentes');
+        }
+        if ($path === '/app/agentes/excluir') {
+            if (!is_user_crm($user)) {
+                flash('Somente o administrador da empresa gerencia agentes.', 'error');
+                redirect('/app/agenda');
+            }
+            $delId = (string)post('id', '');
+            $agent = one("SELECT id FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$delId, $tid]);
+            if (!$agent) {
+                flash('Agente não encontrado.', 'error');
+                redirect('/app/agentes');
+            }
+            q("DELETE FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$delId, $tid]);
+            audit($tid, $user['id'], 'agent.deleted', 'user', $delId);
+            flash('Agente removido.');
+            redirect('/app/agentes');
         }
         if ($path === '/app/servicos/salvar') {
             $id = post('id');
@@ -1260,6 +1336,28 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/servicos') {
         layout_start('app', compact('user','tenant','path'));
         view('app/servicos', ['services'=>all('SELECT * FROM services WHERE tenant_id=? ORDER BY name', [$tenant['id']]),'tenant'=>$tenant]);
+        layout_end('app');
+        exit;
+    }
+    if ($path === '/app/agentes') {
+        if (!is_user_crm($user)) {
+            flash('Somente o administrador da empresa gerencia agentes.', 'error');
+            redirect('/app/agenda');
+        }
+        $edit = null;
+        $editId = trim((string)($_GET['id'] ?? ''));
+        if ($editId !== '') {
+            $edit = one("SELECT * FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$editId, $tenant['id']]);
+        }
+        layout_start('app', compact('user','tenant','path'));
+        view('app/agentes', [
+            'tenant'=>$tenant,
+            'user'=>$user,
+            'edit'=>$edit,
+            'novo'=>isset($_GET['novo']) || $edit,
+            'old'=>take_old_form(),
+            'agents'=>all("SELECT * FROM users WHERE tenant_id=? AND role='user_agent' ORDER BY name", [$tenant['id']]),
+        ]);
         layout_end('app');
         exit;
     }

@@ -44,5 +44,5 @@ function nexo_seed(PDO $pdo): void
     }
 
     $pdo->prepare('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,must_change_password,active,created_at) VALUES(?,?,?,?,?,?,?,'.$off.','.$on.',?)')
-        ->execute([bin2hex(random_bytes(12)), null, 'Admin Master', $email, $username, password_hash($password, PASSWORD_DEFAULT), 'MASTER', $tnow]);
+        ->execute([bin2hex(random_bytes(12)), null, 'Admin Master', $email, $username, password_hash($password, PASSWORD_DEFAULT), 'user_admin', $tnow]);
 }

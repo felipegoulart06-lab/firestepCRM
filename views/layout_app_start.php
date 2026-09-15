@@ -13,7 +13,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=ct2">
+<link rel="stylesheet" href="/assets/app.css?v=ag1">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -24,13 +24,19 @@ $qsearch = trim($_GET['q'] ?? '');
   </div>
   <nav class="nav">
     <a href="/app/agenda" class="<?= $path==='/app/agenda'?'active':'' ?>"><?= icon('calendar') ?> Agenda</a>
+    <?php if (!is_user_agent($user)): ?>
     <a href="/app/metricas" class="<?= $path==='/app/metricas'?'active':'' ?>"><?= icon('chart') ?> Métricas</a>
+    <?php endif; ?>
     <div class="nav-cat">ATENDIMENTO</div>
     <a href="/app/agendamentos" class="<?= $path==='/app/agendamentos'?'active':'' ?>"><?= icon('list') ?> Agendamentos</a>
     <a href="/app/solicitacoes" class="<?= $path==='/app/solicitacoes'?'active':'' ?>"><?= icon('inbox') ?> <?= e($terms['requests']) ?></a>
     <a href="/app/kanban" class="<?= $path==='/app/kanban'?'active':'' ?>"><?= icon('kanban') ?> Pipeline</a>
     <div class="nav-cat">RELACIONAMENTO</div>
     <a href="/app/clientes" class="<?= str_starts_with($path,'/app/clientes')?'active':'' ?>"><?= icon('users') ?> <?= e($terms['clients']) ?></a>
+    <?php if (is_user_crm($user)): ?>
+    <a href="/app/agentes" class="<?= str_starts_with($path,'/app/agentes')?'active':'' ?>"><?= icon('briefcase') ?> Agentes</a>
+    <?php endif; ?>
+    <?php if (!is_user_agent($user)): ?>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
     <details class="nav-group<?= str_starts_with($path,'/app/financeiro')?' nav-on':'' ?>" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>
@@ -44,6 +50,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <div class="nav-cat">INTEGRAÇÕES</div>
     <a href="/app/webhooks" class="<?= $path==='/app/webhooks'?'active':'' ?>"><?= icon('webhook') ?> Webhooks</a>
     <a href="/app/configuracoes" class="<?= $path==='/app/configuracoes'?'active':'' ?>"><?= icon('settings') ?> Configurações</a>
+    <?php endif; ?>
     <div class="sidebar-foot"><form method="post" action="/logout">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <button class="link"><?= icon('logout') ?> Sair da conta</button>
@@ -69,7 +76,7 @@ $qsearch = trim($_GET['q'] ?? '');
     </details>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="avatar"><?= e(strtoupper(substr($user['name'],0,1))) ?></div>
-      <div class="user-info"><b><?= e($user['name']) ?></b><span><?= e($tenant['business_name']) ?></span></div>
+      <div class="user-info"><b><?= e($user['name']) ?></b><span><?= e($tenant['business_name']) ?> · <?= is_user_agent($user) ? 'Agente' : 'Administrador' ?></span></div>
     </div>
   </header>
   <main class="content">

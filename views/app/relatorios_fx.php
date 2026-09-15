@@ -157,7 +157,7 @@ foreach ($fxFolders as $folder) {
             <label>
               <input type="checkbox" name="users[]" value="<?= e($u['id']) ?>">
               <?= e($u['name']) ?>
-              <i><?= $u['role'] === 'TENANT_ADMIN' ? 'admin' : 'usuário' ?></i>
+              <i><?= is_user_crm($u) ? 'admin' : (is_user_agent($u) ? 'agente' : 'usuário') ?></i>
             </label>
           <?php endforeach; ?>
         </div>

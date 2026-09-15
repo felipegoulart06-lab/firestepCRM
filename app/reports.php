@@ -123,7 +123,7 @@ function report_match_actor(?string $actorId, array $filters, array $roles): boo
 {
     $actorId = $actorId ?: null;
     if ($filters['admins_only']) {
-        if (!$actorId || ($roles[$actorId] ?? '') !== 'TENANT_ADMIN') {
+        if (!$actorId || !in_array($roles[$actorId] ?? '', ['user_crm', 'TENANT_ADMIN'], true)) {
             return false;
         }
     }

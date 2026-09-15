@@ -45,7 +45,7 @@ function create_tenant_panel(array $in, ?string $actor = null): array
         q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,phone,must_change_password,active,created_at)
            VALUES(?,?,?,?,?,?,?,?,'.sql_lit_bool(true).','.sql_lit_bool(true).',?)', [
             $uid, $tid, $in['name'], $email, $username,
-            password_hash($password, PASSWORD_DEFAULT), 'TENANT_ADMIN', $in['phone'] ?? null, $tnow,
+            password_hash($password, PASSWORD_DEFAULT), 'user_crm', $in['phone'] ?? null, $tnow,
         ]);
         foreach ($preset['services'] as $s) {
             q('INSERT INTO services(id,tenant_id,name,category,duration_minutes,price,status,created_at) VALUES(?,?,?,?,?,?,?,?)', [

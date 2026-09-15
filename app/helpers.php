@@ -137,6 +137,7 @@ function db(): PDO
             $options[PDO::ATTR_EMULATE_PREPARES] = true;
         }
         $pdo = new PDO($dsn, urldecode((string)($parts['user'] ?? 'postgres')), urldecode((string)($parts['pass'] ?? '')), $options);
+        users_ensure_roles($pdo);
         return $pdo;
     }
 
@@ -156,6 +157,7 @@ function db(): PDO
         require __DIR__ . '/seed.php';
         nexo_seed($pdo);
     }
+    users_ensure_roles($pdo);
     return $pdo;
 }
 
@@ -533,7 +535,107 @@ function saas_access_confirmed(?array $admin): bool
 
 function tenant_admin(string $tenantId): ?array
 {
-    return one("SELECT * FROM users WHERE tenant_id=? AND role='TENANT_ADMIN'", [$tenantId]);
+    return one("SELECT * FROM users WHERE tenant_id=? AND ".sql_is_crm_admin()." ORDER BY created_at ASC", [$tenantId]);
+}
+
+function user_kind(?array $u): string
+{
+    $role = (string)($u['role'] ?? '');
+    if ($role === 'user_admin' || $role === 'MASTER') {
+        return 'user_admin';
+    }
+    if ($role === 'user_crm' || $role === 'TENANT_ADMIN') {
+        return 'user_crm';
+    }
+    if ($role === 'user_agent') {
+        return 'user_agent';
+    }
+    return $role;
+}
+
+function is_user_admin(?array $u): bool
+{
+    return user_kind($u) === 'user_admin';
+}
+
+function is_user_crm(?array $u): bool
+{
+    return user_kind($u) === 'user_crm';
+}
+
+function is_user_agent(?array $u): bool
+{
+    return user_kind($u) === 'user_agent';
+}
+
+function sql_is_platform_admin(string $column = 'role'): string
+{
+    return "($column IN ('user_admin','MASTER'))";
+}
+
+function sql_is_crm_admin(string $column = 'role'): string
+{
+    return "($column IN ('user_crm','TENANT_ADMIN'))";
+}
+
+function sql_tenant_admin_join(string $tenantAlias = 't', string $userAlias = 'u'): string
+{
+    return $userAlias.'.id = (SELECT id FROM users WHERE tenant_id='.$tenantAlias.'.id AND '.sql_is_crm_admin().' ORDER BY created_at ASC LIMIT 1)';
+}
+
+function agent_route_forbidden(string $path): bool
+{
+    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/webhooks', '/app/configuracoes', '/app/onboarding', '/app/google'] as $prefix) {
+        if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function users_ensure_roles(?PDO $pdo = null): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $pdo = $pdo ?? db();
+    try {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql') {
+            $pdo->exec('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            $pdo->exec("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user_admin','user_crm','user_agent','MASTER','TENANT_ADMIN'))");
+        }
+        $pdo->exec("UPDATE users SET role='user_admin' WHERE role='MASTER'");
+        $pdo->exec("UPDATE users SET role='user_crm' WHERE role='TENANT_ADMIN'");
+        $done = true;
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql') {
+            $pdo->exec('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            $pdo->exec("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user_admin','user_crm','user_agent'))");
+            try {
+                $pdo->exec(<<<'SQL'
+CREATE OR REPLACE FUNCTION public.is_master()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.users u
+    WHERE u.auth_user_id = auth.uid()
+      AND u.role IN ('user_admin', 'MASTER')
+      AND u.active = true
+  );
+$$;
+SQL);
+            } catch (Throwable $e) {
+                error_log('users_ensure_roles is_master: '.$e->getMessage());
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('users_ensure_roles: '.$e->getMessage());
+    }
 }
 
 function uid(): string
