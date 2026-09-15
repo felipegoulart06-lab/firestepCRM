@@ -256,23 +256,46 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .fx:has(#fx-orig:checked) label[for=fx-orig] .ico,
 .fx:has(#fx-fin:checked) label[for=fx-fin] .ico,
 .fx:has(#fx-caixa:checked) label[for=fx-caixa] .ico{color:#fff}
-.fx-stage{display:flex;flex-direction:column;min-width:0;background:#fbfcfd}
-.fx-path{display:flex;align-items:center;gap:6px;padding:9px 16px;border-bottom:1px solid var(--line);background:#fff;font-size:12px;color:#667085}
+.fx-folder>summary:focus{outline:none}
+.fx-folder>summary:focus-visible{outline:2px solid color-mix(in srgb,var(--primary) 55%,transparent);outline-offset:1px}
+.fx-stage{display:flex;flex-direction:column;min-width:0;background:#f6f7f9}
+.fx-path{display:none;align-items:center;gap:6px;padding:10px 20px;border-bottom:1px solid var(--line);background:#fff;font-size:12px;color:#667085}
 .fx-path b{color:#101828}
 .fx-path span{opacity:.45}
-.fx-doc{display:none;padding:28px 32px 24px;flex:1}
+.fx-path-idle{display:flex}
+.fx:has(#fx-atend:checked) .fx-path-atend,
+.fx:has(#fx-cli:checked) .fx-path-cli,
+.fx:has(#fx-orig:checked) .fx-path-orig,
+.fx:has(#fx-fin:checked) .fx-path-fin,
+.fx:has(#fx-caixa:checked) .fx-path-caixa{display:flex}
+.fx:has(.fx-pick:checked) .fx-path-idle{display:none}
+.fx-idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 28px;color:#667085}
+.fx-idle b{color:#101828;font-size:16px;letter-spacing:-.02em;margin:10px 0 6px}
+.fx-idle p{margin:0;max-width:340px;font-size:13px;line-height:1.5}
+.fx-idle-ico{width:64px;height:64px;border-radius:14px;background:#fff;border:1px solid var(--line);color:#d97706;display:grid;place-items:center;box-shadow:0 8px 20px rgba(16,24,40,.06)}
+.fx:has(.fx-pick:checked) .fx-idle{display:none}
+.fx-doc{display:none;margin:20px 24px 16px;padding:24px 26px 22px;flex:1;max-width:680px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(16,24,40,.05)}
 .fx:has(#fx-atend:checked) .fx-doc[data-for=fx-atend],
 .fx:has(#fx-cli:checked) .fx-doc[data-for=fx-cli],
 .fx:has(#fx-orig:checked) .fx-doc[data-for=fx-orig],
 .fx:has(#fx-fin:checked) .fx-doc[data-for=fx-fin],
 .fx:has(#fx-caixa:checked) .fx-doc[data-for=fx-caixa]{display:block}
-.fx-filehead{display:flex;gap:16px;align-items:flex-start;margin-bottom:22px}
-.fx-big{width:56px;height:64px;border-radius:6px;background:linear-gradient(180deg,#fee4e2,#fecdca);color:#b42318;display:grid;place-items:center;box-shadow:0 6px 14px rgba(180,35,24,.12);flex:0 0 56px}
+.fx-filehead{display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--line-soft)}
+.fx-big{width:56px;height:64px;border-radius:8px;background:linear-gradient(180deg,#fee4e2,#fecdca);color:#b42318;display:grid;place-items:center;box-shadow:0 6px 14px rgba(180,35,24,.12);flex:0 0 56px}
 .fx-filehead h2{margin:0 0 4px;font-size:20px;letter-spacing:-.03em}
 .fx-filehead p{margin:0;color:#667085;font-size:13px}
 .fx-meta{display:flex;gap:16px;margin-top:10px;font-size:12px;color:#98a2b3}
 .fx-meta i{font-style:normal;color:#344054;font-weight:650}
-.fx-doc .grid{max-width:420px}
+.fx-form{display:grid;gap:12px}
+.fx-fields{background:#f6f7f9;border:1px solid var(--line-soft);border-radius:8px;padding:14px}
+.fx-form .btn-primary{width:100%;min-height:44px}
+.fx-preview{margin-top:18px}
+.fx-preview>span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#98a2b3;text-transform:uppercase;margin-bottom:8px}
+.fx-sheet{background:#fff;border:1px solid var(--line);border-radius:6px;padding:16px 18px;display:grid;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.fx-sheet i{display:block;height:7px;border-radius:99px;background:#e9edf2}
+.fx-sheet i:nth-child(1){width:46%}
+.fx-sheet i:nth-child(2){width:88%}
+.fx-sheet i:nth-child(3){width:64%}
 .fx-status{margin-top:auto;padding:8px 14px;border-top:1px solid var(--line);background:#eef1f5;font-size:11px;color:#667085}
 @media(max-width:900px){.fx{grid-template-columns:1fr}.fx-tree{border-right:0;border-bottom:1px solid var(--line);max-height:280px}}
 .token-confirm{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;font-weight:600;color:#344054}

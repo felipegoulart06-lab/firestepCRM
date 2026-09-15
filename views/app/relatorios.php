@@ -11,7 +11,7 @@ $to = date('Y-m-d');
 </div>
 
 <div class="fx">
-  <input class="fx-pick" type="radio" name="fx" id="fx-atend" checked>
+  <input class="fx-pick" type="radio" name="fx" id="fx-atend">
   <input class="fx-pick" type="radio" name="fx" id="fx-cli">
   <input class="fx-pick" type="radio" name="fx" id="fx-orig">
   <input class="fx-pick" type="radio" name="fx" id="fx-fin">
@@ -19,20 +19,20 @@ $to = date('Y-m-d');
   <aside class="fx-tree">
     <div class="fx-tree-bar"><?= icon('folder') ?> Relatórios</div>
     <div class="fx-tree-body">
-      <details class="fx-folder" open>
+      <details class="fx-folder">
         <summary><i class="fx-twist" aria-hidden="true"></i><span class="fx-ico"><?= icon('folder',16) ?></span> Atendimento</summary>
         <ul class="fx-kids">
           <li><label class="fx-file" for="fx-atend"><?= icon('pdf',16) ?> Resumo de atendimentos.pdf</label></li>
         </ul>
       </details>
-      <details class="fx-folder" open>
+      <details class="fx-folder">
         <summary><i class="fx-twist" aria-hidden="true"></i><span class="fx-ico"><?= icon('folder',16) ?></span> Relacionamento</summary>
         <ul class="fx-kids">
           <li><label class="fx-file" for="fx-cli"><?= icon('pdf',16) ?> Resumo de <?= e(lower($terms['clients'])) ?>.pdf</label></li>
           <li><label class="fx-file" for="fx-orig"><?= icon('pdf',16) ?> Resumo de origens.pdf</label></li>
         </ul>
       </details>
-      <details class="fx-folder" open>
+      <details class="fx-folder">
         <summary><i class="fx-twist" aria-hidden="true"></i><span class="fx-ico"><?= icon('folder',16) ?></span> Financeiro</summary>
         <ul class="fx-kids">
           <li><label class="fx-file" for="fx-fin"><?= icon('pdf',16) ?> Resumo do caixa.pdf</label></li>
@@ -42,7 +42,17 @@ $to = date('Y-m-d');
   </aside>
 
   <div class="fx-stage">
-    <div class="fx-path"><?= icon('folder',14) ?> Relatórios <span>›</span> <b>arquivo selecionado</b></div>
+    <div class="fx-path fx-path-idle"><?= icon('folder',14) ?> Relatórios <span>›</span> escolha um arquivo</div>
+    <div class="fx-path fx-path-atend"><?= icon('folder',14) ?> Relatórios <span>›</span> Atendimento <span>›</span> <b>Resumo de atendimentos.pdf</b></div>
+    <div class="fx-path fx-path-cli"><?= icon('folder',14) ?> Relatórios <span>›</span> Relacionamento <span>›</span> <b>Resumo de <?= e(lower($terms['clients'])) ?>.pdf</b></div>
+    <div class="fx-path fx-path-orig"><?= icon('folder',14) ?> Relatórios <span>›</span> Relacionamento <span>›</span> <b>Resumo de origens.pdf</b></div>
+    <div class="fx-path fx-path-fin"><?= icon('folder',14) ?> Relatórios <span>›</span> Financeiro <span>›</span> <b>Resumo do caixa.pdf</b></div>
+
+    <div class="fx-idle">
+      <div class="fx-idle-ico"><?= icon('folder',28) ?></div>
+      <b>Nenhum arquivo aberto</b>
+      <p>Abra uma pasta à esquerda e clique no PDF. O relatório aparece aqui, com o período e o botão de download.</p>
+    </div>
 
     <article class="fx-doc" data-for="fx-atend">
       <div class="fx-filehead">
@@ -53,13 +63,16 @@ $to = date('Y-m-d');
           <div class="fx-meta"><span>Tipo <i>PDF</i></span><span>Pasta <i>Atendimento</i></span></div>
         </div>
       </div>
-      <form method="get" action="/app/relatorios/atendimentos.pdf" class="grid">
-        <div class="grid g2">
-          <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
-          <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+      <form method="get" action="/app/relatorios/atendimentos.pdf" class="fx-form">
+        <div class="fx-fields">
+          <div class="grid g2">
+            <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
+            <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+          </div>
         </div>
         <button class="btn btn-primary"><?= icon('download') ?> Baixar PDF</button>
       </form>
+      <div class="fx-preview" aria-hidden="true"><span>Prévia do documento</span><div class="fx-sheet"><i></i><i></i><i></i></div></div>
     </article>
 
     <article class="fx-doc" data-for="fx-cli">
@@ -71,12 +84,15 @@ $to = date('Y-m-d');
           <div class="fx-meta"><span>Tipo <i>PDF</i></span><span>Pasta <i>Relacionamento</i></span></div>
         </div>
       </div>
-      <form method="get" action="/app/relatorios/clientes.pdf" class="grid">
-        <div><label class="label">Status</label>
-          <select class="select" name="status"><option value="ALL">Todos</option><option value="ACTIVE">Ativos</option><option value="INACTIVE">Inativos</option></select>
+      <form method="get" action="/app/relatorios/clientes.pdf" class="fx-form">
+        <div class="fx-fields">
+          <div><label class="label">Status</label>
+            <select class="select" name="status"><option value="ALL">Todos</option><option value="ACTIVE">Ativos</option><option value="INACTIVE">Inativos</option></select>
+          </div>
         </div>
         <button class="btn btn-primary"><?= icon('download') ?> Baixar PDF</button>
       </form>
+      <div class="fx-preview" aria-hidden="true"><span>Prévia do documento</span><div class="fx-sheet"><i></i><i></i><i></i></div></div>
     </article>
 
     <article class="fx-doc" data-for="fx-orig">
@@ -88,12 +104,15 @@ $to = date('Y-m-d');
           <div class="fx-meta"><span>Tipo <i>PDF</i></span><span>Pasta <i>Relacionamento</i></span></div>
         </div>
       </div>
-      <form method="get" action="/app/relatorios/origens.pdf" class="grid">
-        <div><label class="label">Período</label>
-          <select class="select" name="period"><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option></select>
+      <form method="get" action="/app/relatorios/origens.pdf" class="fx-form">
+        <div class="fx-fields">
+          <div><label class="label">Período</label>
+            <select class="select" name="period"><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option></select>
+          </div>
         </div>
         <button class="btn btn-primary"><?= icon('download') ?> Baixar PDF</button>
       </form>
+      <div class="fx-preview" aria-hidden="true"><span>Prévia do documento</span><div class="fx-sheet"><i></i><i></i><i></i></div></div>
     </article>
 
     <article class="fx-doc" data-for="fx-fin">
@@ -105,13 +124,16 @@ $to = date('Y-m-d');
           <div class="fx-meta"><span>Tipo <i>PDF</i></span><span>Pasta <i>Financeiro</i></span></div>
         </div>
       </div>
-      <form method="get" action="/app/financeiro/relatorio.pdf" class="grid">
-        <div class="grid g2">
-          <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
-          <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+      <form method="get" action="/app/financeiro/relatorio.pdf" class="fx-form">
+        <div class="fx-fields">
+          <div class="grid g2">
+            <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
+            <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+          </div>
         </div>
         <button class="btn btn-primary"><?= icon('download') ?> Baixar PDF</button>
       </form>
+      <div class="fx-preview" aria-hidden="true"><span>Prévia do documento</span><div class="fx-sheet"><i></i><i></i><i></i></div></div>
     </article>
 
     <div class="fx-status">3 pastas · 4 arquivos · PDF operacional</div>
