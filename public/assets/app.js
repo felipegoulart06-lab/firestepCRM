@@ -214,6 +214,22 @@ function bindReportsExplorer(){
     }
     html += '<h1>'+esc(doc.title)+'</h1>';
     html += '<p class="fx-a4-sub">'+esc(doc.company)+' · Período '+esc(doc.period)+' · Gerado em '+esc(doc.generated)+'</p>';
+    const ct = doc.contract;
+    if (ct) {
+      html += '<h2>Serviços prestados / agendados</h2>';
+      if (!ct.items || !ct.items.length) {
+        html += '<p class="fx-a4-empty">Nenhum serviço no período filtrado.</p>';
+      } else {
+        html += '<table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Duração</th><th>Valor</th><th>Taxa/sinal</th></tr></thead><tbody>';
+        const brl = (n)=> Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        ct.items.forEach(it=>{
+          html += '<tr><td>'+esc(it.when)+'</td><td>'+esc(it.client)+'</td><td>'+esc(it.service)+'</td><td>'+esc(it.duration? it.duration+' min':'—')+'</td><td>'+esc(brl(it.price))+'</td><td>'+esc(brl(it.deposit))+'</td></tr>';
+        });
+        html += '</tbody><tfoot><tr><td colspan="6">Subtotal '+esc(brl(ct.subtotal))+' · Taxas '+esc(brl(ct.fees))+' · Total '+esc(brl(ct.total))+'</td></tr></tfoot></table>';
+      }
+      html += '<h2>Cláusulas básicas'+(ct.segment? ' · '+esc(ct.segment):'')+'</h2>';
+      html += '<div class="cl-body">'+(ct.clauses_html || '<p class="fx-a4-empty">Nenhuma cláusula cadastrada para esta categoria.</p>')+'</div>';
+    }
     (doc.sections || []).forEach(sec=>{
       html += '<h2>'+esc(sec.title)+'</h2>';
       if (!sec.rows || !sec.rows.length) {
@@ -232,6 +248,7 @@ function bindReportsExplorer(){
     if (sg && sg.active && sg.image) {
       html += '<div class="sig-mark"><img src="'+String(sg.image).replace(/"/g,'')+'" alt=""><small>Assinatura eletrônica</small></div>';
     }
+    html += '<div class="fx-a4-foot"><span>'+esc(doc.company)+' · Contrato / relatório</span><span>Página 1</span></div>';
     html += '</article>';
     wrap.innerHTML = html;
     filters.hidden = true;
@@ -259,3 +276,45 @@ function bindLetterhead(){
   });
 }
 document.addEventListener('DOMContentLoaded', bindLetterhead);
+
+function bindClausesEditor(){
+  const form = document.getElementById('cl-form');
+  const editor = document.getElementById('cl-editor');
+  const hold = document.getElementById('cl-templates');
+  const raw = document.getElementById('cl-data');
+  if (!form || !editor || !raw) return;
+  document.documentElement.classList.add('is-modal-open');
+  document.body.classList.add('is-modal-open');
+  let data = { own:'', map:{} };
+  try { data = JSON.parse(raw.textContent || '{}'); } catch (e) { data = { own:'', map:{} }; }
+  const map = data.map || {};
+  let current = '';
+  const label = document.getElementById('cl-current');
+  const saveCurrent = ()=>{
+    if (current) map[current] = editor.innerHTML;
+  };
+  const load = (slug, name)=>{
+    saveCurrent();
+    current = slug;
+    editor.innerHTML = map[slug] || '';
+    if (label) label.textContent = name || slug;
+    document.querySelectorAll('.cl-cat').forEach(b=> b.classList.toggle('is-on', b.dataset.slug === slug));
+  };
+  document.querySelectorAll('.cl-cat').forEach(btn=>{
+    btn.addEventListener('click', ()=> load(btn.dataset.slug, btn.textContent.trim()));
+  });
+  form.querySelectorAll('[data-cl]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      document.execCommand(btn.getAttribute('data-cl'), false, null);
+      editor.focus();
+    });
+  });
+  form.addEventListener('submit', ()=>{
+    saveCurrent();
+    hold.value = JSON.stringify(map);
+  });
+  const first = document.querySelector('.cl-cat.is-on') || document.querySelector('.cl-cat');
+  if (first) load(first.dataset.slug, first.textContent.trim());
+}
+document.addEventListener('DOMContentLoaded', bindClausesEditor);

@@ -198,7 +198,24 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .lh-color{width:48px;height:36px;padding:2px;max-width:48px}
 .fx-a4.has-lh{padding-top:0}
 .lh-banner{display:flex;gap:14px;align-items:center;margin:0 -16mm 18px;padding:16px 16mm 18px;min-height:84px}
-.lh-banner img{width:52px;height:52px;object-fit:contain;background:rgba(255,255,255,.12);border-radius:8px;flex:0 0 52px}
+.lh-banner img{width:auto;max-width:120px;height:auto;max-height:72px;object-fit:contain;background:rgba(255,255,255,.94);border-radius:8px;flex:0 0 auto}
+.fx-a4{display:flex;flex-direction:column}
+.fx-a4-foot{margin-top:auto;padding-top:10px;border-top:1px solid #e4e7ec;display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#667085}
+.cl-body{font-size:12px;line-height:1.55;color:#1d2939}
+.cl-body p{margin:0 0 8px}
+.cl-panel{width:min(980px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:20px 22px;background:#fff;border-radius:var(--radius);box-shadow:0 18px 50px rgba(16,24,40,.18);pointer-events:auto}
+.cl-split{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:420px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cl-cats{background:#f6f7f9;overflow:auto;padding:8px;border-right:1px solid var(--line)}
+.cl-cat-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#98a2b3;padding:10px 8px 4px}
+.cl-cat{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:6px;cursor:pointer;font:inherit;color:#344054}
+.cl-cat i{font-style:normal;opacity:.7;font-size:11px}
+.cl-cat.is-on{background:var(--primary);color:#fff}
+.cl-editor-wrap{display:flex;flex-direction:column;min-width:0;background:#fff}
+.cl-tools{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line-soft)}
+.cl-editor{flex:1;min-height:280px;padding:14px 16px;outline:none;font-size:14px;line-height:1.55}
+.cl-editor:empty:before{content:attr(data-placeholder);color:#98a2b3}
+a.fx-x{text-decoration:none;color:#344054}
+@media(max-width:800px){.cl-split{grid-template-columns:1fr}}
 .lh-banner strong{display:block;font-size:16px;letter-spacing:-.02em}
 .lh-banner span{display:block;font-size:11px;opacity:.88;line-height:1.45}
 .sig-preview{width:140px;height:64px}

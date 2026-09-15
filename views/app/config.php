@@ -9,10 +9,16 @@ if (!in_array($tab, $allowed, true)) $tab = 'resumo';
 $edit = ($_GET['edit'] ?? '') === '1';
 $editFolha = ($_GET['edit'] ?? '') === 'folha';
 $editAssinatura = ($_GET['edit'] ?? '') === 'assinatura';
+$editClausulas = ($_GET['edit'] ?? '') === 'clausulas';
 $lh = letterhead_config($tenant);
 $lhReady = letterhead_complete($lh);
 $sig = signature_config($tenant);
 $sigReady = signature_complete($sig);
+$clauseSegs = clauses_segments();
+$clauseMap = [];
+foreach (clauses_config($tenant) as $slug => $row) {
+    $clauseMap[$slug] = is_array($row) ? (string)($row['html'] ?? '') : (string)$row;
+}
 $sheets = sheets_config($tenant);
 $googleReady = google_oauth_ready();
 $connected = sheets_connected($sheets);
@@ -350,6 +356,66 @@ $hourLine = static function (array $h) {
     </form>
   <?php endif; ?>
 </div>
+
+<div class="card settings-panel lh-panel" style="margin-top:14px">
+  <div class="settings-panel-head">
+    <div>
+      <h2>Cláusulas básicas por categoria</h2>
+      <p>Texto jurídico do contrato da categoria. Negrito e itálico entram no PDF de Contratos.</p>
+    </div>
+    <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado&amp;edit=clausulas">Editar</a>
+  </div>
+  <p class="settings-hint" style="margin-top:0">O conteúdo fica oculto. Abra o editor, escolha a categoria à esquerda e escreva as regras à direita.</p>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($editClausulas)): ?>
+<div class="fx-overlay" id="cl-overlay">
+  <form method="post" action="/app/configuracoes/clausulas" class="cl-panel" id="cl-form" onclick="event.stopPropagation()">
+    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+    <input type="hidden" name="templates" id="cl-templates" value="">
+    <div class="fx-modal-head">
+      <div>
+        <h2>Cláusulas básicas por categoria</h2>
+        <p>Selecione a categoria e escreva as cláusulas. Esse texto entra no contrato da empresa daquela categoria.</p>
+      </div>
+      <a class="fx-x" href="/app/configuracoes?tab=avancado" aria-label="Fechar"><?= icon('x', 18) ?></a>
+    </div>
+    <div class="cl-split">
+      <aside class="cl-cats" id="cl-cats">
+        <?php
+        $own = (string)($tenant['segment'] ?? '');
+        $lastCat = '';
+        foreach ($clauseSegs as $sg):
+            $cat = (string)($sg['category'] ?: 'Outros');
+            if ($cat !== $lastCat) {
+                echo '<div class="cl-cat-label">'.e($cat).'</div>';
+                $lastCat = $cat;
+            }
+            $on = $sg['slug'] === $own ? ' is-on' : '';
+        ?>
+          <button type="button" class="cl-cat<?= $on ?>" data-slug="<?= e($sg['slug']) ?>"><?= e($sg['name']) ?><?php if ($sg['slug']===$own): ?> <i>sua</i><?php endif; ?></button>
+        <?php endforeach; ?>
+        <?php if (!$clauseSegs): ?>
+          <p class="settings-hint">Nenhuma categoria cadastrada no Master.</p>
+        <?php endif; ?>
+      </aside>
+      <div class="cl-editor-wrap">
+        <div class="cl-tools">
+          <button type="button" class="btn btn-ghost" data-cl="bold"><b>N</b></button>
+          <button type="button" class="btn btn-ghost" data-cl="italic"><i>I</i></button>
+          <span id="cl-current" class="settings-hint" style="margin:0">Escolha uma categoria</span>
+        </div>
+        <div id="cl-editor" class="cl-editor" contenteditable="true" data-placeholder="Digite cláusulas, regras e condições desta categoria."></div>
+      </div>
+    </div>
+    <div class="settings-actions">
+      <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado">Cancelar</a>
+      <button class="btn btn-primary" id="cl-save">Salvar cláusulas</button>
+    </div>
+  </form>
+</div>
+<script type="application/json" id="cl-data"><?= json_encode(['own'=>$tenant['segment'] ?? '', 'map'=>$clauseMap], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?></script>
 <?php endif; ?>
 
 <?php if ($tab === 'integracoes'): ?>

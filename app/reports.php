@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const REPORT_KINDS = ['atendimentos', 'clientes', 'origens', 'financeiro', 'cliente_resumo'];
+const REPORT_KINDS = ['atendimentos', 'clientes', 'origens', 'financeiro', 'cliente_resumo', 'contratos'];
 
 function report_date(?string $value, string $fallback): string
 {
@@ -49,6 +49,7 @@ function report_kinds_from_request(): array
         '/app/relatorios/atendimentos.pdf' => ['atendimentos'],
         '/app/relatorios/clientes.pdf' => ['clientes'],
         '/app/relatorios/origens.pdf' => ['origens'],
+        '/app/relatorios/contrato.pdf' => ['contratos'],
         '/app/financeiro/relatorio.pdf' => ['financeiro'],
         default => ['atendimentos'],
     };
@@ -327,9 +328,15 @@ function report_build(array $tenant, array $filters): array
         'origens' => 'Resumo de origens',
         'financeiro' => 'Resumo do caixa',
         'cliente_resumo' => 'Resumo por cliente',
+        'contratos' => 'Contrato de prestação',
     ];
     $sections = [];
+    $contract = null;
     foreach ($kinds as $kind) {
+        if ($kind === 'contratos') {
+            $contract = contract_items($tenant, $filters);
+            continue;
+        }
         $part = match ($kind) {
             'atendimentos' => report_atendimentos($tenant, $filters),
             'clientes' => report_clientes($tenant, $filters),
@@ -342,19 +349,23 @@ function report_build(array $tenant, array $filters): array
             $sections[] = $sec;
         }
     }
-    if (count($kinds) === 1) {
+    if ($contract && count($kinds) === 1) {
+        $title = 'Contrato de prestação de serviços';
+    } elseif (count($kinds) === 1) {
         $title = $labels[$kinds[0]] ?? 'Relatório';
     } else {
-        $title = 'Relatórios operacionais';
+        $title = $contract ? 'Contrato e relatórios' : 'Relatórios operacionais';
     }
+    $useLh = $contract ? letterhead_preview($tenant, false) : letterhead_preview($tenant);
     return [
         'title' => $title,
-        'filename' => 'relatorio-'.date('Y-m-d').'.pdf',
+        'filename' => ($contract ? 'contrato-' : 'relatorio-').date('Y-m-d').'.pdf',
         'company' => (string)$business,
         'period' => date('d/m/Y', strtotime($filters['from'])).' a '.date('d/m/Y', strtotime($filters['to'])),
         'generated' => date('d/m/Y H:i'),
         'sections' => $sections,
-        'letterhead' => letterhead_preview($tenant),
+        'contract' => $contract,
+        'letterhead' => $useLh,
         'signature' => signature_preview($tenant),
     ];
 }
@@ -384,22 +395,27 @@ function report_to_lines(array $doc): array
 function report_send_pdf(array $tenant): never
 {
     letterhead_ensure_schema();
-    $row = one('SELECT letterhead_config, signature_config FROM tenants WHERE id=?', [$tenant['id']]);
+    $row = one('SELECT letterhead_config, signature_config, clauses_config FROM tenants WHERE id=?', [$tenant['id']]);
     if ($row) {
         $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
         $tenant['signature_config'] = $row['signature_config'] ?? '{}';
+        $tenant['clauses_config'] = $row['clauses_config'] ?? '{}';
     }
     $doc = report_build($tenant, report_filters_from_request());
+    if (!empty($doc['contract'])) {
+        contract_send_pdf($tenant, $doc);
+    }
     download_pdf($doc['title'], report_to_lines($doc), $doc['filename'], $tenant);
 }
 
 function report_send_preview(array $tenant): never
 {
     letterhead_ensure_schema();
-    $row = one('SELECT letterhead_config, signature_config FROM tenants WHERE id=?', [$tenant['id']]);
+    $row = one('SELECT letterhead_config, signature_config, clauses_config FROM tenants WHERE id=?', [$tenant['id']]);
     if ($row) {
         $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
         $tenant['signature_config'] = $row['signature_config'] ?? '{}';
+        $tenant['clauses_config'] = $row['clauses_config'] ?? '{}';
     }
     $doc = report_build($tenant, report_filters_from_request());
     header('Content-Type: application/json; charset=utf-8');

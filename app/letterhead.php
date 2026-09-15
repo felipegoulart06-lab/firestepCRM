@@ -17,14 +17,14 @@ function letterhead_ensure_schema(): void
         if (is_pgsql()) {
             db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS letterhead_config jsonb NOT NULL DEFAULT '{}'::jsonb");
             db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS signature_config jsonb NOT NULL DEFAULT '{}'::jsonb");
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS clauses_config jsonb NOT NULL DEFAULT '{}'::jsonb");
             return;
         }
         $cols = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
-        if (!in_array('letterhead_config', $cols, true)) {
-            db()->exec("ALTER TABLE tenants ADD COLUMN letterhead_config TEXT DEFAULT '{}'");
-        }
-        if (!in_array('signature_config', $cols, true)) {
-            db()->exec("ALTER TABLE tenants ADD COLUMN signature_config TEXT DEFAULT '{}'");
+        foreach (['letterhead_config', 'signature_config', 'clauses_config'] as $col) {
+            if (!in_array($col, $cols, true)) {
+                db()->exec("ALTER TABLE tenants ADD COLUMN $col TEXT DEFAULT '{}'");
+            }
         }
     } catch (Throwable $e) {
         $done = false;
@@ -123,9 +123,16 @@ function contract_data_image(string $data): ?array
     if (!$im) {
         return null;
     }
-    ob_start();
-    imagejpeg($im, null, 86);
+    $w = imagesx($im);
+    $h = imagesy($im);
+    $canvas = imagecreatetruecolor($w, $h);
+    $white = imagecolorallocate($canvas, 255, 255, 255);
+    imagefilledrectangle($canvas, 0, 0, $w, $h, $white);
+    imagecopy($canvas, $im, 0, 0, 0, 0, $w, $h);
     imagedestroy($im);
+    ob_start();
+    imagejpeg($canvas, null, 92);
+    imagedestroy($canvas);
     $jpeg = (string)ob_get_clean();
     $info2 = @getimagesizefromstring($jpeg);
     if (!$jpeg || !$info2) {
@@ -217,12 +224,26 @@ function contract_read_image(string $field, ?string $existing, string $label): s
     return 'data:'.$mime.';base64,'.base64_encode($bin);
 }
 
-function letterhead_preview(array $tenant): ?array
+function letterhead_preview(array $tenant, bool $requireActive = true): ?array
 {
-    if (!letterhead_active($tenant)) {
+    $cfg = letterhead_config($tenant);
+    if ($requireActive && (empty($cfg['active']) || !letterhead_complete($cfg))) {
         return null;
     }
-    $cfg = letterhead_config($tenant);
+    if (!letterhead_complete($cfg)) {
+        $color = letterhead_hex((string)($cfg['color'] ?: '#0f2744'));
+        return [
+            'active' => true,
+            'color' => $color,
+            'ink' => letterhead_ink($color),
+            'name' => (string)($tenant['display_name'] ?: $tenant['business_name'] ?: ''),
+            'logo' => (string)($cfg['logo'] ?: ''),
+            'lines' => array_values(array_filter([
+                trim((string)($tenant['email'] ?? '').' · '.(string)($tenant['phone'] ?? '')),
+                trim((string)($tenant['address'] ?? '')),
+            ])),
+        ];
+    }
     $color = letterhead_hex((string)$cfg['color']);
     $kind = strtoupper((string)($cfg['document_kind'] ?: 'doc'));
     return [

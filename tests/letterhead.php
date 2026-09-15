@@ -70,5 +70,12 @@ signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => true]);
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(signature_preview($tenant)['image'] === $png, 'assinatura visível nos contratos quando ativa');
 
+expect(clauses_sanitize('<p>Olá <b>mundo</b><script>x</script></p>') === '<p>Olá <b>mundo</b></p>' || str_contains(clauses_sanitize('<p>Olá <b>mundo</b><script>x</script></p>'), '<b>mundo</b>'), 'sanitiza cláusulas e remove script');
+clauses_save('ten-lh', ['salao' => '<p>Corte com <b>hora marcada</b>.</p>']);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+q("UPDATE tenants SET segment='salao' WHERE id='ten-lh'");
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(str_contains(clauses_html_for($tenant), 'hora marcada'), 'cláusula da categoria do tenant');
+
 @unlink($tmp);
 exit($fail ? 1 : 0);

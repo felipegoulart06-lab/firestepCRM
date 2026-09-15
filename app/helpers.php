@@ -330,6 +330,7 @@ function migrate_database(PDO $pdo): void
             'sheets_config' => "TEXT DEFAULT '{}'",
             'letterhead_config' => "TEXT DEFAULT '{}'",
             'signature_config' => "TEXT DEFAULT '{}'",
+            'clauses_config' => "TEXT DEFAULT '{}'",
             'access_token_generated_at' => 'TEXT',
             'access_token_viewed_at' => 'TEXT',
         ],
@@ -899,3 +900,5 @@ function analytics_config(array $tenant): array
 }
 
 require_once __DIR__ . '/letterhead.php';
+require_once __DIR__ . '/clauses.php';
+require_once __DIR__ . '/contract.php';

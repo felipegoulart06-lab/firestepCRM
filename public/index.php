@@ -824,6 +824,17 @@ if (str_starts_with($path, '/app')) {
             flash($on ? 'Assinatura ativa: aparece no rodapé dos contratos.' : 'Assinatura desativada nos contratos.');
             redirect('/app/configuracoes?tab=avancado');
         }
+        if ($path === '/app/configuracoes/clausulas') {
+            letterhead_ensure_schema();
+            try {
+                clauses_save($tid, clauses_from_post());
+            } catch (Throwable $e) {
+                flash($e->getMessage());
+                redirect('/app/configuracoes?tab=avancado&edit=clausulas');
+            }
+            flash('Cláusulas básicas por categoria salvas. Elas entram no contrato dessa categoria.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
         if ($path === '/app/configuracoes/conta') {
             $pw = post('password');
             $confirm = post('password_confirm');

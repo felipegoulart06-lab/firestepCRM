@@ -17,6 +17,9 @@ $fxFolders = $fxFolders ?? [
     ['name' => 'Financeiro', 'files' => [
         ['kind' => 'financeiro', 'file' => 'Resumo do caixa.pdf', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
     ]],
+    ['name' => 'Contratos', 'files' => [
+        ['kind' => 'contratos', 'file' => 'Contrato de prestação.pdf', 'hint' => 'Cabeçalho, serviços, valores, cláusulas da categoria e rodapé.'],
+    ]],
 ];
 $fileCount = 0;
 foreach ($fxFolders as $folder) {
@@ -88,6 +91,7 @@ foreach ($fxFolders as $folder) {
           <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
           <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
           <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
+          <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
         </div>
       </div>
 

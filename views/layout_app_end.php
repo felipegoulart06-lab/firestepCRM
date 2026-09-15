@@ -1,6 +1,6 @@
   </main>
 </div>
 </div>
-<script src="/assets/app.js?v=lh3"></script>
+<script src="/assets/app.js?v=ct1"></script>
 </body>
 </html>
