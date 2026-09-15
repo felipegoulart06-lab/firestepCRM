@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FirestepCRM · Admin Master</title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=ct2">
+<link rel="stylesheet" href="/assets/app.css?v=r1">
 </head>
 <body>
 <div class="wrap">
@@ -31,8 +31,13 @@
     </form></div>
   </nav>
 </aside>
+<div class="sidebar-scrim" onclick="closeSide()" aria-hidden="true"></div>
 <div class="main">
-  <header class="card top"><b>Painel da plataforma</b><span style="margin-left:auto;color:#667085"><?= e($user['name']) ?></span></header>
+  <header class="card top">
+    <button class="btn btn-ghost hamb" type="button" onclick="toggleSide()"><?= icon('menu') ?></button>
+    <b>Painel da plataforma</b>
+    <span class="top-user" style="margin-left:auto;color:#667085"><?= e($user['name']) ?></span>
+  </header>
   <main class="content">
   <?php $f = flash(); $fk = flash_kind(); ?>
   <?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>" data-fs-log="<?= $fk==='error' ? 'error' : 'info' ?>"><?= e($f) ?></div><?php endif; ?>

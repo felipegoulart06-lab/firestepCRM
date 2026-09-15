@@ -2,11 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Configurar painel · FirestepCRM</title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="/assets/app.css?v=onboard8">
+<link rel="stylesheet" href="/assets/app.css?v=r1">
 </head>
 <body class="onboard-page">
 <main class="onboard-wrap">

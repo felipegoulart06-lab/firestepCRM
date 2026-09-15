@@ -7,13 +7,13 @@ $qsearch = trim($_GET['q'] ?? '');
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="csrf" content="<?= e(csrf()) ?>">
 <title>FirestepCRM · <?= e($tenant['display_name'] ?: $tenant['business_name']) ?></title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=cl1">
+<link rel="stylesheet" href="/assets/app.css?v=r1">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -57,6 +57,7 @@ $qsearch = trim($_GET['q'] ?? '');
     </form></div>
   </nav>
 </aside>
+<div class="sidebar-scrim" onclick="closeSide()" aria-hidden="true"></div>
 <div class="main">
   <header class="card top">
     <button class="btn btn-ghost hamb" type="button" onclick="toggleSide()"><?= icon('menu') ?></button>
@@ -66,7 +67,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <div style="flex:1"></div>
     <details>
       <summary class="btn btn-ghost" style="list-style:none"><?= icon('bell') ?> <?= $notifs ? '<span class="badge" style="background:#dbeafe;color:#1d4ed8">'.count($notifs).'</span>' : '' ?></summary>
-      <div class="card" style="position:absolute;right:24px;width:300px;padding:8px;z-index:20">
+      <div class="card notif-pop">
         <?php if (!$notifs): ?><div style="padding:10px;color:#667085;font-size:13px">Sem notificações novas.</div><?php endif; ?>
         <?php foreach ($notifs as $n): ?>
           <div style="padding:8px;border-bottom:1px solid #f1f5f9"><b><?= e($n['title']) ?></b><div style="font-size:12px;color:#667085"><?= e($n['body']) ?></div></div>

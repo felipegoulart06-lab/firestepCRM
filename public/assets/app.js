@@ -25,7 +25,23 @@ document.addEventListener('DOMContentLoaded', function(){
   fsLog('log', 'boot', 'JS carregado', {path: location.pathname, search: location.search});
 });
 
-function toggleSide(){ document.querySelector('.sidebar').classList.toggle('open'); }
+function closeSide(){
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.body.classList.remove('nav-open');
+}
+function toggleSide(){
+  const side = document.querySelector('.sidebar');
+  if (!side) return;
+  side.classList.toggle('open');
+  document.body.classList.toggle('nav-open', side.classList.contains('open'));
+}
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') closeSide();
+});
+document.addEventListener('click', function(e){
+  if (!window.matchMedia('(max-width:1100px)').matches) return;
+  if (e.target.closest('.sidebar .nav a')) closeSide();
+});
 function closeModal(){
   const url = new URL(location.href);
   ['ver','converter','nova','new','edit','block','convert','delblock','client_id','from'].forEach(k => url.searchParams.delete(k));
