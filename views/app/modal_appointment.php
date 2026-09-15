@@ -146,8 +146,14 @@ $showEditForm = $edit && !$viewOnly;
           </div>
         </div>
         <?php endif; ?>
-        <div><label class="label">Serviço</label>
-          <select class="select" name="service_id" required>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <label class="label" style="margin:0">Serviço</label>
+            <?php if (!is_user_agent($user ?? null)): ?>
+              <a class="muted" href="/app/servicos" style="text-decoration:underline;text-underline-offset:2px">editar serviços</a>
+            <?php endif; ?>
+          </div>
+          <select class="select" name="service_id" required style="margin-top:6px">
             <option value="">Selecione</option>
             <?php foreach ($services as $s): ?>
               <option value="<?= e($s['id']) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min</option>
