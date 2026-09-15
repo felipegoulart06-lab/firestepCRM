@@ -300,7 +300,10 @@ function sql_lit_bool(bool $value): string
 function db_bool(mixed $value): mixed
 {
     $on = !empty($value) && $value !== '0' && $value !== 'f' && $value !== false;
-    return is_pgsql() ? $on : ($on ? 1 : 0);
+    if (is_pgsql()) {
+        return $on ? 'true' : 'false';
+    }
+    return $on ? 1 : 0;
 }
 
 function normalize_row(?array $row): ?array

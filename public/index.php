@@ -351,7 +351,7 @@ if (str_starts_with($path, '/master')) {
             $id = (string)post('id', '');
             $on = post('active') === '1';
             if ($id !== '') {
-                q('UPDATE segments SET active=? WHERE id=?', [db_bool($on), $id]);
+                q('UPDATE segments SET active='.sql_lit_bool($on).' WHERE id=?', [$id]);
                 flash($on ? 'Segmento ativado.' : 'Segmento ocultado.');
             }
             redirect('/master/segmentos');
