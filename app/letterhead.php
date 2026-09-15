@@ -324,6 +324,88 @@ function letterhead_save(string $tenantId, array $cfg): void
     ]);
 }
 
+function platform_letterhead_row(): mixed
+{
+    try {
+        return one("SELECT value FROM platform_settings WHERE key='letterhead'");
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function platform_letterhead_config(): array
+{
+    $row = platform_letterhead_row();
+    $raw = is_array($row) ? ($row['value'] ?? '{}') : '{}';
+    $cfg = is_array($raw) ? $raw : json_arr($raw);
+    return ($cfg ?: []) + [
+        'trade_name' => '',
+        'email' => '',
+        'phone' => '',
+        'document_kind' => '',
+        'document' => '',
+        'cep' => '',
+        'address' => '',
+        'color' => '#0f2744',
+        'logo' => '',
+        'saved' => false,
+        'active' => false,
+    ];
+}
+
+function platform_letterhead_ready(?array $cfg = null): bool
+{
+    $cfg = $cfg ?? platform_letterhead_config();
+    return !empty($cfg['saved']) && trim((string)($cfg['trade_name'] ?? '')) !== '';
+}
+
+function platform_letterhead_active(?array $cfg = null): bool
+{
+    $cfg = $cfg ?? platform_letterhead_config();
+    return !empty($cfg['active']) && platform_letterhead_ready($cfg);
+}
+
+function platform_letterhead_save(array $cfg): void
+{
+    $encoded = json_encode($cfg, JSON_UNESCAPED_UNICODE);
+    $now = now();
+    if (is_pgsql()) {
+        q("INSERT INTO platform_settings(key,value,updated_at) VALUES('letterhead', CAST(? AS jsonb), ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at", [$encoded, $now]);
+        return;
+    }
+    q("INSERT OR REPLACE INTO platform_settings(key,value,updated_at) VALUES('letterhead',?,?)", [$encoded, $now]);
+}
+
+function letterhead_preview_cfg(array $cfg): array
+{
+    $color = letterhead_hex((string)($cfg['color'] ?? '#0f2744'));
+    $kind = strtoupper((string)($cfg['document_kind'] ?: 'doc'));
+    return [
+        'active' => true,
+        'color' => $color,
+        'ink' => letterhead_ink($color),
+        'name' => (string)($cfg['trade_name'] ?? ''),
+        'logo' => (string)($cfg['logo'] ?? ''),
+        'lines' => array_values(array_filter([
+            trim((string)($cfg['email'] ?? '').' · '.(string)($cfg['phone'] ?? ''), ' ·'),
+            trim($kind.' '.(string)($cfg['document'] ?? '')),
+            trim(((string)($cfg['cep'] ?? '') !== '' ? 'CEP '.$cfg['cep'].' · ' : '').(string)($cfg['address'] ?? '')),
+        ])),
+    ];
+}
+
+function letterhead_cfg_for_pdf(?array $tenant): ?array
+{
+    if ($tenant && letterhead_active($tenant)) {
+        return letterhead_config($tenant);
+    }
+    $plat = platform_letterhead_config();
+    if (platform_letterhead_active($plat)) {
+        return $plat;
+    }
+    return null;
+}
+
 function letterhead_pdf_rgb(string $hex): array
 {
     $hex = ltrim(letterhead_hex($hex), '#');

@@ -304,6 +304,29 @@ if (str_starts_with($path, '/master')) {
             flash('Credenciais técnicas do Google salvas. O login dos profissionais fica no painel de cada cliente.');
             redirect('/master/configuracoes/tecnico');
         }
+        if ($path === '/master/configuracoes/folha') {
+            try {
+                $cfg = letterhead_from_post(platform_letterhead_config());
+            } catch (Throwable $e) {
+                flash($e->getMessage());
+                redirect('/master/configuracoes?edit=folha');
+            }
+            platform_letterhead_save($cfg);
+            flash('Cabeçalho da plataforma salvo. Ative para aparecer nos PDFs.');
+            redirect('/master/configuracoes');
+        }
+        if ($path === '/master/configuracoes/folha/ativar') {
+            $cfg = platform_letterhead_config();
+            $on = post('active') === '1';
+            if ($on && !platform_letterhead_ready($cfg)) {
+                flash('Salve o cabeçalho com nome, dados e logo antes de ativar.');
+                redirect('/master/configuracoes?edit=folha');
+            }
+            $cfg['active'] = $on;
+            platform_letterhead_save($cfg);
+            flash($on ? 'Cabeçalho ativo nos PDFs da plataforma.' : 'Cabeçalho desativado nos PDFs.');
+            redirect('/master/configuracoes');
+        }
         if ($path === '/master/planos/salvar') {
             redirect('/master');
         }

@@ -89,5 +89,26 @@ $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(clauses_html_for($tenant, 'c-lh') && str_contains(clauses_html_for($tenant, 'c-lh'), 'pacote'), 'cláusula da lista de agendamentos');
 expect(count(clauses_lists($tenant)) === 1, 'lista aparece para o tenant');
 
+require_once dirname(__DIR__) . '/app/pdf.php';
+$dossie = tenant_dossier_pdf($tenant, ['username' => 'admin', 'email' => 'lh@ex.com'], null);
+expect(str_contains($dossie, 'Tj'), 'dossie desenha texto');
+expect(str_contains($dossie, 'Negocio') || str_contains($dossie, 'Empresa LH'), 'dossie traz dados do cliente');
+platform_letterhead_save([
+    'trade_name' => 'FirestepCRM',
+    'email' => 'nathan.k@example.net',
+    'phone' => '11999999999',
+    'document_kind' => 'cnpj',
+    'document' => '12.345.678/0001-90',
+    'cep' => '01310-100',
+    'address' => 'Av. Paulista, 1000',
+    'color' => '#0f2744',
+    'logo' => '',
+    'saved' => true,
+    'active' => true,
+]);
+expect(platform_letterhead_active(), 'cabeçalho da plataforma ativo');
+$dossie2 = tenant_dossier_pdf($tenant, ['username' => 'admin', 'email' => 'lh@ex.com'], null);
+expect(str_contains($dossie2, 'FirestepCRM'), 'dossie usa nome do CRM');
+
 @unlink($tmp);
 exit($fail ? 1 : 0);
