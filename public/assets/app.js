@@ -207,7 +207,18 @@ function bindReportsExplorer(){
     document.getElementById('fx-download').href = '/app/relatorios/arquivo.pdf?' + qs.toString();
     const wrap = document.getElementById('fx-a4-wrap');
     const esc = (s)=> String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    let html = '<article class="fx-a4"><div class="fx-a4-brand">FirestepCRM</div><h1>'+esc(doc.title)+'</h1>';
+    const lh = doc.letterhead;
+    let html = '<article class="fx-a4'+(lh && lh.active ? ' has-lh' : '')+'">';
+    if (lh && lh.active) {
+      html += '<header class="lh-banner" style="background:'+esc(lh.color)+';color:'+esc(lh.ink)+'">';
+      if (lh.logo) html += '<img src="'+String(lh.logo).replace(/"/g,'')+'" alt="">';
+      html += '<div><strong>'+esc(lh.name)+'</strong>';
+      (lh.lines || []).forEach(line=>{ html += '<span>'+esc(line)+'</span>'; });
+      html += '</div></header>';
+    } else {
+      html += '<div class="fx-a4-brand">FirestepCRM</div>';
+    }
+    html += '<h1>'+esc(doc.title)+'</h1>';
     html += '<p class="fx-a4-sub">'+esc(doc.company)+' · Período '+esc(doc.period)+' · Gerado em '+esc(doc.generated)+'</p>';
     (doc.sections || []).forEach(sec=>{
       html += '<h2>'+esc(sec.title)+'</h2>';
@@ -230,3 +241,23 @@ function bindReportsExplorer(){
   });
 }
 document.addEventListener('DOMContentLoaded', bindReportsExplorer);
+
+function maskCep(v){
+  const d = String(v||'').replace(/\D/g,'').slice(0,8);
+  return d.length > 5 ? d.slice(0,5)+'-'+d.slice(5) : d;
+}
+function bindLetterhead(){
+  const pal = document.getElementById('lh-palette');
+  const color = document.getElementById('lh-color');
+  pal?.querySelectorAll('.lh-swatch').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      pal.querySelectorAll('.lh-swatch').forEach(b=> b.classList.remove('is-on'));
+      btn.classList.add('is-on');
+      if (color) color.value = btn.dataset.color;
+    });
+  });
+  document.querySelectorAll('.js-cep').forEach(el=>{
+    el.addEventListener('input', ()=>{ el.value = maskCep(el.value); });
+  });
+}
+document.addEventListener('DOMContentLoaded', bindLetterhead);

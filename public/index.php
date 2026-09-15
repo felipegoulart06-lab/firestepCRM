@@ -768,6 +768,34 @@ if (str_starts_with($path, '/app')) {
             }
             redirect('/app/configuracoes?tab=avancado');
         }
+        if ($path === '/app/configuracoes/folha') {
+            letterhead_ensure_schema();
+            $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]);
+            $current = letterhead_config($fresh ?: $tenant);
+            try {
+                $cfg = letterhead_from_post($current);
+            } catch (Throwable $e) {
+                flash($e->getMessage());
+                redirect('/app/configuracoes?tab=avancado&edit=folha');
+            }
+            letterhead_save($tid, $cfg);
+            flash('Cabeçalho de folha salvo. Agora você pode ativá-lo nos contratos.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
+        if ($path === '/app/configuracoes/folha/ativar') {
+            letterhead_ensure_schema();
+            $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]);
+            $cfg = letterhead_config($fresh ?: $tenant);
+            $on = post('active') === '1';
+            if ($on && !letterhead_complete($cfg)) {
+                flash('Salve o cabeçalho completo antes de ativar.');
+                redirect('/app/configuracoes?tab=avancado&edit=folha');
+            }
+            $cfg['active'] = $on;
+            letterhead_save($tid, $cfg);
+            flash($on ? 'Cabeçalho ativo: todos os contratos passam a usá-lo.' : 'Cabeçalho desativado nos contratos.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
         if ($path === '/app/configuracoes/conta') {
             $pw = post('password');
             $confirm = post('password_confirm');
@@ -999,7 +1027,7 @@ if (str_starts_with($path, '/app')) {
         }
         $lines[] = str_repeat('-',80);
         $lines[] = 'Total de registros: '.count($rows);
-        download_pdf('Resumo de atendimentos - '.$client['name'], $lines, 'resumo-'.preg_replace('/[^a-z0-9]+/i','-',strtolower($client['name'])).'.pdf');
+        download_pdf('Resumo de atendimentos - '.$client['name'], $lines, 'resumo-'.preg_replace('/[^a-z0-9]+/i','-',strtolower($client['name'])).'.pdf', $tenant);
     }
 
     if ($path === '/app') {
@@ -1177,6 +1205,8 @@ if (str_starts_with($path, '/app')) {
         exit;
     }
     if ($path === '/app/configuracoes') {
+        letterhead_ensure_schema();
+        $tenant = one('SELECT * FROM tenants WHERE id=?', [$tenant['id']]) ?: $tenant;
         $analyticsHook = !empty($tenant['webhook_access'])
             ? one("SELECT token FROM webhooks WHERE tenant_id=? AND direction='INBOUND'", [$tenant['id']])
             : null;

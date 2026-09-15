@@ -188,6 +188,19 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .settings-details{margin-top:8px}
 .settings-details summary{cursor:pointer;font-size:13px;font-weight:600;color:#344054}
 .color-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:6px;border:1px solid rgba(16,24,40,.12)}
+.lh-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.lh-toggle{margin:0}
+.lh-logo-preview{width:72px;height:72px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#f8fafc;margin:0 0 8px}
+.lh-logo-preview img{width:100%;height:100%;object-fit:contain}
+.lh-palette{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lh-swatch{width:28px;height:28px;border-radius:6px;border:2px solid #fff;box-shadow:0 0 0 1px #d0d5dd;padding:0;cursor:pointer}
+.lh-swatch.is-on{box-shadow:0 0 0 2px var(--text)}
+.lh-color{width:48px;height:36px;padding:2px;max-width:48px}
+.fx-a4.has-lh{padding-top:0}
+.lh-banner{display:flex;gap:14px;align-items:center;margin:0 -16mm 18px;padding:16px 16mm 18px;min-height:84px}
+.lh-banner img{width:52px;height:52px;object-fit:contain;background:rgba(255,255,255,.12);border-radius:8px;flex:0 0 52px}
+.lh-banner strong{display:block;font-size:16px;letter-spacing:-.02em}
+.lh-banner span{display:block;font-size:11px;opacity:.88;line-height:1.45}
 .hours-head,.hours-row{display:grid;grid-template-columns:110px 90px 1fr 1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:6px}
 .hours-head{color:#667085;font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .flash-error{background:#fef3f2;color:#b42318;border-color:#fecdca}

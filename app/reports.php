@@ -354,6 +354,7 @@ function report_build(array $tenant, array $filters): array
         'period' => date('d/m/Y', strtotime($filters['from'])).' a '.date('d/m/Y', strtotime($filters['to'])),
         'generated' => date('d/m/Y H:i'),
         'sections' => $sections,
+        'letterhead' => letterhead_preview($tenant),
     ];
 }
 
@@ -381,12 +382,22 @@ function report_to_lines(array $doc): array
 
 function report_send_pdf(array $tenant): never
 {
+    letterhead_ensure_schema();
+    $row = one('SELECT letterhead_config FROM tenants WHERE id=?', [$tenant['id']]);
+    if ($row) {
+        $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
+    }
     $doc = report_build($tenant, report_filters_from_request());
-    download_pdf($doc['title'], report_to_lines($doc), $doc['filename']);
+    download_pdf($doc['title'], report_to_lines($doc), $doc['filename'], $tenant);
 }
 
 function report_send_preview(array $tenant): never
 {
+    letterhead_ensure_schema();
+    $row = one('SELECT letterhead_config FROM tenants WHERE id=?', [$tenant['id']]);
+    if ($row) {
+        $tenant['letterhead_config'] = $row['letterhead_config'] ?? '{}';
+    }
     $doc = report_build($tenant, report_filters_from_request());
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($doc, JSON_UNESCAPED_UNICODE);

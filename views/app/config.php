@@ -7,6 +7,9 @@ $tab = $_GET['tab'] ?? 'resumo';
 $allowed = ['resumo','negocio','agenda','avancado','integracoes','conta'];
 if (!in_array($tab, $allowed, true)) $tab = 'resumo';
 $edit = ($_GET['edit'] ?? '') === '1';
+$editFolha = ($_GET['edit'] ?? '') === 'folha';
+$lh = letterhead_config($tenant);
+$lhReady = letterhead_complete($lh);
 $sheets = sheets_config($tenant);
 $googleReady = google_oauth_ready();
 $connected = sheets_connected($sheets);
@@ -231,6 +234,72 @@ $hourLine = static function (array $h) {
       </div>
     </form>
   </details>
+</div>
+
+<div class="card settings-panel lh-panel" style="margin-top:14px">
+  <div class="settings-panel-head">
+    <div>
+      <h2>Cabeçalho de folha</h2>
+      <p>Dados usados só em contratos e PDFs, quando o cabeçalho estiver ativo. Não aparece no restante do CRM.</p>
+    </div>
+    <?php if (!$editFolha): ?>
+      <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado&amp;edit=folha">Editar</a>
+    <?php endif; ?>
+  </div>
+  <?php if (!$editFolha): ?>
+    <p class="settings-hint" style="margin-top:0">As informações deste bloco ficam ocultas. Abra <b>Editar</b> para alterar.</p>
+    <?php if ($lhReady): ?>
+      <div class="lh-status">
+        <?php if (!empty($lh['active'])): ?>
+          <span class="badge" style="background:#dcfce7;color:#166534">Ativo nos contratos</span>
+        <?php else: ?>
+          <span class="badge" style="background:#fef9c3;color:#854d0e">Salvo · desativado</span>
+        <?php endif; ?>
+        <form method="post" action="/app/configuracoes/folha/ativar" class="lh-toggle">
+          <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+          <input type="hidden" name="active" value="<?= !empty($lh['active']) ? '0' : '1' ?>">
+          <button class="btn <?= !empty($lh['active']) ? 'btn-danger' : 'btn-primary' ?>">
+            <?= !empty($lh['active']) ? 'Desativar cabeçalho' : 'Ativar nos contratos' ?>
+          </button>
+        </form>
+      </div>
+    <?php endif; ?>
+  <?php else: ?>
+    <form method="post" action="/app/configuracoes/folha" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+      <label class="label">Nome fantasia</label>
+      <input class="input" name="trade_name" required maxlength="120" value="<?= e((string)$lh['trade_name']) ?>">
+      <div class="grid g2">
+        <div><label class="label">E-mail</label><input class="input" type="email" name="email" required value="<?= e((string)$lh['email']) ?>"></div>
+        <div><label class="label">Telefone</label><input class="input" name="phone" required inputmode="tel" value="<?= e((string)$lh['phone']) ?>"></div>
+        <?php br_document_fields('document', $lh['document'] ?: null, true, 'document_kind', ['document_kind' => $lh['document_kind'] ?? '']); ?>
+        <div>
+          <label class="label">CEP</label>
+          <input class="input js-cep" name="cep" required inputmode="numeric" maxlength="9" placeholder="00000-000" value="<?= e((string)$lh['cep']) ?>">
+        </div>
+      </div>
+      <label class="label">Moradia / endereço completo</label>
+      <input class="input" name="address" required maxlength="220" value="<?= e((string)$lh['address']) ?>">
+      <label class="label" style="margin-top:12px">Logo</label>
+      <?php if (!empty($lh['logo'])): ?>
+        <div class="lh-logo-preview"><img src="<?= e($lh['logo']) ?>" alt=""></div>
+        <label class="check-row"><input type="checkbox" name="remove_logo" value="1"> Remover logo atual</label>
+      <?php endif; ?>
+      <input class="input" type="file" name="logo" accept="image/jpeg,image/png,image/webp">
+      <p class="settings-hint">JPEG, PNG ou WEBP · até 200 KB. A cor abaixo vale só para este cabeçalho, não altera o CRM.</p>
+      <label class="label">Cor do cabeçalho</label>
+      <div class="lh-palette" id="lh-palette">
+        <?php foreach (LETTERHEAD_PALETTE as $c): ?>
+          <button type="button" class="lh-swatch<?= strtoupper($lh['color'])===strtoupper($c)?' is-on':'' ?>" data-color="<?= e($c) ?>" style="background:<?= e($c) ?>" aria-label="<?= e($c) ?>"></button>
+        <?php endforeach; ?>
+        <input class="input lh-color" type="color" name="color" id="lh-color" value="<?= e(letterhead_hex((string)$lh['color'])) ?>">
+      </div>
+      <div class="settings-actions">
+        <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado">Cancelar</a>
+        <button class="btn btn-primary">Salvar cabeçalho</button>
+      </div>
+    </form>
+  <?php endif; ?>
 </div>
 <?php endif; ?>
 
