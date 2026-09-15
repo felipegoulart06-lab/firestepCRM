@@ -23,6 +23,8 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font: 14px/1.5 Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  max-width: 100%;
+  overflow-x: clip;
 }
 img, svg { display: block }
 a { color: inherit; text-decoration: none }
@@ -274,9 +276,13 @@ footer {
 .foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap }
 
 .mobile-nav {
-  display: none; border-top: 1px solid var(--line); padding: 8px 0 14px;
+  display: none;
+  border-top: 1px solid var(--line);
+  padding: 8px 0 14px;
 }
-.mobile-nav a { display: block; padding: 10px 0; color: var(--text); font-weight: 500 }
+.mobile-nav[hidden] { display: none !important; }
+.site-head.is-open .mobile-nav:not([hidden]) { display: block !important; }
+.mobile-nav a { display: block; padding: 12px 0; color: var(--text); font-weight: 500 }
 
 .logo img { width: 28px; height: 28px; border-radius: 6px }
 .map {
@@ -351,23 +357,67 @@ footer {
 .onb { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px }
 .onb .n { font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: .08em }
 
-@media (max-width: 900px) {
-  .nav-main, .head-cta { display: none }
-  .hamb { display: inline-flex }
-  .site-head.is-open .mobile-nav { display: block }
-  .hero, .tour, .fin-grid, .cta-box, .int-grid, .safe, .steps, .trust, .prob, .map, .kanban, .fx, .onb {
+@media (max-width: 1024px) {
+  .nav-main, .head-cta { display: none !important; }
+  .hamb {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .wrap { width: calc(100% - 24px); }
+  .hero, .tour, .fin-grid, .cta-box, .int-grid, .steps, .trust, .prob, .fx {
     grid-template-columns: 1fr;
   }
-  .map { grid-template-columns: 1fr 1fr }
-  .safe { grid-template-columns: 1fr 1fr }
-  .kanban { grid-template-columns: 1fr 1fr }
-  .onb { grid-template-columns: 1fr 1fr }
-  .mock { grid-template-columns: 1fr; min-height: 0 }
-  .mock-side { display: none }
-  .hero-copy { padding: 32px 24px; min-height: 0 }
-  .hero-copy h1 { font-size: 28px }
-  .btn-wide-m { width: 100% }
-  section { padding: 40px 0 }
+  .map, .safe, .kanban, .onb { grid-template-columns: 1fr 1fr; }
+  .mock { grid-template-columns: 1fr; min-height: 0; }
+  .mock-side { display: none; }
+  .hero { min-height: 0; margin: 16px auto 22px; }
+  .hero-copy { padding: 28px 20px; min-height: 0; }
+  .hero-copy h1 { font-size: 28px; max-width: none; }
+  .hero-actions { flex-direction: column; }
+  .btn-wide-m, .hero-actions .btn { width: 100%; }
+  .hero-panel { padding: 14px; overflow: hidden; }
+  .mock-main { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cal { min-width: 480px; }
+  .tour-nav {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+  }
+  .tour-nav button { flex: 0 0 auto; width: auto; white-space: nowrap; }
+  .fx-side { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .fx-side button { width: auto; white-space: nowrap; }
+  section { padding: 36px 0; }
+}
+
+@media (max-width: 640px) {
+  html, body { overflow-x: clip; max-width: 100%; }
+  .wrap { width: calc(100% - 20px); }
+  .map, .safe, .kanban, .onb, .fin-cards { grid-template-columns: 1fr; }
+  .hero { margin: 10px auto 16px; border-radius: 8px; }
+  .hero-copy { padding: 22px 16px; }
+  .hero-copy h1 { font-size: 24px; line-height: 1.25; }
+  .hero-copy p { font-size: 14px; max-width: none; }
+  .hero-panel { padding: 10px; }
+  .sec-head h2, .cta-box h2 { font-size: 22px; }
+  .sec-head { margin-bottom: 18px; }
+  .cta-box { padding: 20px 16px; gap: 18px; }
+  .cta-form input, .chip { font-size: 16px; }
+  .slot { grid-template-columns: 48px 1fr; gap: 8px; }
+  .slot .dur { display: none; }
+  .faq button {
+    white-space: normal;
+    align-items: flex-start;
+    min-height: 48px;
+    text-align: left;
+  }
+  .foot { flex-direction: column; gap: 8px; }
+  section { padding: 28px 0; }
+  .btn { white-space: normal; }
 }
 
 @media (prefers-reduced-motion: reduce) {
