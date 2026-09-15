@@ -265,6 +265,18 @@ function ingest_webhook(string $token, array $body, string $ip): array
     $tenant = one('SELECT * FROM tenants WHERE id=?', [$hook['tenant_id']]);
     if (!$tenant || $tenant['status'] !== 'ACTIVE') return [403, ['error'=>'Conta indisponível.']];
     if (empty($tenant['webhook_access'])) return [403, ['error'=>'Integração aguardando autorização.']];
+    $hosts = tenant_webhook_hosts($tenant);
+    if (!$hosts) {
+        return [403, ['error'=>'Cadastre o domínio do site nas Integrações antes de usar o webhook.']];
+    }
+    $from = request_webhook_origin();
+    if ($from === '' || !webhook_origin_matches($tenant, $from)) {
+        q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,http_status,status,response,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
+            uid(), $tenant['id'], $hook['id'], 'Origem bloqueada', json_encode(['origin'=>$from], JSON_UNESCAPED_UNICODE),
+            403, 'error', 'Domínio não autorizado.', $from !== '' ? webhook_origin_host($from) : 'sem-origem', now(),
+        ]);
+        return [403, ['error'=>'Este webhook só aceita o domínio cadastrado do site.']];
+    }
     unset($body['tenant_id'], $body['company_id'], $body['role'], $body['is_admin']);
     $type = strtolower((string)($body['type'] ?? 'request'));
     if ($type === 'analytics') {

@@ -92,20 +92,33 @@ function collect_hours(): string
     return json_encode($hours);
 }
 
-/* -------- webhook público -------- */
+/* -------- webhook público (só o domínio cadastrado do tenant) -------- */
 if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Headers: Content-Type');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Max-Age: 600');
+    $hookRow = one('SELECT * FROM webhooks WHERE token=? AND direction=?', [$m[1], 'INBOUND']);
+    $hookTenant = $hookRow ? one('SELECT * FROM tenants WHERE id=?', [$hookRow['tenant_id']]) : null;
+    $reqOrigin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    $corsOk = $hookTenant && $reqOrigin !== '' && webhook_origin_matches($hookTenant, $reqOrigin);
+    if ($corsOk) {
+        header('Access-Control-Allow-Origin: '.$reqOrigin);
+        header('Vary: Origin');
+        header('Access-Control-Allow-Headers: Content-Type');
+        header('Access-Control-Allow-Methods: POST, OPTIONS');
+        header('Access-Control-Max-Age: 600');
+    }
     if ($method === 'OPTIONS') {
-        http_response_code(204);
+        http_response_code($corsOk ? 204 : 403);
         exit;
     }
     if ($method !== 'POST') {
         http_response_code(405);
         header('Content-Type: application/json');
         echo json_encode(['error'=>'Use POST']);
+        exit;
+    }
+    if (!$corsOk) {
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error'=>'Este webhook só aceita o domínio cadastrado do site.']);
         exit;
     }
     if (!rate_ok('wh:'.$m[1].':'.$ip, 40, 300)) {
@@ -816,6 +829,22 @@ if (str_starts_with($path, '/app')) {
             if (post('f')) $back .= '?f='.urlencode((string)post('f'));
             redirect($back);
         }
+        if ($path === '/app/webhooks/dominio') {
+            $domain = trim((string)post('site_domain', ''));
+            $host = normalize_site_host($domain);
+            if ($host === '') {
+                flash('Informe o domínio do site que vai enviar as solicitações (ex.: meusite.com.br).', 'error');
+                redirect('/app/webhooks');
+            }
+            $cfg = analytics_config($tenant);
+            $cfg['site_domain'] = $host;
+            q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
+                json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
+            ]);
+            audit($tid, $user['id'], 'webhook.domain_saved', 'tenant', $tid);
+            flash('Domínio salvo. Só esse site consegue chamar o webhook.');
+            redirect('/app/webhooks');
+        }
         if ($path === '/app/webhooks/rotacionar') {
             q('UPDATE webhooks SET token=?, secret=? WHERE tenant_id=? AND direction=?', [bin2hex(random_bytes(16)), bin2hex(random_bytes(24)), $tid, 'INBOUND']);
             flash('Novo token gerado.');
@@ -986,12 +1015,12 @@ if (str_starts_with($path, '/app')) {
                 flash('O ID do Google Tag Manager deve seguir o formato GTM-XXXXXXX.');
                 redirect('/app/configuracoes?tab=integracoes');
             }
-            $config = [
-                'gtm_id' => $gtm,
-                'site_domain' => post('site_domain'),
-            ];
+            $cfg = analytics_config($tenant);
+            $cfg['gtm_id'] = $gtm;
+            $domain = trim((string)post('site_domain', ''));
+            $cfg['site_domain'] = $domain === '' ? '' : (normalize_site_host($domain) ?: $domain);
             q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
-                json_encode($config, JSON_UNESCAPED_UNICODE), now(), $tid,
+                json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
             ]);
             flash('Integração analítica atualizada.');
             redirect('/app/configuracoes?tab=integracoes');
@@ -1369,11 +1398,18 @@ if (str_starts_with($path, '/app')) {
             exit;
         }
         $in = one('SELECT * FROM webhooks WHERE tenant_id=? AND direction=?', [$tenant['id'],'INBOUND']);
+        $hosts = tenant_webhook_hosts($tenant);
+        $ready = $hosts !== [];
+        $reveal = $ready && (($_GET['show'] ?? '') === '1');
         layout_start('app', compact('user','tenant','path'));
         view('app/webhooks', [
             'inbound'=>$in,
             'outbound'=>one('SELECT * FROM webhooks WHERE tenant_id=? AND direction=?', [$tenant['id'],'OUTBOUND']),
-            'url'=>$in ? app_url().'/api/webhooks/'.$in['token'] : '',
+            'url'=>($reveal && $in) ? app_url().'/api/webhooks/'.$in['token'] : '',
+            'hosts'=>$hosts,
+            'ready'=>$ready,
+            'reveal'=>$reveal,
+            'siteDomain'=>(string)(analytics_config($tenant)['site_domain'] ?? ''),
             'logs'=>all('SELECT * FROM webhook_logs WHERE tenant_id=? ORDER BY created_at DESC LIMIT 30', [$tenant['id']]),
         ]);
         layout_end('app');

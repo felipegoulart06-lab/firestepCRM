@@ -454,11 +454,11 @@ $hourLine = static function (array $h) {
           <input class="input" name="gtm_id" value="<?= e($analytics['gtm_id'] ?? '') ?>" placeholder="GTM-XXXXXXX">
         </div>
         <div>
-          <label class="label">Domínio principal do site</label>
+          <label class="label">Domínio do site (obrigatório para o webhook)</label>
           <input class="input" name="site_domain" value="<?= e($analytics['site_domain'] ?? '') ?>" placeholder="www.seusite.com.br">
         </div>
       </div>
-      <p class="settings-hint">Deixe o ID em branco para desligar a integração. O formato esperado é GTM-XXXXXXX.</p>
+      <p class="settings-hint">O domínio também trava o webhook: só o site nesse endereço envia solicitações. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
       <div class="settings-actions">
         <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
         <button class="btn btn-primary">Salvar integração</button>

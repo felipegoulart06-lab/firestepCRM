@@ -1005,6 +1005,66 @@ function analytics_config(array $tenant): array
     return json_arr($tenant['analytics_config'] ?? '{}');
 }
 
+function normalize_site_host(string $value): string
+{
+    $value = strtolower(trim($value));
+    if ($value === '' || $value === '*') {
+        return '';
+    }
+    if (!str_contains($value, '://')) {
+        $value = 'https://'.$value;
+    }
+    $host = strtolower((string)(parse_url($value, PHP_URL_HOST) ?? ''));
+    if ($host === '') {
+        return '';
+    }
+    if (str_starts_with($host, 'www.')) {
+        $host = substr($host, 4);
+    }
+    return $host;
+}
+
+function tenant_webhook_hosts(array $tenant): array
+{
+    $raw = (string)(analytics_config($tenant)['site_domain'] ?? '');
+    $hosts = [];
+    foreach (preg_split('/[\s,;]+/', $raw) ?: [] as $part) {
+        $host = normalize_site_host($part);
+        if ($host !== '' && $host !== 'localhost' && !str_ends_with($host, '.local')) {
+            $hosts[] = $host;
+        }
+    }
+    return array_values(array_unique($hosts));
+}
+
+function webhook_origin_host(?string $origin): string
+{
+    return normalize_site_host((string)$origin);
+}
+
+function webhook_origin_matches(array $tenant, string $originOrUrl): bool
+{
+    $host = webhook_origin_host($originOrUrl);
+    if ($host === '') {
+        return false;
+    }
+    foreach (tenant_webhook_hosts($tenant) as $ok) {
+        if ($host === $ok) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function request_webhook_origin(): string
+{
+    $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
+    if ($origin !== '') {
+        return $origin;
+    }
+    return trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
+}
+
 require_once __DIR__ . '/letterhead.php';
 require_once __DIR__ . '/clauses.php';
 require_once __DIR__ . '/contract.php';
