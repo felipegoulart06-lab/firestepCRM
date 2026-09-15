@@ -294,6 +294,7 @@ function bindClausesEditor(){
   const empty = document.getElementById('cl-empty');
   const pick = document.getElementById('cl-pick');
   const work = document.getElementById('cl-work');
+  const idle = document.getElementById('cl-idle');
   const nameEl = document.getElementById('cl-name');
   const label = document.getElementById('cl-current');
   let current = '';
@@ -330,12 +331,19 @@ function bindClausesEditor(){
     });
     if (empty) empty.hidden = lists.length > 0;
   };
+  const showIdle = ()=>{
+    if (idle) idle.hidden = false;
+    if (work) work.hidden = true;
+    if (pick) pick.hidden = true;
+  };
   const showPick = (ids)=>{
+    if (idle) idle.hidden = true;
     if (work) work.hidden = true;
     if (pick) pick.hidden = false;
     boxes().forEach(i=> { i.checked = (ids || []).includes(i.value); });
   };
   const showWork = ()=>{
+    if (idle) idle.hidden = true;
     if (pick) pick.hidden = true;
     if (work) work.hidden = false;
   };
@@ -354,8 +362,20 @@ function bindClausesEditor(){
     showWork();
     renderList();
   };
+  const createContract = (ids)=>{
+    const names = selectedLabels();
+    const auto = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +'+(names.length-2) : '');
+    const id = 'c'+Math.random().toString(36).slice(2, 10);
+    lists.push({ id, name: auto || 'Novo contrato', appointment_ids: ids || [], html: '' });
+    drafting = false;
+    load(id);
+  };
   document.getElementById('cl-new')?.addEventListener('click', ()=>{
     saveCurrent();
+    if (!boxes().length) {
+      createContract([]);
+      return;
+    }
     drafting = true;
     current = '';
     renderList();
@@ -368,23 +388,20 @@ function bindClausesEditor(){
   });
   document.getElementById('cl-pick-ok')?.addEventListener('click', ()=>{
     const ids = selectedIds();
-    if (!ids.length) {
+    if (!ids.length && boxes().length) {
       alert('Selecione pelo menos um agendamento.');
       return;
     }
-    const names = selectedLabels();
-    const auto = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +'+(names.length-2) : '');
     if (drafting || !current) {
-      const id = 'c'+Math.random().toString(36).slice(2, 10);
-      lists.push({ id, name: auto || 'Contrato', appointment_ids: ids, html: '' });
-      drafting = false;
-      load(id);
+      createContract(ids);
       return;
     }
     const row = lists.find(l=> l.id === current);
     if (row) {
+      const names = selectedLabels();
+      const auto = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +'+(names.length-2) : '');
       row.appointment_ids = ids;
-      if (!row.name || row.name === 'Contrato') row.name = auto || row.name;
+      if (!row.name || row.name === 'Contrato' || row.name === 'Novo contrato') row.name = auto || row.name;
     }
     load(current);
   });
@@ -401,6 +418,6 @@ function bindClausesEditor(){
   });
   renderList();
   if (lists[0]) load(lists[0].id);
-  else showPick([]);
+  else showIdle();
 }
 document.addEventListener('DOMContentLoaded', bindClausesEditor);

@@ -387,6 +387,9 @@ $hourLine = static function (array $h) {
         <p class="settings-hint" id="cl-empty">Nenhum contrato ainda. Use Novo contrato e marque os agendamentos.</p>
       </aside>
       <div class="cl-editor-wrap">
+        <div class="cl-idle" id="cl-idle">
+          <p class="settings-hint" style="margin:0">Clique em <b>+ Novo contrato</b> à esquerda para começar.</p>
+        </div>
         <div class="cl-pick" id="cl-pick" hidden>
           <p>Marque os agendamentos que entram neste contrato. Pode ser mais de um.</p>
           <div class="cl-pick-list">

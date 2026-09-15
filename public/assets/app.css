@@ -213,7 +213,10 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .cl-cat i{display:block;font-style:normal;opacity:.7;font-size:11px;font-weight:500}
 .cl-cat.is-on{background:var(--primary);color:#fff}
 .cl-editor-wrap{display:flex;flex-direction:column;min-width:0;background:#fff}
-.cl-pick{padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:280px}
+.cl-pick,.cl-work,.cl-idle{display:flex;flex-direction:column}
+.cl-pick[hidden],.cl-work[hidden],.cl-idle[hidden]{display:none !important}
+.cl-idle{padding:24px 16px;min-height:280px;justify-content:center;align-items:center;text-align:center}
+.cl-pick{padding:14px 16px;gap:10px;min-height:280px}
 .cl-pick-list{flex:1;overflow:auto;border:1px solid var(--line-soft);border-radius:6px;padding:6px}
 .cl-pick-row{display:flex;gap:8px;align-items:flex-start;padding:8px;border-radius:5px;cursor:pointer}
 .cl-pick-row:hover{background:#f6f7f9}
