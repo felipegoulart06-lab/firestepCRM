@@ -1,9 +1,6 @@
 (function () {
   "use strict";
 
-  /* Troque pelo WhatsApp comercial (DDI+DDD+número, só dígitos). */
-  var WA = "5511999999999";
-
   var head = document.getElementById("topo");
   var hamb = document.querySelector(".hamb");
   var menu = document.getElementById("menu-m");
@@ -95,14 +92,73 @@
 
   var form = document.getElementById("form-teste");
   if (form) {
+    var HOOK = "https://crm.firestep.cloud/api/webhooks/aba15e1aaaa7f4b382a5e79f156e886c";
+    var statusEl = document.getElementById("form-status");
+    var submitBtn = document.getElementById("form-enviar");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var empresa = (document.getElementById("empresa").value || "").trim();
+      var nome = (document.getElementById("nome").value || "").trim();
+      var email = (document.getElementById("email").value || "").trim();
       var whats = (document.getElementById("whats").value || "").trim();
-      var msg = "Olá, quero o teste grátis de 30 dias do FirestepCRM.";
+      var fone = (document.getElementById("fone").value || "").trim();
+      var empresa = (document.getElementById("empresa").value || "").trim();
+      if (!nome || !email || !whats || !fone) {
+        showStatus("Preencha nome, e-mail e os dois telefones.", false);
+        return;
+      }
+      var msg = "Pedido de teste 30 dias.";
       if (empresa) msg += " Empresa: " + empresa + ".";
-      if (whats) msg += " Meu WhatsApp: " + whats + ".";
-      window.location.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent(msg);
+      msg += " WhatsApp: " + whats + ". Telefone para ligação: " + fone + ".";
+      var payload = {
+        type: "request",
+        name: nome,
+        email: email,
+        phone: whats,
+        whatsapp: whats,
+        phone_call: fone,
+        company: empresa,
+        source: "Website",
+        utm_source: "firestep.cloud",
+        utm_medium: "landing",
+        utm_campaign: "teste-30-dias",
+        message: msg
+      };
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Enviando…";
+      }
+      fetch(HOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data };
+        }).catch(function () {
+          return { ok: res.ok, data: {} };
+        });
+      }).then(function (out) {
+        if (out.ok && out.data && out.data.ok) {
+          form.reset();
+          showStatus("Recebemos seus dados. Em breve falamos com você.", true);
+        } else {
+          showStatus((out.data && out.data.error) || "Não foi possível enviar. Tente de novo.", false);
+        }
+      }).catch(function () {
+        showStatus("Falha de rede. Confira a conexão e tente de novo.", false);
+      }).finally(function () {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Começar 30 dias grátis";
+        }
+      });
     });
+    function showStatus(text, ok) {
+      if (!statusEl) return;
+      statusEl.hidden = false;
+      statusEl.textContent = text;
+      statusEl.classList.toggle("is-ok", !!ok);
+      statusEl.classList.toggle("is-err", !ok);
+    }
   }
 })();
