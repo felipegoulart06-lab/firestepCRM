@@ -21,7 +21,7 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="FirestepCRM | Agenda, clientes e caixa no mesmo painel">
   <meta name="twitter:description" content="CRM operacional para quem agenda clientes. Teste grátis de 30 dias.">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -85,6 +85,7 @@
         <a href="#integracoes">Integrações</a>
         <a href="#faq">FAQ</a>
       </nav>
+      <a class="btn btn-ghost" href="https://crm.firestep.cloud/login">Entrar</a>
       <a class="btn btn-primary head-cta" href="#teste">Começar 30 dias grátis</a>
       <button class="hamb" type="button" aria-expanded="false" aria-controls="menu-m" aria-label="Abrir menu">☰</button>
     </div>
@@ -94,6 +95,7 @@
       <a href="#financeiro">Financeiro</a>
       <a href="#integracoes">Integrações</a>
       <a href="#faq">FAQ</a>
+      <a class="btn btn-ghost btn-wide" href="https://crm.firestep.cloud/login" style="margin-top:8px">Entrar no painel</a>
       <a class="btn btn-primary btn-wide" href="#teste" style="margin-top:8px">Começar 30 dias grátis</a>
     </div>
   </header>
@@ -593,12 +595,13 @@
           <form class="cta-form" id="form-teste">
             <div>
               <label for="empresa">Nome da empresa</label>
-              <input id="empresa" name="empresa" maxlength="80" autocomplete="organization" placeholder="Ex.: Studio da Ana">
+              <input id="empresa" name="empresa" maxlength="80" autocomplete="organization" required placeholder="Ex.: Studio da Ana">
             </div>
             <div>
               <label for="whats">WhatsApp</label>
-              <input id="whats" name="whats" inputmode="tel" autocomplete="tel" placeholder="11 99999-0000">
+              <input id="whats" name="whats" inputmode="tel" autocomplete="tel" required placeholder="11 99999-0000">
             </div>
+            <p class="form-err" id="form-err" hidden></p>
             <button class="btn btn-navy btn-wide" type="submit">Começar 30 dias grátis</button>
           </form>
         </div>
@@ -612,6 +615,6 @@
       <div>Firestep · Brasil · <a href="mailto:contato@firestep.cloud">contato@firestep.cloud</a></div>
     </div>
   </footer>
-  <script src="script.js"></script>
+  <script src="script.js?v=1"></script>
 </body>
 </html>

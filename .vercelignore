@@ -6,3 +6,4 @@ php.ini
 *.sqlite-*
 storage/php-error.log
 .DS_Store
+Firestep.cloud

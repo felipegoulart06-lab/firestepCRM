@@ -1,8 +1,11 @@
 (function () {
   "use strict";
 
-  /* Troque pelo WhatsApp comercial (DDI+DDD+número, só dígitos). */
-  var WA = "5511999999999";
+  var SITE = {
+    whatsapp: "",
+    email: "contato@firestep.cloud",
+    crm: "https://crm.firestep.cloud"
+  };
 
   var head = document.getElementById("topo");
   var hamb = document.querySelector(".hamb");
@@ -97,12 +100,27 @@
   if (form) {
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var empresa = (document.getElementById("empresa").value || "").trim();
-      var whats = (document.getElementById("whats").value || "").trim();
-      var msg = "Olá, quero o teste grátis de 30 dias do FirestepCRM.";
-      if (empresa) msg += " Empresa: " + empresa + ".";
-      if (whats) msg += " Meu WhatsApp: " + whats + ".";
-      window.location.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent(msg);
+      var empresaEl = document.getElementById("empresa");
+      var whatsEl = document.getElementById("whats");
+      var err = document.getElementById("form-err");
+      var empresa = (empresaEl && empresaEl.value || "").trim();
+      var whats = (whatsEl && whatsEl.value || "").trim();
+      if (!empresa || !whats) {
+        if (err) {
+          err.hidden = false;
+          err.textContent = "Informe o nome da empresa e o WhatsApp.";
+        }
+        (empresa ? whatsEl : empresaEl).focus();
+        return;
+      }
+      if (err) err.hidden = true;
+      var msg = "Olá, quero o teste grátis de 30 dias do FirestepCRM. Empresa: " + empresa + ". WhatsApp: " + whats + ".";
+      var wa = String(SITE.whatsapp || "").replace(/\D/g, "");
+      if (wa.length >= 12) {
+        window.location.href = "https://wa.me/" + wa + "?text=" + encodeURIComponent(msg);
+        return;
+      }
+      window.location.href = "mailto:" + SITE.email + "?subject=" + encodeURIComponent("Teste 30 dias FirestepCRM") + "&body=" + encodeURIComponent(msg);
     });
   }
 })();
