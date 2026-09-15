@@ -7,6 +7,7 @@ $sel = fn(string $k, string $v) => old_fill($old, $k) === $v ? ' selected' : '';
     <h1>Criar cliente</h1>
     <p class="subtitle">O Master cadastra o negócio. A senha não é definida aqui — depois você gera o token de acesso uma única vez.</p>
   </div>
+  <a class="btn btn-ghost" href="/master/clientes">Voltar</a>
 </div>
 <form method="post" action="/master/clientes/criar" class="card" style="padding:20px;max-width:760px" autocomplete="off">
   <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
