@@ -1167,28 +1167,30 @@ if (str_starts_with($path, '/app')) {
             }
             $flow = $kind === 'payable' ? 'out' : ($kind === 'receivable' ? 'in' : (post('flow', 'in') === 'out' ? 'out' : 'in'));
             $status = $kind === 'entry' ? 'paid' : 'open';
-            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
-                uid(), $tid, $kind, $flow, $status, $desc, $amount, post('due_date') ?: null,
-                $status === 'paid' ? now() : null, $clientId, post('notes'), 'manual', null, now(), now(),
+            $method = $kind === 'entry' ? '' : finance_normalize_method(post('payment_method'));
+            $due = post('due_date') ?: null;
+            if ($kind === 'receivable' && $method === '') {
+                bounce_form(finance_back(post('back')), 'Informe a forma de pagamento.');
+            }
+            if ($method === 'fatura') {
+                if (!$clientId) {
+                    bounce_form(finance_back(post('back')), 'Fatura exige um cliente CPF ou CNPJ.');
+                }
+                if (!$due) {
+                    $due = finance_invoice_due_date();
+                }
+            }
+            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,payment_method,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                uid(), $tid, $kind, $flow, $status, $desc, $amount, $due,
+                $status === 'paid' ? now() : null, $clientId, post('notes'), 'manual', null, $method ?: null, now(), now(),
             ]);
             flash('Registro financeiro salvo.');
             redirect(finance_back(post('back')));
         }
         if ($path === '/app/financeiro/status') {
             ensure_finance_schema();
-            $row = one('SELECT * FROM finance_entries WHERE id=? AND tenant_id=?', [post('id'), $tid]);
-            $st = post('status', '');
-            if (!$row || !in_array($st, ['paid', 'billed', 'cancelled'], true)) {
-                flash('Não foi possível atualizar este registro.', 'error');
-                redirect(finance_back(post('back')));
-            }
-            q('UPDATE finance_entries SET status=?, paid_at=?, amount_paid=?, updated_at=? WHERE id=? AND tenant_id=?', [
-                $st,
-                $st === 'paid' ? now() : ($row['paid_at'] ?? null),
-                $st === 'paid' ? (float)$row['amount'] : (float)($row['amount_paid'] ?? 0),
-                now(), $row['id'], $tid,
-            ]);
-            flash('Status atualizado.');
+            $res = finance_set_status($tid, (string)post('id'), (string)post('status', ''));
+            flash($res['message'], empty($res['ok']) ? 'error' : 'ok');
             redirect(finance_back(post('back')));
         }
         if ($path === '/app/onboarding') {
@@ -1586,7 +1588,7 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/financeiro' || str_starts_with($path, '/app/financeiro/')) {
         ensure_finance_schema();
         finance_backfill_appointments($tenant['id']);
-        $clients = all('SELECT id,name FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'], 'ACTIVE']);
+        $clients = all('SELECT id,name,cpf FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'], 'ACTIVE']);
         $page = 'dashboard';
         if ($path === '/app/financeiro/lancamentos') $page = 'lancamentos';
         elseif ($path === '/app/financeiro/receber') $page = 'receber';

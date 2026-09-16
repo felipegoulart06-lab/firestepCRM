@@ -552,7 +552,30 @@ function bindClausesEditor(){
   if (lists[0]) load(lists[0].id);
   else showIdle();
 }
+document.addEventListener('DOMContentLoaded', bindFinancePay);
 document.addEventListener('DOMContentLoaded', function(){
   try { bindClausesEditor(); }
   catch (err) { fsLog('error', 'contratos', 'bindClausesEditor quebrou', err); }
 });
+function bindFinancePay(){
+  document.querySelectorAll('[data-finance-pay]').forEach(function(form){
+    if (form.dataset.payBound) return;
+    form.dataset.payBound = '1';
+    const sel = form.querySelector('[name="payment_method"]');
+    const hint = form.querySelector('[data-invoice-hint]');
+    const client = form.querySelector('[name="client_id"]');
+    const opt = form.querySelector('[data-client-opt]');
+    const dueL = form.querySelector('[data-due-label]');
+    const sync = function(){
+      const inv = !!(sel && sel.value === 'fatura');
+      if (hint) hint.hidden = !inv;
+      if (client) client.required = inv;
+      if (opt) opt.hidden = inv;
+      if (dueL && dueL.textContent !== 'Data') {
+        dueL.textContent = inv ? 'Data de pagamento da fatura' : 'Vencimento';
+      }
+    };
+    sel?.addEventListener('change', sync);
+    sync();
+  });
+}

@@ -99,6 +99,33 @@ sync_appointment_finance('ten-a', 'ap-a2');
 $revs = all("SELECT id FROM finance_entries WHERE tenant_id='ten-a' AND source_type='appointment_reversal' AND source_id='ap-a2'");
 expect(count($revs) === 1, 'estorno não duplica');
 
+q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,payment_method,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+    'fin-inv','ten-a','receivable','in','open','Mensalidade fatura',800,finance_invoice_due_date(),null,'cli-a',null,'manual',null,'fatura',$now,$now,
+]);
+$deny = finance_set_status('ten-a', 'fin-inv', 'paid');
+expect(empty($deny['ok']), 'fatura não aceita Receber');
+expect(count(finance_query('ten-a', 'receber')) >= 1, 'fatura permanece em A receber');
+$bill = finance_set_status('ten-a', 'fin-inv', 'billed');
+expect(!empty($bill['ok']), 'Faturar confirma a fatura');
+$inv = one("SELECT status,payment_method,amount_paid FROM finance_entries WHERE id='fin-inv'");
+expect($inv['status'] === 'billed' && $inv['payment_method'] === 'fatura' && (float)$inv['amount_paid'] === 800.0, 'status faturado com baixa');
+$receberIds = array_column(finance_query('ten-a', 'receber'), 'id');
+$faturadoIds = array_column(finance_query('ten-a', 'faturado'), 'id');
+expect(!in_array('fin-inv', $receberIds, true), 'sai de A receber depois de Faturar');
+expect(in_array('fin-inv', $faturadoIds, true), 'entra em Faturado');
+q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,client_id,source_type,payment_method,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+    'fin-inv2','ten-a','receivable','in','open','Fatura sem cliente',10,null,null,'manual','fatura',$now,$now,
+]);
+$needCli = finance_set_status('ten-a', 'fin-inv2', 'billed');
+expect(empty($needCli['ok']), 'fatura exige cliente CPF ou CNPJ');
+q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,client_id,source_type,payment_method,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+    'fin-pix','ten-a','receivable','in','open','Avulso PIX',50,null,'cli-a','manual','pix',$now,$now,
+]);
+$pix = finance_set_status('ten-a', 'fin-pix', 'paid');
+expect(!empty($pix['ok']), 'PIX continua com Receber');
+$src = file_get_contents(dirname(__DIR__).'/views/app/financeiro_lista.php');
+expect(str_contains($src, 'name="payment_method"') && str_contains($src, 'Faturar'), 'formulário pede forma de pagamento e Faturar');
+
 @unlink($tmp);
 if ($fail) {
     fwrite(STDERR, "$fail teste(s) financeiros falharam.\n");

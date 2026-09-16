@@ -8,6 +8,46 @@ const FINANCE_STATUS = [
     'cancelled' => ['Cancelado', '#b91c1c', '#fee2e2'],
 ];
 
+const FINANCE_PAY_METHODS = [
+    'pix' => 'PIX',
+    'dinheiro' => 'Dinheiro',
+    'cartao' => 'Cartão',
+    'transferencia' => 'Transferência',
+    'boleto' => 'Boleto',
+    'fatura' => 'Fatura',
+];
+
+function finance_pay_methods(): array
+{
+    return FINANCE_PAY_METHODS;
+}
+
+function finance_pay_label(?string $method): string
+{
+    $method = (string)$method;
+    return FINANCE_PAY_METHODS[$method] ?? ($method !== '' ? $method : '—');
+}
+
+function finance_is_invoice(?string $method): bool
+{
+    return (string)$method === 'fatura';
+}
+
+function finance_normalize_method(?string $method): string
+{
+    $method = strtolower(trim((string)$method));
+    return isset(FINANCE_PAY_METHODS[$method]) ? $method : '';
+}
+
+function finance_invoice_due_date(?string $from = null): string
+{
+    $base = $from ? strtotime($from) : time();
+    if ($base === false) {
+        $base = time();
+    }
+    return date('Y-m-01', strtotime('first day of next month', $base));
+}
+
 function badge_finance(string $status): string
 {
     $m = FINANCE_STATUS[$status] ?? [$status, '#475569', '#e2e8f0'];
@@ -129,16 +169,16 @@ function finance_find_source(string $tenantId, string $type, string $sourceId): 
 
 function finance_overview(string $tenantId, ?string $from = null, ?string $to = null): array
 {
-    $receber = finance_sum($tenantId, 'receivable', ['open', 'billed']);
+    $receber = finance_sum($tenantId, 'receivable', ['open']);
     $previsto = finance_sum($tenantId, 'receivable', ['open', 'billed', 'paid']);
-    $recebido = finance_sum($tenantId, 'receivable', ['paid'], 'in', $from, $to)
+    $recebido = finance_sum($tenantId, 'receivable', ['paid', 'billed'], 'in', $from, $to)
         + finance_sum($tenantId, 'entry', ['paid'], 'in', $from, $to);
     $pagar = finance_sum($tenantId, 'payable', ['open']);
     $saidas = finance_sum($tenantId, 'entry', ['paid'], 'out', $from, $to)
         + finance_sum($tenantId, 'payable', ['paid'], 'out', $from, $to);
     $today = date('Y-m-d');
     $vencido = (float)(one(
-        "SELECT COALESCE(SUM(amount),0) c FROM finance_entries WHERE tenant_id=? AND kind='receivable' AND status IN ('open','billed') AND due_date IS NOT NULL AND due_date<?",
+        "SELECT COALESCE(SUM(amount),0) c FROM finance_entries WHERE tenant_id=? AND kind='receivable' AND status='open' AND due_date IS NOT NULL AND due_date<?",
         [$tenantId, $today]
     )['c'] ?? 0);
     return [
@@ -242,7 +282,7 @@ function finance_backfill_appointments(string $tenantId): void
 
 function finance_query(string $tenantId, string $page, string $search = ''): array
 {
-    $sql = "SELECT f.*, c.name client_name FROM finance_entries f
+    $sql = "SELECT f.*, c.name client_name, c.cpf client_cpf FROM finance_entries f
             LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
             WHERE f.tenant_id=?";
     $p = [$tenantId];
@@ -254,7 +294,7 @@ function finance_query(string $tenantId, string $page, string $search = ''): arr
     if ($page === 'faturado') {
         $sql .= " AND f.status='billed'";
     } elseif ($page === 'receber') {
-        $sql .= " AND f.status IN ('open','billed')";
+        $sql .= " AND f.status='open'";
     } elseif ($page === 'pagar') {
         $sql .= " AND f.status IN ('open','paid')";
     } elseif ($page === 'lancamentos') {
@@ -269,4 +309,48 @@ function finance_query(string $tenantId, string $page, string $search = ''): arr
     }
     $sql .= ' ORDER BY COALESCE(f.due_date, f.created_at) DESC, f.created_at DESC';
     return all($sql, $p);
+}
+
+function finance_set_status(string $tenantId, string $id, string $st): array
+{
+    $row = one('SELECT * FROM finance_entries WHERE id=? AND tenant_id=?', [$id, $tenantId]);
+    if (!$row || !in_array($st, ['paid', 'billed', 'cancelled'], true)) {
+        return ['ok' => false, 'message' => 'Não foi possível atualizar este registro.'];
+    }
+    if (in_array($row['status'], ['paid', 'cancelled'], true)) {
+        return ['ok' => false, 'message' => 'Este registro já foi encerrado.'];
+    }
+    $method = finance_normalize_method($row['payment_method'] ?? '');
+    if ($st === 'paid') {
+        if ($row['kind'] !== 'receivable' && $row['kind'] !== 'payable') {
+            return ['ok' => false, 'message' => 'Este tipo não recebe baixa por aqui.'];
+        }
+        if ($row['kind'] === 'receivable' && ($method === 'fatura' || $row['status'] === 'billed')) {
+            return ['ok' => false, 'message' => 'Conta em fatura fica em A receber até o pagamento acordado e o clique em Faturar.'];
+        }
+        if ($row['status'] !== 'open') {
+            return ['ok' => false, 'message' => 'Só é possível baixar contas em aberto.'];
+        }
+        q('UPDATE finance_entries SET status=?, paid_at=?, amount_paid=?, updated_at=? WHERE id=? AND tenant_id=?', [
+            'paid', now(), (float)$row['amount'], now(), $row['id'], $tenantId,
+        ]);
+        return ['ok' => true, 'message' => $row['kind'] === 'payable' ? 'Pagamento registrado.' : 'Recebimento registrado.'];
+    }
+    if ($st === 'billed') {
+        if ($row['kind'] !== 'receivable' || $row['status'] !== 'open') {
+            return ['ok' => false, 'message' => 'Só é possível faturar contas a receber em aberto.'];
+        }
+        if ($method !== '' && $method !== 'fatura') {
+            return ['ok' => false, 'message' => 'Faturar vale apenas quando a forma de pagamento é Fatura.'];
+        }
+        if (empty($row['client_id'])) {
+            return ['ok' => false, 'message' => 'Fatura exige um cliente CPF ou CNPJ.'];
+        }
+        q('UPDATE finance_entries SET status=?, payment_method=?, paid_at=?, amount_paid=?, updated_at=? WHERE id=? AND tenant_id=?', [
+            'billed', 'fatura', now(), (float)$row['amount'], now(), $row['id'], $tenantId,
+        ]);
+        return ['ok' => true, 'message' => 'Fatura confirmada. Saiu de A receber.'];
+    }
+    q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
+    return ['ok' => true, 'message' => 'Registro cancelado.'];
 }

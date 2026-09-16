@@ -21,8 +21,9 @@ $recent = all("SELECT f.*, c.name client_name FROM finance_entries f
   <div class="card stat"><span class="stat-label">Recebido no mês</span><b><?= e(money($ov['recebido'])) ?></b><div class="stat-foot">Somente valores pagos</div></div>
   <div class="card stat"><span class="stat-label">Saldo do mês</span><b><?= e(money($ov['saldo'])) ?></b><div class="stat-foot">A pagar <?= e(money($ov['pagar'])) ?> · Saídas <?= e(money($ov['saidas'])) ?></div></div>
 </div>
-<div class="grid g3" style="margin-top:14px">
-  <a class="card card-hover insight" href="/app/financeiro/receber"><?= icon('inbox') ?><div><b>Contas a receber</b><div style="color:#667085">O que os clientes ainda devem.</div></div></a>
+<div class="grid g4" style="margin-top:14px">
+  <a class="card card-hover insight" href="/app/financeiro/receber"><?= icon('inbox') ?><div><b>Contas a receber</b><div style="color:#667085">Em aberto até o pagamento. Fatura só sai com Faturar.</div></div></a>
+  <a class="card card-hover insight" href="/app/financeiro/faturado"><?= icon('file') ?><div><b>Faturado</b><div style="color:#667085"><?= e(money($ov['faturado'])) ?> confirmados na data acordada.</div></div></a>
   <a class="card card-hover insight" href="/app/financeiro/pagar"><?= icon('list') ?><div><b>Contas a pagar</b><div style="color:#667085">Despesas e boletos em aberto.</div></div></a>
   <a class="card card-hover insight" href="/app/financeiro/relatorios"><?= icon('file') ?><div><b>Relatórios</b><div style="color:#667085">Resumo do caixa em PDF.</div></div></a>
 </div>
