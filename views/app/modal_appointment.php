@@ -8,6 +8,7 @@ $clients = $clients ?? [];
 $services = $services ?? [];
 $viewOnly = !empty($viewOnly);
 $showEditForm = $edit && !$viewOnly;
+$allowEditFromDetails = !empty($allowEditFromDetails);
 ?>
         <div class="overlay" role="presentation">
   <div class="card overlay-panel" style="max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
@@ -54,7 +55,9 @@ $showEditForm = $edit && !$viewOnly;
       <?php if ($viewOnly): ?>
         <div class="row-actions" style="margin-top:14px;justify-content:flex-start">
           <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($edit['id']) ?>"><?= icon('download') ?> PDF</a>
-          <a class="btn btn-primary" href="<?= e($editHref ?? '/app/agendamentos?edit='.urlencode($edit['id'])) ?>">Editar</a>
+          <?php if ($allowEditFromDetails): ?>
+            <a class="btn btn-primary" href="<?= e($editHref ?? '/app/agendamentos?edit='.urlencode($edit['id'])) ?>">Editar</a>
+          <?php endif; ?>
         </div>
       <?php elseif ($showEditForm): ?>
       <div style="border-top:1px solid #e4e7ec;margin:14px 0 12px"></div>
@@ -80,7 +83,10 @@ $showEditForm = $edit && !$viewOnly;
       <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <input type="hidden" name="return_to" value="<?= e($modalClose) ?>">
-        <?php if ($edit): ?><input type="hidden" name="id" value="<?= e($edit['id']) ?>"><?php endif; ?>
+        <?php if ($edit): ?>
+          <input type="hidden" name="id" value="<?= e($edit['id']) ?>">
+          <input type="hidden" name="allow_edit" value="1">
+        <?php endif; ?>
         <?php if (!empty($_GET['request_id'])): ?><input type="hidden" name="request_id" value="<?= e($_GET['request_id']) ?>"><?php endif; ?>
         <?php if (!empty($_GET['from'])): ?><input type="hidden" name="from" value="<?= e((string)$_GET['from']) ?>"><?php endif; ?>
         <?php if (!$edit && !empty($forcedClient)): ?>

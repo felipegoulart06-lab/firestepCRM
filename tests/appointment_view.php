@@ -1,0 +1,53 @@
+<?php
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+$fail = 0;
+
+$agenda = file_get_contents($root . '/views/app/agenda.php');
+$modal = file_get_contents($root . '/views/app/modal_appointment.php');
+$index = file_get_contents($root . '/public/index.php');
+$agendamentos = file_get_contents($root . '/views/app/agendamentos.php');
+
+if (str_contains($agenda, "/app/agenda?edit=")) {
+    echo "FAIL Agenda ainda abre detalhes com ?edit=\n";
+    $fail++;
+}
+if (!str_contains($agenda, '&ver=')) {
+    echo "FAIL Agenda não abre detalhes com ?ver=\n";
+    $fail++;
+}
+if (!str_contains($agenda, '$viewOnly = (bool)$edit')) {
+    echo "FAIL Agenda não força visualização dos detalhes\n";
+    $fail++;
+}
+if (!str_contains($agenda, '$allowEditFromDetails = false')) {
+    echo "FAIL Agenda ainda permite ir para Editar no overlay\n";
+    $fail++;
+}
+if (!str_contains($modal, '$allowEditFromDetails')) {
+    echo "FAIL Modal não respeita permissão de Editar no overlay\n";
+    $fail++;
+}
+if (!str_contains($modal, 'name="allow_edit"')) {
+    echo "FAIL Formulário de edição sem allow_edit\n";
+    $fail++;
+}
+if (!str_contains($index, "post('allow_edit') !== '1'")) {
+    echo "FAIL Salvamento não exige allow_edit\n";
+    $fail++;
+}
+if (!str_contains($index, "/app/agendamentos?ver=")) {
+    echo "FAIL Criar/converter não abre detalhes em modo ver\n";
+    $fail++;
+}
+if (!str_contains($agendamentos, '$allowEditFromDetails = $viewOnly')) {
+    echo "FAIL Lista Agendamentos não oferece Editar a partir de Ver\n";
+    $fail++;
+}
+
+if ($fail) {
+    fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");
+    exit(1);
+}
+echo "Detalhes da Agenda são só leitura; edição só em Agendamentos > Editar.\n";

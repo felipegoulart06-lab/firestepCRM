@@ -58,7 +58,7 @@ $periodLabel = $view === 'week'
         <div class="slot">
           <?php foreach ($cell as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
             <a class="ev <?= $ev['kind']==='request'?'ev-request':'' ?>" style="background:<?= $c[0] ?>;border-left:3px solid <?= $c[1] ?>;color:<?= $c[2] ?>"
-               href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?edit='.$ev['id']) ?>">
+               href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id']) ?>">
               <b><?= e(substr($ev['start'],11,5)) ?> · <?= e($ev['title']) ?></b>
               <div><?= $ev['kind']==='request'?'Solicitação · ':'' ?><?= e($ev['subtitle'] ?? ($ev['kind']==='block'?'Bloqueio':'')) ?><?= !empty($ev['source'])?' · '.e($ev['source']):'' ?></div>
             </a>
@@ -84,23 +84,29 @@ $periodLabel = $view === 'week'
     $ymd = date('Y-m-', $ts) . sprintf('%02d',$day);
     $dayEv = array_filter($events, fn($ev) => substr($ev['start'],0,10)===$ymd);
   ?>
-    <a href="/app/agenda?new=1&date=<?= $ymd ?>" style="min-height:88px;border-top:1px solid #f1f5f9;padding:6px;display:block">
-      <b style="font-size:12px"><?= $day ?></b>
-      <?php foreach (array_slice($dayEv,0,3) as $ev): $c = ev_color($ev['kind'], $ev['status']??''); ?>
-        <div style="font-size:11px;background:<?= $c[0] ?>;border-radius:6px;padding:2px 4px;margin-top:3px"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></div>
+    <div style="min-height:88px;border-top:1px solid #f1f5f9;padding:6px">
+      <a href="/app/agenda?new=1&date=<?= $ymd ?>" style="display:block"><b style="font-size:12px"><?= $day ?></b></a>
+      <?php foreach (array_slice($dayEv,0,3) as $ev): $c = ev_color($ev['kind'], $ev['status']??'');
+        $chipHref = $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view=month&date='.$ymd.'&ver='.$ev['id']);
+      ?>
+        <a href="<?= e($chipHref) ?>" style="display:block;font-size:11px;background:<?= $c[0] ?>;border-radius:6px;padding:2px 4px;margin-top:3px;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
       <?php endforeach; ?>
-    </a>
+    </div>
   <?php endfor; ?>
 </div>
 <?php endif; ?>
 
-<?php if (!empty($_GET['new']) || !empty($_GET['edit'])):
-  $edit = !empty($_GET['edit']) ? appointment_detail($tenant['id'], (string)$_GET['edit']) : null;
+<?php
+$detailId = trim((string)($_GET['ver'] ?? $_GET['edit'] ?? ''));
+if (!empty($_GET['new']) || $detailId !== ''):
+  $edit = $detailId !== '' ? appointment_detail($tenant['id'], $detailId) : null;
+  $viewOnly = (bool)$edit;
+  $allowEditFromDetails = false;
   $forcedClient = null;
   if (!$edit && !empty($_GET['client_id'])) {
       $forcedClient = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['client_id'], $tenant['id']]);
   }
-  $modalClose = '/app/agenda';
+  $modalClose = '/app/agenda?view='.urlencode((string)$view).'&date='.urlencode((string)$cursor);
   if ($forcedClient && ($_GET['from'] ?? '') === 'clientes') {
       $modalClose = '/app/clientes/ver?id='.$forcedClient['id'];
   }

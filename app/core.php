@@ -421,7 +421,7 @@ function assistant_feed(array $tenant): array
         $messages[] = [
             'id'=>'upcoming-'.$next['id'],'kind'=>'appointment','title'=>'Próximo horário',
             'body'=>substr($next['starts_at'], 11, 5).' · '.$next['client_name'].' · '.($next['service_name'] ?: 'Atendimento'),
-            'url'=>'/app/agenda?edit='.$next['id'],'created_at'=>$next['starts_at'],
+            'url'=>'/app/agenda?ver='.$next['id'],'created_at'=>$next['starts_at'],
         ];
     }
 

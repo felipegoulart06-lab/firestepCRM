@@ -623,6 +623,10 @@ if (str_starts_with($path, '/app')) {
                 redirect($id ? $back : $retryNew);
             }
             if ($id) {
+                if (post('allow_edit') !== '1') {
+                    flash('Para alterar um agendamento, use Agendamentos > Editar.');
+                    redirect('/app/agendamentos?ver='.urlencode((string)$id));
+                }
                 $start = post('date').' '.post('start').':00';
                 $end = date('Y-m-d H:i:s', strtotime($start) + service_span_minutes($svc)*60);
                 $conflict = find_slot_conflict($tid, $start, $end, $id);
@@ -646,7 +650,7 @@ if (str_starts_with($path, '/app')) {
                     'metadata'=>$req && !empty($req['metadata']) ? (json_decode($req['metadata'], true) ?: null) : null,
                 ]);
                 flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
-                redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos') : $retryNew);
+                redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos?ver='.urlencode((string)$res['id'])) : $retryNew);
             }
             redirect($back);
         }
@@ -808,7 +812,7 @@ if (str_starts_with($path, '/app')) {
             if ($req['status'] === 'ARCHIVED') { flash('Reabra a solicitação antes de converter.'); redirect('/app/solicitacoes?ver='.$req['id']); }
             $res = convert_request_to_appointment($tenant, $req, $user['id']);
             flash($res['ok'] ? 'Solicitação convertida em agendamento.' : $res['message']);
-            redirect($res['ok'] ? '/app/agendamentos' : '/app/solicitacoes?ver='.$req['id']);
+            redirect($res['ok'] ? '/app/agendamentos?ver='.urlencode((string)$res['id']) : '/app/solicitacoes?ver='.$req['id']);
         }
         if ($path === '/app/solicitacoes/criar') {
             redirect('/app/solicitacoes');

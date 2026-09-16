@@ -86,6 +86,7 @@ $total = count($items);
   }
   $hideCalendarSwitch = true;
   $viewOnly = !empty($viewing);
+  $allowEditFromDetails = $viewOnly;
   if ($viewOnly) {
       $edit = $viewing;
       $editHref = '/app/agendamentos?'.http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$viewing['id']]));
