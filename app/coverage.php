@@ -16,10 +16,13 @@ function coverage_ensure_schema(): void
         $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS cep text');
         $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS lat double precision');
         $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS lng double precision');
+        $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS trade_name text');
+        $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS state_registration text');
+        $pdo->exec('ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_name text');
         $pdo->exec("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS visit_type text DEFAULT 'interno'");
     } else {
         $clientCols = array_column($pdo->query('PRAGMA table_info(clients)')->fetchAll(), 'name');
-        foreach (['address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL'] as $col => $def) {
+        foreach (['address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL', 'trade_name' => 'TEXT', 'state_registration' => 'TEXT', 'contact_name' => 'TEXT'] as $col => $def) {
             if (!in_array($col, $clientCols, true)) {
                 $pdo->exec("ALTER TABLE clients ADD COLUMN $col $def");
             }

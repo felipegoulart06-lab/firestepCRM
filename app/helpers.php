@@ -346,7 +346,7 @@ function migrate_database(PDO $pdo): void
         'users' => [
             'last_login_at' => 'TEXT',
         ],
-        'clients' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL'],
+        'clients' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL', 'trade_name' => 'TEXT', 'state_registration' => 'TEXT', 'contact_name' => 'TEXT'],
         'requests' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'metadata' => 'TEXT'],
         'appointments' => ['request_id' => 'TEXT', 'metadata' => 'TEXT', 'visit_type' => "TEXT DEFAULT 'interno'"],
         'services' => [

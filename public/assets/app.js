@@ -88,14 +88,22 @@ function bindDocFields(root){
     const form = kindWrap.closest('form') || document;
     if (kindWrap.dataset.bound) return;
     kindWrap.dataset.bound = '1';
-    const kind = kindWrap.querySelector('.js-doc-kind');
+    const kindInputs = kindWrap.querySelectorAll('.js-doc-kind');
+    const kind = kindInputs[0];
     if (!kind) return;
     const numWrap = form.querySelector('[data-doc-group-number]');
     const num = (numWrap || form).querySelector('.js-doc-number');
     const label = (numWrap || form).querySelector('.js-doc-label');
     if (!num) return;
+    const getKind = ()=>{
+      if (kind.type === 'radio' || kindInputs.length > 1) {
+        const checked = kindWrap.querySelector('.js-doc-kind:checked') || form.querySelector('[name="document_kind"]:checked');
+        return checked ? checked.value : '';
+      }
+      return kind.value;
+    };
     const apply = ()=>{
-      const k = kind.value;
+      const k = getKind();
       num.readOnly = !k;
       if (num.getAttribute('data-required') === '1') num.required = !!k;
       num.placeholder = k==='cpf' ? '000.000.000-00' : (k==='cnpj' ? '00.000.000/0001-00' : 'Selecione CPF ou CNPJ');
@@ -104,13 +112,19 @@ function bindDocFields(root){
       if (k==='cpf') num.value = maskCpf(num.value);
       if (k==='cnpj') num.value = maskCnpj(num.value);
       if (!k) num.value = '';
-      const geo = form.querySelector('#cnpj-geo');
-      if (geo) geo.hidden = k !== 'cnpj';
+      const body = form.querySelector('#client-kind-body');
+      if (body) body.hidden = !k;
+      const nameLabel = form.querySelector('#client-name-label');
+      if (nameLabel) nameLabel.textContent = k==='cnpj' ? 'Razão social' : 'Nome completo';
+      form.querySelectorAll('.js-cnpj-only').forEach(el=>{ el.hidden = k !== 'cnpj'; });
+      form.querySelectorAll('.js-cpf-only').forEach(el=>{ el.hidden = k !== 'cpf'; });
+      form.querySelectorAll('[data-req-cnpj]').forEach(el=>{ el.required = k === 'cnpj'; });
     };
-    kind.addEventListener('change', apply);
+    kindInputs.forEach(el=> el.addEventListener('change', apply));
     num.addEventListener('input', ()=>{
-      if (kind.value==='cpf') num.value = maskCpf(num.value);
-      if (kind.value==='cnpj') num.value = maskCnpj(num.value);
+      const k = getKind();
+      if (k==='cpf') num.value = maskCpf(num.value);
+      if (k==='cnpj') num.value = maskCnpj(num.value);
     });
     apply();
   });

@@ -679,25 +679,44 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/clientes/salvar') {
             $id = post('id');
-            if (!post('name') || !post('phone') || !post('email')) {
-                flash('Nome, telefone e e-mail são obrigatórios. WhatsApp é opcional.');
-                redirect($id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo');
+            $back = $id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo';
+            $kind = strtolower(trim((string)post('document_kind', '')));
+            $name = trim((string)post('name', ''));
+            $phone = trim((string)post('phone', ''));
+            $email = strtolower(trim((string)post('email', '')));
+            if ($kind !== 'cpf' && $kind !== 'cnpj') {
+                bounce_form($back, 'Informe se o cliente é CPF ou CNPJ.');
             }
-            [$docOk, $document, $docErr] = parse_br_document(post('document_kind'), post('cpf'), true);
+            if ($name === '' || $phone === '' || $email === '') {
+                bounce_form($back, $kind === 'cnpj'
+                    ? 'Razão social, telefone e e-mail são obrigatórios.'
+                    : 'Nome, telefone e e-mail são obrigatórios. WhatsApp é opcional.');
+            }
+            [$docOk, $document, $docErr] = parse_br_document($kind, post('cpf'), true);
             if (!$docOk) {
-                flash($docErr);
-                redirect($id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo');
+                bounce_form($back, $docErr);
             }
-            $data = [post('name'), post('phone'), post('whatsapp'), strtolower(post('email')), $document, empty_to_null(post('birth_date')), post('source','Outro'), post('notes'), post('status','ACTIVE')];
+            $address = trim((string)post('address', ''));
+            $city = trim((string)post('city', ''));
+            $state = strtoupper(trim((string)post('state', '')));
+            $cep = trim((string)post('cep', ''));
+            $trade = $kind === 'cnpj' ? trim((string)post('trade_name', '')) : '';
+            $ie = $kind === 'cnpj' ? trim((string)post('state_registration', '')) : '';
+            $contact = $kind === 'cnpj' ? trim((string)post('contact_name', '')) : '';
+            $birth = $kind === 'cpf' ? empty_to_null(post('birth_date')) : null;
+            if ($kind === 'cnpj' && ($address === '' || $city === '' || $state === '' || $cep === '')) {
+                bounce_form($back, 'Cliente CNPJ precisa de endereço completo: logradouro, cidade, UF e CEP.');
+            }
+            $data = [$name, $phone, post('whatsapp'), $email, $document, $birth, post('source','Outro'), post('notes'), post('status','ACTIVE'), $trade !== '' ? $trade : null, $ie !== '' ? $ie : null, $contact !== '' ? $contact : null];
             if ($id) {
-                q('UPDATE clients SET name=?,phone=?,whatsapp=?,email=?,cpf=?,birth_date=?,source=?,notes=?,status=? WHERE id=? AND tenant_id=?', [...$data, $id, $tid]);
+                q('UPDATE clients SET name=?,phone=?,whatsapp=?,email=?,cpf=?,birth_date=?,source=?,notes=?,status=?,trade_name=?,state_registration=?,contact_name=? WHERE id=? AND tenant_id=?', [...$data, $id, $tid]);
                 audit($tid, $user['id'], 'client.updated', 'client', $id);
             } else {
                 $id = uid();
-                q('INSERT INTO clients(id,tenant_id,name,phone,whatsapp,email,cpf,birth_date,source,notes,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                q('INSERT INTO clients(id,tenant_id,name,phone,whatsapp,email,cpf,birth_date,source,notes,status,trade_name,state_registration,contact_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     [$id,$tid,...$data, now()]);
                 audit($tid, $user['id'], 'client.created', 'client', $id);
-                emit_outbound($tid, 'client.created', ['id'=>$id,'name'=>post('name')]);
+                emit_outbound($tid, 'client.created', ['id'=>$id,'name'=>$name]);
             }
             foreach (all('SELECT * FROM custom_fields WHERE tenant_id=?', [$tid]) as $f) {
                 $val = post('cf_'.$f['key']);
@@ -706,7 +725,7 @@ if (str_starts_with($path, '/app')) {
                 else q('INSERT INTO custom_field_values(id,tenant_id,field_id,client_id,value) VALUES(?,?,?,?,?)', [uid(),$tid,$f['id'],$id,$val]);
             }
             push_google_sheets($tid, 'client', 'upsert', $id);
-            locate_client_if_cnpj($tid, $id, $document, post('address'), post('city'), post('state'), post('cep'));
+            locate_client_if_cnpj($tid, $id, $document, $address, $city, $state, $cep);
             flash('Cadastro salvo.');
             redirect('/app/clientes/ver?id='.$id);
         }
@@ -1407,7 +1426,7 @@ if (str_starts_with($path, '/app')) {
     }
     if ($path === '/app/clientes/novo') {
         layout_start('app', compact('user','tenant','path'));
-        view('app/cliente', ['client'=>[], 'fields'=>all('SELECT * FROM custom_fields WHERE tenant_id=? ORDER BY sort_order', [$tenant['id']]), 'values'=>[], 'appts'=>[], 'last'=>null,'next'=>null,'totalAp'=>0,'totalReq'=>0]);
+        view('app/cliente', ['client'=>[], 'fields'=>all('SELECT * FROM custom_fields WHERE tenant_id=? ORDER BY sort_order', [$tenant['id']]), 'values'=>[], 'appts'=>[], 'last'=>null,'next'=>null,'totalAp'=>0,'totalReq'=>0,'old'=>take_old_form()]);
         layout_end('app');
         exit;
     }
@@ -1431,6 +1450,7 @@ if (str_starts_with($path, '/app')) {
             'values'=>$vals,'appts'=>$appts,'last'=>$last,'next'=>$next,
             'totalAp'=>count(array_filter($appts, fn($a)=>$a['status']!=='CANCELLED')),
             'totalReq'=>one('SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND (client_id=? OR phone=?)', [$tenant['id'],$c['id'],$c['phone']??''])['c'],
+            'old'=>take_old_form(),
         ]);
         layout_end('app');
         exit;
