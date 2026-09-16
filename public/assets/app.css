@@ -116,8 +116,34 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .calendar-month>div{color:#e4e7ec!important;background:#101828}
 .calendar-month>a:hover{background:#243247}
 .calendar-month>a>div{color:#101828}
-.ev{display:block;margin:4px;padding:7px 8px;border-radius:4px;font-size:11px;text-align:left;border:1px solid rgba(16,24,40,.08);cursor:pointer;width:calc(100% - 8px);box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.ev{display:block;margin:4px;padding:7px 8px;border-radius:4px;font-size:11px;text-align:left;border:1px solid rgba(16,24,40,.08);cursor:pointer;width:calc(100% - 8px);box-shadow:0 1px 2px rgba(16,24,40,.06);min-width:0;overflow:hidden}
+.ev b{display:block;line-height:1.25}
+.ev>div{line-height:1.3;opacity:.9}
 .ev-request{box-shadow:inset 0 0 0 1px #93c5fd}
+.slot-add{display:block;min-height:58px}
+.cal-busy-2 .slot{min-height:52px}
+.cal-busy-2 .slot-add{min-height:44px}
+.cal-busy-2 .ev{margin:3px;padding:5px 6px;font-size:10px;width:calc(100% - 6px)}
+.cal-busy-3 .slot{min-height:40px}
+.cal-busy-3 .slot-add{min-height:32px}
+.cal-busy-3 .ev{margin:2px;padding:3px 5px;font-size:10px;width:calc(100% - 4px)}
+.cal-busy-3 .ev>div{display:none}
+.cal-busy-4 .slot{min-height:28px}
+.cal-busy-4 .slot-add{min-height:22px}
+.cal-busy-4 .ev{margin:1px 2px;padding:2px 4px;font-size:9px;line-height:1.2;width:calc(100% - 4px);border-radius:3px}
+.cal-busy-4 .ev>div{display:none}
+.cal-busy-4 .ev b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot[data-density="2"] .ev{margin:3px;padding:5px 6px;font-size:10px}
+.slot[data-density="3"] .ev{margin:2px;padding:3px 5px;font-size:10px}
+.slot[data-density="3"] .ev>div{display:none}
+.slot[data-density="4"] .ev{margin:1px 2px;padding:2px 4px;font-size:9px;line-height:1.2}
+.slot[data-density="4"] .ev>div{display:none}
+.slot[data-density="4"] .ev b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.month-cell{min-height:88px;border-top:1px solid #667085;padding:6px}
+.month-cell[data-density="3"],.month-cell[data-density="4"]{min-height:72px;padding:4px}
+.ev-month{display:block;font-size:11px;border-radius:4px;padding:2px 4px;margin-top:3px;width:auto}
+.month-cell[data-density="3"] .ev-month,.month-cell[data-density="4"] .ev-month{font-size:9px;padding:1px 3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.month-more{display:block;font-size:10px;color:#98a2b3;margin-top:2px}
 .agenda-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .agenda-date{font-size:13px;padding:0 5px;min-width:82px;text-align:center}
 .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:5px;overflow:hidden}

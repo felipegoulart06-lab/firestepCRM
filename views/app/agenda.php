@@ -8,6 +8,7 @@ $dow = (int)date('N', $ts); // 1-7
 $weekStart = strtotime('-'.($dow-1).' days', $ts);
 $days = $view === 'day' ? [$ts] : array_map(fn($i) => strtotime("+$i days", $weekStart), range(0,6));
 $hours = range(7,20);
+if (!function_exists('ev_color')) {
 function ev_color($kind, $st) {
     if ($kind === 'block') return ['#f3e8ff','#7c3aed','#6b21a8'];
     if ($kind === 'request') return ['#dbeafe','#60a5fa','#1d4ed8'];
@@ -19,12 +20,35 @@ function ev_color($kind, $st) {
         default => ['#dbeafe','#2563eb','#1e3a8a'],
     };
 }
+function agenda_busy_level(int $n): int
+{
+    if ($n >= 18) {
+        return 4;
+    }
+    if ($n >= 12) {
+        return 3;
+    }
+    if ($n >= 6) {
+        return 2;
+    }
+    return 1;
+}
+}
 $prev = date('Y-m-d', strtotime($view==='month'?'-1 month':($view==='day'?'-1 day':'-7 days'), $ts));
 $next = date('Y-m-d', strtotime($view==='month'?'+1 month':($view==='day'?'+1 day':'+7 days'), $ts));
 $months = [1=>'Janeiro',2=>'Fevereiro',3=>'Março',4=>'Abril',5=>'Maio',6=>'Junho',7=>'Julho',8=>'Agosto',9=>'Setembro',10=>'Outubro',11=>'Novembro',12=>'Dezembro'];
 $periodLabel = $view === 'week'
     ? date('d/m', $weekStart).' – '.date('d/m/Y', strtotime('+6 days', $weekStart))
     : ($view === 'month' ? $months[(int)date('n',$ts)].' '.date('Y',$ts) : date('d/m/Y', $ts));
+$dayCounts = [];
+foreach ($events as $ev) {
+    $dayKey = substr((string)$ev['start'], 0, 10);
+    $dayCounts[$dayKey] = ($dayCounts[$dayKey] ?? 0) + 1;
+}
+$busyWeek = 1;
+foreach ($days ?? [] as $d) {
+    $busyWeek = max($busyWeek, agenda_busy_level($dayCounts[date('Y-m-d', $d)] ?? 0));
+}
 ?>
 <div class="page-head" style="margin-bottom:12px">
   <div><h1>Agenda</h1><p>Visualize, crie e gerencie todos os horários.</p></div>
@@ -42,7 +66,7 @@ $periodLabel = $view === 'week'
 </div>
 <?php if ($view !== 'month'): ?>
 <div class="card calendar-shell">
-  <div class="cal" style="grid-template-columns:72px repeat(<?= count($days) ?>,minmax(130px,1fr))">
+  <div class="cal cal-busy-<?= (int)$busyWeek ?>" style="grid-template-columns:72px repeat(<?= count($days) ?>,minmax(130px,1fr))">
     <div class="cal-head"></div>
     <?php foreach ($days as $d): ?>
       <div class="cal-head <?= date('Y-m-d',$d)===date('Y-m-d')?'today':'' ?>"><?= ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][(int)date('N',$d)-1] ?> <?= date('d',$d) ?></div>
@@ -51,11 +75,13 @@ $periodLabel = $view === 'week'
       <div class="cal-time"><?= sprintf('%02d:00',$h) ?></div>
       <?php foreach ($days as $d):
         $ymd = date('Y-m-d', $d);
-        $cell = array_filter($events, function($ev) use ($ymd,$h) {
+        $cell = array_values(array_filter($events, function($ev) use ($ymd,$h) {
             return substr($ev['start'],0,10)===$ymd && (int)substr($ev['start'],11,2)===$h;
-        });
+        }));
+        $slotN = count($cell);
+        $level = max(agenda_busy_level($dayCounts[$ymd] ?? 0), $slotN >= 6 ? 4 : ($slotN >= 4 ? 3 : ($slotN >= 2 ? 2 : 1)));
       ?>
-        <div class="slot">
+        <div class="slot" data-density="<?= (int)$level ?>" data-n="<?= (int)$slotN ?>">
           <?php foreach ($cell as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
             <a class="ev <?= $ev['kind']==='request'?'ev-request':'' ?>" style="background:<?= $c[0] ?>;border-left:3px solid <?= $c[1] ?>;color:<?= $c[2] ?>"
                href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id']) ?>">
@@ -64,7 +90,7 @@ $periodLabel = $view === 'week'
             </a>
           <?php endforeach; ?>
           <?php if (!$cell): ?>
-            <a href="/app/agenda?new=1&date=<?= $ymd ?>&start=<?= sprintf('%02d:00',$h) ?>&view=<?= e($view) ?>" style="display:block;min-height:58px"></a>
+            <a class="slot-add" href="/app/agenda?new=1&date=<?= $ymd ?>&start=<?= sprintf('%02d:00',$h) ?>&view=<?= e($view) ?>"></a>
           <?php endif; ?>
         </div>
       <?php endforeach; ?>
@@ -82,15 +108,19 @@ $periodLabel = $view === 'week'
     if ($i < $fill) { echo '<div style="min-height:88px;border-top:1px solid #f1f5f9"></div>'; continue; }
     $day = $i - $fill + 1;
     $ymd = date('Y-m-', $ts) . sprintf('%02d',$day);
-    $dayEv = array_filter($events, fn($ev) => substr($ev['start'],0,10)===$ymd);
+    $dayEv = array_values(array_filter($events, fn($ev) => substr($ev['start'],0,10)===$ymd));
+    $dayN = count($dayEv);
+    $level = agenda_busy_level($dayN);
+    $show = $level >= 4 ? 8 : ($level >= 3 ? 6 : 4);
   ?>
-    <div style="min-height:88px;border-top:1px solid #f1f5f9;padding:6px">
+    <div class="month-cell" data-density="<?= (int)$level ?>" data-n="<?= (int)$dayN ?>">
       <a href="/app/agenda?new=1&date=<?= $ymd ?>" style="display:block"><b style="font-size:12px"><?= $day ?></b></a>
-      <?php foreach (array_slice($dayEv,0,3) as $ev): $c = ev_color($ev['kind'], $ev['status']??'');
+      <?php foreach (array_slice($dayEv, 0, $show) as $ev): $c = ev_color($ev['kind'], $ev['status']??'');
         $chipHref = $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view=month&date='.$ymd.'&ver='.$ev['id']);
       ?>
-        <a href="<?= e($chipHref) ?>" style="display:block;font-size:11px;background:<?= $c[0] ?>;border-radius:6px;padding:2px 4px;margin-top:3px;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
+        <a class="ev ev-month" href="<?= e($chipHref) ?>" style="background:<?= $c[0] ?>;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
       <?php endforeach; ?>
+      <?php if ($dayN > $show): ?><span class="month-more">+<?= $dayN - $show ?></span><?php endif; ?>
     </div>
   <?php endfor; ?>
 </div>

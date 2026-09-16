@@ -45,6 +45,15 @@ if (!str_contains($agendamentos, '$allowEditFromDetails = $viewOnly')) {
     echo "FAIL Lista Agendamentos não oferece Editar a partir de Ver\n";
     $fail++;
 }
+if (!str_contains($agenda, 'data-density') || !str_contains($agenda, 'cal-busy-') || !str_contains($agenda, 'agenda_busy_level')) {
+    echo "FAIL Agenda não compacta reservas quando o dia enche\n";
+    $fail++;
+}
+$css = file_get_contents($root . '/public/assets/app.css');
+if (!str_contains($css, '.cal-busy-4 .ev') || !str_contains($css, 'data-density="4"')) {
+    echo "FAIL CSS da agenda sem tamanhos menores por densidade\n";
+    $fail++;
+}
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");
