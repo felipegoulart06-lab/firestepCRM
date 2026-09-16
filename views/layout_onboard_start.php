@@ -6,7 +6,7 @@
 <title>Configurar painel · FirestepCRM</title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="/assets/app.css?v=r1">
+<link rel="stylesheet" href="/assets/app.css?v=r2">
 </head>
 <body class="onboard-page">
 <main class="onboard-wrap">

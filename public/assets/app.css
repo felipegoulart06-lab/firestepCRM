@@ -308,9 +308,9 @@ a.fx-x{text-decoration:none;color:#344054}
 .fx-fields{background:#f6f7f9;border:1px solid var(--line-soft);border-radius:8px;padding:14px}
 .fx-form .btn-primary{width:100%;min-height:44px}
 .fx-status{margin-top:auto;padding:8px 14px;border-top:1px solid var(--line);background:#eef1f5;font-size:11px;color:#667085}
-.fx-overlay{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:420;overflow:auto;overscroll-behavior:none;isolation:isolate;pointer-events:auto}
+.fx-overlay{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 40px;z-index:420;overflow:auto;overscroll-behavior:contain;isolation:isolate;pointer-events:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
 .fx-overlay[hidden]{display:none!important}
-.fx-filter-panel{width:min(720px,100%);max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain;padding:20px 22px 22px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 18px 50px rgba(16,24,40,.18);pointer-events:auto}
+.fx-filter-panel{width:min(720px,100%);max-height:none;overflow:visible;overscroll-behavior:contain;padding:20px 22px 22px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 18px 50px rgba(16,24,40,.18);pointer-events:auto;touch-action:pan-y}
 .fx-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
 .fx-modal-head h2{margin:0 0 4px;font-size:18px}
 .fx-modal-head p{margin:0;color:#667085;font-size:13px}

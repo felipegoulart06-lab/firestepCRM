@@ -55,7 +55,9 @@ function lockBehindModal(){
 }
 function blockScrollBehindModal(e){
   if (!document.body.classList.contains('is-modal-open')) return;
-  if (e.target.closest('.overlay-panel')) return;
+  const t = e.target;
+  if (!(t instanceof Element)) return;
+  if (t.closest('.overlay-panel, .overlay, .fx-overlay, .fx-filter-panel, .fx-preview-shell, .fx-a4-wrap, .fx-checks-scroll, .cl-panel, .token-modal')) return;
   e.preventDefault();
 }
 document.addEventListener('click', e=>{
