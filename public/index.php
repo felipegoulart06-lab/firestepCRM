@@ -447,6 +447,12 @@ if (str_starts_with($path, '/master')) {
         layout_end('master');
         exit;
     }
+    if ($path === '/master/objetivo') {
+        layout_start('master', compact('user','path'));
+        view('master/objetivo');
+        layout_end('master');
+        exit;
+    }
     if ($path === '/master/clientes') {
         layout_start('master', compact('user','path'));
         view('master/clientes', ['tenants'=>all("SELECT t.*, u.username login_username, u.email login_email, u.id login_user_id, u.must_change_password, u.last_login_at

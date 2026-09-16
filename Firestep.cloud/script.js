@@ -97,6 +97,13 @@
     var submitBtn = document.getElementById("form-enviar");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
+      var interesseEl = document.getElementById("interesse");
+      var interesse = interesseEl ? interesseEl.value : "completo";
+      var interesseLabel = {
+        completo: "Site + FirestepCRM (solução completa)",
+        templates: "Website / template Firestep",
+        crm: "Assinatura do FirestepCRM"
+      }[interesse] || interesse;
       var nome = (document.getElementById("nome").value || "").trim();
       var email = (document.getElementById("email").value || "").trim();
       var whats = (document.getElementById("whats").value || "").trim();
@@ -106,7 +113,7 @@
         showStatus("Preencha nome, e-mail e os dois telefones.", false);
         return;
       }
-      var msg = "Pedido de teste 30 dias.";
+      var msg = "Interesse Firestep: " + interesseLabel + ".";
       if (empresa) msg += " Empresa: " + empresa + ".";
       msg += " WhatsApp: " + whats + ". Telefone para ligação: " + fone + ".";
       var payload = {
@@ -117,10 +124,11 @@
         whatsapp: whats,
         phone_call: fone,
         company: empresa,
+        interest: interesse,
         source: "Website",
         utm_source: "firestep.cloud",
         utm_medium: "landing",
-        utm_campaign: "teste-30-dias",
+        utm_campaign: "solucao-completa",
         message: msg
       };
       if (submitBtn) {
@@ -149,7 +157,7 @@
       }).finally(function () {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = "Começar 30 dias grátis";
+          submitBtn.textContent = "Enviar interesse";
         }
       });
     });

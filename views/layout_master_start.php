@@ -16,6 +16,7 @@
   <nav class="nav">
     <div class="nav-cat">PLATAFORMA</div>
     <a href="/master" class="<?= $path==='/master'?'active':'' ?>"><?= icon('home') ?> Dashboard</a>
+    <a href="/master/objetivo" class="<?= $path==='/master/objetivo'?'active':'' ?>"><?= icon('file') ?> Objetivo</a>
     <a href="/master/clientes" class="<?= str_starts_with($path,'/master/clientes')?'active':'' ?>"><?= icon('users') ?> Clientes SaaS</a>
     <a href="/master/segmentos" class="<?= $path==='/master/segmentos'?'active':'' ?>"><?= icon('tag') ?> Segmentos</a>
     <div class="nav-cat">SISTEMA</div>

@@ -1,23 +1,16 @@
-# Landing FirestepCRM
+# Landing Firestep
 
-Site estático do domínio **https://firestep.cloud**. Projeto separado do CRM PHP (`crm.firestep.cloud`).
+Site estático de **https://firestep.cloud**. Vitrine da marca: **templates + FirestepCRM**.
 
-Não use o `vercel.json` da pasta do CRM. Esta pasta é o projeto inteiro: HTML, CSS e JS, sem build.
+Não use o `vercel.json` da pasta do CRM. Esta pasta é HTML, CSS e JS, sem build.
 
-## Publicar na Vercel (projeto novo)
+- Catálogo: [templates.firestep.cloud](https://templates.firestep.cloud/)
+- Painel: [crm.firestep.cloud](https://crm.firestep.cloud/)
 
-1. Crie um repositório só com o conteúdo desta pasta (não importe `firestepCRM`).
-2. Em [vercel.com/new](https://vercel.com/new), importe esse repositório.
-3. Framework Preset: **Other**.
-4. Root Directory: `.` (raiz).
-5. Build Command e Output Directory: vazios.
-6. Domínio: `firestep.cloud` (e `www` no mesmo projeto).
+## Publicar na Vercel
 
-Projeto Vercel já criado: **firestep-cloud** (separado de `firestep-crm`).
-URL atual: https://firestep-cloud.vercel.app
+Projeto **firestep-cloud** (separado de `firestep-crm`). Framework: Other. Root: `.`
 
-O painel continua no projeto **firestep-crm**, domínio `crm.firestep.cloud`.
+## Formulário
 
-## Formulário de teste
-
-Em `script.js`, `WA` é o WhatsApp comercial (DDI+DDD+número, só dígitos). Se ficar o placeholder, o pedido vai para `contato@firestep.cloud`.
+`script.js` envia o interesse (completo / templates / CRM) para o webhook do FirestepCRM.

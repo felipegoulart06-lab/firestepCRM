@@ -1,5 +1,10 @@
 <?php $pendingIntegrations = $pendingIntegrations ?? []; ?>
 <h1>Dashboard</h1>
+<div class="card" style="padding:16px;margin-bottom:14px;border-color:#2563eb">
+  <b>Objetivo</b>
+  <p class="muted" style="margin:6px 0 10px">Instagram e comercial existem para vender site + FirestepCRM — não para contar seguidor. Leia de novo quando o conteúdo sair do rumo.</p>
+  <a class="btn btn-primary" href="/master/objetivo">Abrir objetivo</a>
+</div>
 <?php if ($pendingIntegrations): ?>
 <div class="card" style="padding:16px;margin-bottom:14px;border-color:#f79009">
   <b><?= count($pendingIntegrations) === 1 ? '1 cliente pediu integração' : count($pendingIntegrations).' clientes pediram integração' ?></b>
