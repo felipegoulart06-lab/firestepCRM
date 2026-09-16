@@ -791,33 +791,61 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/fornecedores/salvar') {
             coverage_ensure_schema();
-            [$docOk, $cnpj, $docErr] = parse_br_document('cnpj', post('cnpj'), true);
+            $id = trim((string)post('id', ''));
+            $back = $id !== '' ? '/app/fornecedores?id='.urlencode($id) : '/app/fornecedores?novo=1';
+            [$docOk, $document, $docErr] = parse_br_document(post('document_kind'), post('cnpj'), true);
             $name = trim((string)post('name', ''));
             $address = trim((string)post('address', ''));
             $city = trim((string)post('city', ''));
             $state = strtoupper(trim((string)post('state', '')));
             $cep = trim((string)post('cep', ''));
+            $product = trim((string)post('product_type', ''));
+            $phone = trim((string)post('phone', ''));
+            $email = strtolower(trim((string)post('email', '')));
+            $contact = trim((string)post('contact_name', ''));
+            $kind = strtolower(trim((string)post('document_kind', '')));
             if ($name === '' || !$docOk) {
-                flash($name === '' ? 'Informe o nome do fornecedor.' : $docErr, 'error');
-                redirect('/app/abrangencia');
+                bounce_form($back, $name === '' ? 'Informe o nome do fornecedor.' : $docErr);
             }
-            if ($address === '' && $city === '' && $cep === '') {
-                flash('Informe o endereço, cidade ou CEP do fornecedor para localizá-lo no mapa.', 'error');
-                redirect('/app/abrangencia');
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                bounce_form($back, 'Informe um e-mail válido ou deixe em branco.');
             }
-            $pos = locate_br_address($address, $city, $state, $cep);
-            $id = uid();
-            q('INSERT INTO suppliers(id,tenant_id,name,cnpj,address,city,state,cep,lat,lng,notes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
-                $id, $tid, $name, $cnpj, $address ?: null, $city ?: null, $state ?: null, $cep ?: null, $pos['lat'], $pos['lng'], post('notes'), now(),
-            ]);
-            flash('Fornecedor CNPJ incluído no mapa.');
-            redirect('/app/abrangencia');
+            $lat = null;
+            $lng = null;
+            if ($kind === 'cnpj' && ($address !== '' || $city !== '' || $cep !== '')) {
+                $pos = locate_br_address($address, $city, $state, $cep);
+                $lat = $pos['lat'];
+                $lng = $pos['lng'];
+            }
+            $notes = post('notes');
+            if ($id !== '') {
+                $ex = one('SELECT id FROM suppliers WHERE id=? AND tenant_id=?', [$id, $tid]);
+                if (!$ex) {
+                    flash('Fornecedor não encontrado.', 'error');
+                    redirect('/app/fornecedores');
+                }
+                q('UPDATE suppliers SET name=?,cnpj=?,document_kind=?,product_type=?,contact_name=?,phone=?,email=?,address=?,city=?,state=?,cep=?,lat=?,lng=?,notes=? WHERE id=? AND tenant_id=?', [
+                    $name, $document, $kind, $product !== '' ? $product : null, $contact !== '' ? $contact : null,
+                    $phone !== '' ? $phone : null, $email !== '' ? $email : null, $address ?: null, $city ?: null, $state ?: null, $cep ?: null,
+                    $lat, $lng, $notes, $id, $tid,
+                ]);
+                flash('Fornecedor atualizado.');
+            } else {
+                $id = uid();
+                q('INSERT INTO suppliers(id,tenant_id,name,cnpj,document_kind,product_type,contact_name,phone,email,address,city,state,cep,lat,lng,notes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                    $id, $tid, $name, $document, $kind, $product !== '' ? $product : null, $contact !== '' ? $contact : null,
+                    $phone !== '' ? $phone : null, $email !== '' ? $email : null, $address ?: null, $city ?: null, $state ?: null, $cep ?: null,
+                    $lat, $lng, $notes, now(),
+                ]);
+                flash('Fornecedor cadastrado.');
+            }
+            redirect('/app/fornecedores');
         }
         if ($path === '/app/fornecedores/excluir') {
             coverage_ensure_schema();
             q('DELETE FROM suppliers WHERE id=? AND tenant_id=?', [post('id'), $tid]);
             flash('Fornecedor removido.');
-            redirect('/app/abrangencia');
+            redirect('/app/fornecedores');
         }
         if ($path === '/app/servicos/salvar') {
             $id = post('id');
@@ -1413,7 +1441,33 @@ if (str_starts_with($path, '/app')) {
         view('app/abrangencia', [
             'pins' => coverage_pins($tenant['id']),
             'land' => brazil_svg_path(),
-            'suppliers' => all('SELECT * FROM suppliers WHERE tenant_id=? ORDER BY name', [$tenant['id']]),
+        ]);
+        layout_end('app');
+        exit;
+    }
+    if ($path === '/app/fornecedores') {
+        coverage_ensure_schema();
+        $edit = null;
+        $editId = trim((string)($_GET['id'] ?? ''));
+        if ($editId !== '') {
+            $edit = one('SELECT * FROM suppliers WHERE id=? AND tenant_id=?', [$editId, $tenant['id']]);
+        }
+        $search = trim((string)($_GET['q'] ?? ''));
+        $sql = 'SELECT * FROM suppliers WHERE tenant_id=?';
+        $p = [$tenant['id']];
+        if ($search !== '') {
+            $sql .= ' AND (name LIKE ? OR COALESCE(cnpj,\'\') LIKE ? OR COALESCE(product_type,\'\') LIKE ? OR COALESCE(contact_name,\'\') LIKE ? OR COALESCE(city,\'\') LIKE ?)';
+            $like = '%'.$search.'%';
+            array_push($p, $like, $like, $like, $like, $like);
+        }
+        $sql .= ' ORDER BY name';
+        layout_start('app', compact('user','tenant','path'));
+        view('app/fornecedores', [
+            'items' => all($sql, $p),
+            'edit' => $edit,
+            'novo' => isset($_GET['novo']) || $edit,
+            'old' => take_old_form(),
+            'search' => $search,
         ]);
         layout_end('app');
         exit;

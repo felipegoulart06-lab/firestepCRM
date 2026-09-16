@@ -44,6 +44,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <?php endif; ?>
     <?php if (!is_user_agent($user)): ?>
     <a href="/app/abrangencia" class="<?= $path==='/app/abrangencia'?'active':'' ?>"><?= icon('map') ?> Abrangência</a>
+    <a href="/app/fornecedores" class="<?= str_starts_with($path,'/app/fornecedores')?'active':'' ?>"><?= icon('briefcase') ?> Fornecedores</a>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
     <details class="nav-group<?= str_starts_with($path,'/app/financeiro')?' nav-on':'' ?>" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>

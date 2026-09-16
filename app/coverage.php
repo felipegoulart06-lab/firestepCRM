@@ -43,6 +43,25 @@ function coverage_ensure_schema(): void
       notes TEXT,
       created_at TEXT NOT NULL
     )");
+    $extra = [
+        'document_kind' => "TEXT DEFAULT 'cnpj'",
+        'product_type' => 'TEXT',
+        'phone' => 'TEXT',
+        'email' => 'TEXT',
+        'contact_name' => 'TEXT',
+    ];
+    if (is_pgsql()) {
+        foreach ($extra as $col => $def) {
+            $pdo->exec("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS $col $def");
+        }
+    } else {
+        $supCols = array_column($pdo->query('PRAGMA table_info(suppliers)')->fetchAll(), 'name');
+        foreach ($extra as $col => $def) {
+            if (!in_array($col, $supCols, true)) {
+                $pdo->exec("ALTER TABLE suppliers ADD COLUMN $col $def");
+            }
+        }
+    }
     $pdo->exec("CREATE TABLE IF NOT EXISTS appointment_stops (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL,
@@ -183,8 +202,9 @@ function coverage_pins(string $tenantId): array
 {
     coverage_ensure_schema();
     $pins = [];
-    foreach (all('SELECT id,name,cnpj,address,city,state,lat,lng FROM suppliers WHERE tenant_id=?', [$tenantId]) as $row) {
-        if ($row['lat'] === null || $row['lng'] === null) {
+    foreach (all('SELECT id,name,cnpj,document_kind,address,city,state,lat,lng FROM suppliers WHERE tenant_id=?', [$tenantId]) as $row) {
+        $kind = strtolower((string)($row['document_kind'] ?? '')) ?: br_doc_kind_from_value($row['cnpj'] ?? '');
+        if ($kind !== 'cnpj' || $row['lat'] === null || $row['lng'] === null) {
             continue;
         }
         $xy = br_map_xy((float)$row['lat'], (float)$row['lng']);
