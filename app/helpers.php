@@ -138,6 +138,8 @@ function db(): PDO
         }
         $pdo = new PDO($dsn, urldecode((string)($parts['user'] ?? 'postgres')), urldecode((string)($parts['pass'] ?? '')), $options);
         users_ensure_roles($pdo);
+        require_once __DIR__ . '/coverage.php';
+        coverage_ensure_schema();
         return $pdo;
     }
 
@@ -153,6 +155,8 @@ function db(): PDO
     $pdo->exec('PRAGMA busy_timeout=5000');
     $pdo->exec(file_get_contents(__DIR__ . '/schema.sql'));
     migrate_database($pdo);
+    require_once __DIR__ . '/coverage.php';
+    coverage_ensure_schema();
     if ($fresh || !$pdo->query('SELECT 1 FROM users LIMIT 1')->fetch()) {
         require __DIR__ . '/seed.php';
         nexo_seed($pdo);
@@ -342,9 +346,9 @@ function migrate_database(PDO $pdo): void
         'users' => [
             'last_login_at' => 'TEXT',
         ],
-        'clients' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT'],
+        'clients' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL'],
         'requests' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'metadata' => 'TEXT'],
-        'appointments' => ['request_id' => 'TEXT', 'metadata' => 'TEXT'],
+        'appointments' => ['request_id' => 'TEXT', 'metadata' => 'TEXT', 'visit_type' => "TEXT DEFAULT 'interno'"],
         'services' => [
             'buffer_minutes' => 'INTEGER DEFAULT 0',
             'deposit' => 'REAL DEFAULT 0',
@@ -585,7 +589,7 @@ function sql_tenant_admin_join(string $tenantAlias = 't', string $userAlias = 'u
 
 function agent_route_forbidden(string $path): bool
 {
-    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/webhooks', '/app/configuracoes', '/app/onboarding', '/app/google'] as $prefix) {
+    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/abrangencia', '/app/fornecedores', '/app/webhooks', '/app/configuracoes', '/app/onboarding', '/app/google'] as $prefix) {
         if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
             return true;
         }
@@ -799,6 +803,7 @@ function icon(string $name, int $size = 18): string
         'wallet' => '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 14h2"/>',
         'folder' => '<path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h5l2 2"/>',
         'pdf' => '<path d="M14 2H7a2 2 0 0 0-2 2v16h14V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+        'map' => '<path d="M9 18 3 20V6l6-2 6 2 6-2v14l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
     ];
     $body = $paths[$name] ?? $paths['list'];
     return '<svg class="ico" width="'.$size.'" height="'.$size.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.$body.'</svg>';
@@ -905,12 +910,17 @@ function all(string $sql, array $p = []): array
 
 function appointment_detail(string $tenantId, string $id): ?array
 {
-    return one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign
+    $row = one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
         LEFT JOIN requests r ON r.id=a.request_id AND r.tenant_id=a.tenant_id
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
+    if ($row) {
+        coverage_ensure_schema();
+        $row['stops'] = all('SELECT address FROM appointment_stops WHERE tenant_id=? AND appointment_id=? ORDER BY sort_order, created_at', [$tenantId, $id]);
+    }
+    return $row;
 }
 
 function app_return_url(?string $raw, string $fallback = '/app/agenda'): string
@@ -1094,3 +1104,4 @@ function request_webhook_origin(): string
 require_once __DIR__ . '/letterhead.php';
 require_once __DIR__ . '/clauses.php';
 require_once __DIR__ . '/contract.php';
+require_once __DIR__ . '/coverage.php';
