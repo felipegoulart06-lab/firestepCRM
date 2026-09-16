@@ -13,7 +13,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=r3">
+<link rel="stylesheet" href="/assets/app.css?v=r4">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -43,6 +43,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <a href="/app/agentes" class="<?= str_starts_with($path,'/app/agentes')?'active':'' ?>"><?= icon('briefcase') ?> Agentes</a>
     <?php endif; ?>
     <?php if (!is_user_agent($user)): ?>
+    <a href="/app/abrangencia" class="<?= $path==='/app/abrangencia'?'active':'' ?>"><?= icon('map') ?> Abrangência</a>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
     <details class="nav-group<?= str_starts_with($path,'/app/financeiro')?' nav-on':'' ?>" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>

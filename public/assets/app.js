@@ -104,6 +104,8 @@ function bindDocFields(root){
       if (k==='cpf') num.value = maskCpf(num.value);
       if (k==='cnpj') num.value = maskCnpj(num.value);
       if (!k) num.value = '';
+      const geo = form.querySelector('#cnpj-geo');
+      if (geo) geo.hidden = k !== 'cnpj';
     };
     kind.addEventListener('change', apply);
     num.addEventListener('input', ()=>{
@@ -114,6 +116,36 @@ function bindDocFields(root){
   });
 }
 document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
+document.addEventListener('DOMContentLoaded', bindExternalVisit);
+function bindExternalVisit(){
+  document.querySelectorAll('[data-external-visit]').forEach(function(box){
+    const form = box.closest('form');
+    if (!form || box.dataset.bound) return;
+    box.dataset.bound = '1';
+    const toggle = form.querySelector('[name="external_visit"]');
+    const fields = form.querySelector('[data-visit-fields]');
+    const list = form.querySelector('[data-visit-list]');
+    const add = form.querySelector('[data-visit-add]');
+    const sync = function(){
+      const on = !!(toggle && toggle.checked);
+      if (fields) fields.hidden = !on;
+      if (!list) return;
+      const inputs = list.querySelectorAll('input[name="visit_addresses[]"]');
+      inputs.forEach(function(el, i){ el.required = on && i === 0; });
+    };
+    toggle?.addEventListener('change', sync);
+    add?.addEventListener('click', function(e){
+      e.preventDefault();
+      if (!list) return;
+      const input = document.createElement('input');
+      input.className = 'input';
+      input.name = 'visit_addresses[]';
+      input.placeholder = 'Rua, número, cidade, UF ou CEP';
+      list.appendChild(input);
+    });
+    sync();
+  });
+}
 
 function bindReportsExplorer(){
   const root = document.getElementById('fx-root');

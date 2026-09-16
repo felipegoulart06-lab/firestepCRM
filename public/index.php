@@ -622,6 +622,12 @@ if (str_starts_with($path, '/app')) {
                 flash('Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.', 'error');
                 redirect($id ? $back : $retryNew);
             }
+            $isExt = is_user_crm($user) && (post('external_visit') === '1' || post('external_visit') === 'on');
+            $visitAddrs = array_values(array_filter(array_map('trim', (array)($_POST['visit_addresses'] ?? [])), static fn($v) => $v !== ''));
+            if ($isExt && !$visitAddrs) {
+                flash('Para atendimento externo, informe ao menos um endereço.', 'error');
+                redirect($id ? $back : $retryNew);
+            }
             if ($id) {
                 if (post('allow_edit') !== '1') {
                     flash('Para alterar um agendamento, use Agendamentos > Editar.');
@@ -641,6 +647,7 @@ if (str_starts_with($path, '/app')) {
                 if (post('status')==='CANCELLED') { notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.'); emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]); }
                 push_google_sheets($tid, 'appointment', 'upsert', $id);
                 sync_appointment_finance($tid, $id);
+                save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs]);
                 flash('Agendamento atualizado.');
             } else {
                 $res = create_appointment($tenant, [
@@ -650,6 +657,9 @@ if (str_starts_with($path, '/app')) {
                     'metadata'=>$req && !empty($req['metadata']) ? (json_decode($req['metadata'], true) ?: null) : null,
                 ]);
                 flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
+                if ($res['ok']) {
+                    save_appointment_visits($tid, (string)$res['id'], ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs]);
+                }
                 redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos?ver='.urlencode((string)$res['id'])) : $retryNew);
             }
             redirect($back);
@@ -696,6 +706,7 @@ if (str_starts_with($path, '/app')) {
                 else q('INSERT INTO custom_field_values(id,tenant_id,field_id,client_id,value) VALUES(?,?,?,?,?)', [uid(),$tid,$f['id'],$id,$val]);
             }
             push_google_sheets($tid, 'client', 'upsert', $id);
+            locate_client_if_cnpj($tid, $id, $document, post('address'), post('city'), post('state'), post('cep'));
             flash('Cadastro salvo.');
             redirect('/app/clientes/ver?id='.$id);
         }
@@ -777,6 +788,36 @@ if (str_starts_with($path, '/app')) {
             audit($tid, $user['id'], 'agent.deleted', 'user', $delId);
             flash('Agente removido.');
             redirect('/app/agentes');
+        }
+        if ($path === '/app/fornecedores/salvar') {
+            coverage_ensure_schema();
+            [$docOk, $cnpj, $docErr] = parse_br_document('cnpj', post('cnpj'), true);
+            $name = trim((string)post('name', ''));
+            $address = trim((string)post('address', ''));
+            $city = trim((string)post('city', ''));
+            $state = strtoupper(trim((string)post('state', '')));
+            $cep = trim((string)post('cep', ''));
+            if ($name === '' || !$docOk) {
+                flash($name === '' ? 'Informe o nome do fornecedor.' : $docErr, 'error');
+                redirect('/app/abrangencia');
+            }
+            if ($address === '' && $city === '' && $cep === '') {
+                flash('Informe o endereço, cidade ou CEP do fornecedor para localizá-lo no mapa.', 'error');
+                redirect('/app/abrangencia');
+            }
+            $pos = locate_br_address($address, $city, $state, $cep);
+            $id = uid();
+            q('INSERT INTO suppliers(id,tenant_id,name,cnpj,address,city,state,cep,lat,lng,notes,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
+                $id, $tid, $name, $cnpj, $address ?: null, $city ?: null, $state ?: null, $cep ?: null, $pos['lat'], $pos['lng'], post('notes'), now(),
+            ]);
+            flash('Fornecedor CNPJ incluído no mapa.');
+            redirect('/app/abrangencia');
+        }
+        if ($path === '/app/fornecedores/excluir') {
+            coverage_ensure_schema();
+            q('DELETE FROM suppliers WHERE id=? AND tenant_id=?', [post('id'), $tid]);
+            flash('Fornecedor removido.');
+            redirect('/app/abrangencia');
         }
         if ($path === '/app/servicos/salvar') {
             $id = post('id');
@@ -1362,6 +1403,17 @@ if (str_starts_with($path, '/app')) {
             'values'=>$vals,'appts'=>$appts,'last'=>$last,'next'=>$next,
             'totalAp'=>count(array_filter($appts, fn($a)=>$a['status']!=='CANCELLED')),
             'totalReq'=>one('SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND (client_id=? OR phone=?)', [$tenant['id'],$c['id'],$c['phone']??''])['c'],
+        ]);
+        layout_end('app');
+        exit;
+    }
+    if ($path === '/app/abrangencia') {
+        coverage_ensure_schema();
+        layout_start('app', compact('user','tenant','path'));
+        view('app/abrangencia', [
+            'pins' => coverage_pins($tenant['id']),
+            'land' => brazil_svg_path(),
+            'suppliers' => all('SELECT * FROM suppliers WHERE tenant_id=? ORDER BY name', [$tenant['id']]),
         ]);
         layout_end('app');
         exit;

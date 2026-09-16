@@ -37,6 +37,15 @@
     <div><label class="label">WhatsApp</label><input class="input" name="whatsapp" value="<?= e($c['whatsapp'] ?? '') ?>" inputmode="tel" placeholder="Opcional"></div>
     <div><label class="label">E-mail</label><input class="input" type="email" name="email" value="<?= e($c['email'] ?? '') ?>" required></div>
     <?php br_document_fields('cpf', $c['cpf'] ?? null, true); ?>
+  </div>
+  <div id="cnpj-geo" class="grid g2" style="margin-top:12px" <?= br_doc_kind_from_value($c['cpf'] ?? '') === 'cnpj' ? '' : 'hidden' ?>>
+    <div class="fx-block-title" style="grid-column:1/-1">Endereço para o mapa (cliente CNPJ)</div>
+    <div><label class="label">Endereço</label><input class="input" name="address" value="<?= e($c['address'] ?? '') ?>" placeholder="Rua, número, bairro"></div>
+    <div><label class="label">Cidade</label><input class="input" name="city" value="<?= e($c['city'] ?? '') ?>"></div>
+    <div><label class="label">UF</label><input class="input" name="state" maxlength="2" value="<?= e($c['state'] ?? '') ?>" placeholder="SP"></div>
+    <div><label class="label">CEP</label><input class="input" name="cep" value="<?= e($c['cep'] ?? '') ?>" placeholder="00000-000" inputmode="numeric"></div>
+  </div>
+  <div class="grid g2" style="margin-top:12px">
     <div><label class="label">Nascimento</label><input class="input" type="date" name="birth_date" value="<?= e($c['birth_date'] ?? '') ?>"></div>
     <div><label class="label">Status</label>
       <select class="select" name="status">

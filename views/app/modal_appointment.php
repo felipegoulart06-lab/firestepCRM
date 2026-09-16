@@ -45,6 +45,9 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
         <?php if ($edit['utm_source'] || $edit['utm_medium'] || $edit['utm_campaign']): ?>
           <div class="detail-item detail-wide"><small>Campanha</small><strong><?= e(implode(' · ',array_filter([$edit['utm_source'],$edit['utm_medium'],$edit['utm_campaign']]))) ?></strong></div>
         <?php endif; ?>
+        <?php if (($edit['visit_type'] ?? '') === 'externo' && !empty($edit['stops'])): ?>
+          <div class="detail-item detail-wide"><small>Atendimento externo</small><strong><?php foreach ($edit['stops'] as $stop): ?><?= e($stop['address']) ?><br><?php endforeach; ?></strong></div>
+        <?php endif; ?>
       </div>
       <?php if ($metadata): ?>
         <details style="margin-top:10px">
@@ -179,6 +182,27 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
             <?php endforeach; ?>
           </select>
         </div>
+        <?php if (is_user_crm($user ?? null)):
+          $isExternal = is_array($edit) && (($edit['visit_type'] ?? '') === 'externo');
+          $stopLines = is_array($edit) ? array_values(array_filter(array_map(static fn($s) => trim((string)($s['address'] ?? '')), $edit['stops'] ?? []))) : [];
+          if (!$stopLines) $stopLines = [''];
+        ?>
+        <div data-external-visit>
+          <label class="fx-check" style="margin:0">
+            <input type="checkbox" name="external_visit" value="1" <?= $isExternal ? 'checked' : '' ?>>
+            <span>Atendimento externo (fora do ambiente de atendimento)</span>
+          </label>
+          <p class="muted" style="margin:6px 0 0">Marque para informar um ou mais endereços. Cada endereço vira um pin verde no mapa de Abrangência.</p>
+          <div data-visit-fields <?= $isExternal ? '' : 'hidden' ?> style="margin-top:10px">
+            <div data-visit-list class="grid" style="gap:8px">
+              <?php foreach ($stopLines as $line): ?>
+                <input class="input" name="visit_addresses[]" value="<?= e($line) ?>" placeholder="Rua, número, cidade, UF ou CEP">
+              <?php endforeach; ?>
+            </div>
+            <button type="button" class="btn btn-ghost" data-visit-add style="margin-top:8px"><?= icon('plus') ?> Outro endereço</button>
+          </div>
+        </div>
+        <?php endif; ?>
         <div><label class="label">Observações</label><textarea class="textarea" name="notes"><?= e(is_array($edit) ? ($edit['notes'] ?? '') : '') ?></textarea></div>
         <button class="btn btn-primary"><?= $edit ? 'Salvar' : 'Criar agendamento' ?></button>
       </form>
