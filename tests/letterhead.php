@@ -109,6 +109,13 @@ platform_letterhead_save([
 expect(platform_letterhead_active(), 'cabeçalho da plataforma ativo');
 $dossie2 = tenant_dossier_pdf($tenant, ['username' => 'admin', 'email' => 'lh@ex.com'], null);
 expect(str_contains($dossie2, 'FirestepCRM'), 'dossie usa nome do CRM');
+expect(str_contains($dossie2, pdf_fill_dark()), 'corpo do PDF volta para tinta escura depois do cabeçalho');
+$resumo = build_pdf('Resumo do cliente', ['Cliente: Felipe Goulart', 'Telefone: 11999999999'], [
+    'id' => '',
+    'letterhead_config' => json_encode(platform_letterhead_config(), JSON_UNESCAPED_UNICODE),
+    'signature_config' => '{}',
+]);
+expect(substr_count($resumo, pdf_fill_dark()) >= 1 && str_contains($resumo, 'Felipe Goulart'), 'resumo do cliente com texto escuro');
 
 @unlink($tmp);
 exit($fail ? 1 : 0);

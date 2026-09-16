@@ -226,7 +226,9 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .fx-a4.has-lh{padding-top:0}
 .lh-banner{display:flex;gap:14px;align-items:center;margin:0 -16mm 18px;padding:16px 16mm 18px;min-height:84px}
 .lh-banner img{width:auto;max-width:120px;height:auto;max-height:72px;object-fit:contain;background:rgba(255,255,255,.94);border-radius:8px;flex:0 0 auto}
-.fx-a4{display:flex;flex-direction:column}
+.fx-a4{display:flex;flex-direction:column;color:#101828}
+.fx-a4 h1,.fx-a4 h2,.fx-a4 p,.fx-a4 td,.fx-a4 th,.fx-a4 .fx-a4-sub,.fx-a4 .fx-a4-brand,.cl-body{color:#101828}
+.fx-a4 .fx-a4-sub,.fx-a4-foot,.fx-a4 th,.fx-a4-empty{color:#344054}
 .fx-a4-foot{margin-top:auto;padding-top:10px;border-top:1px solid #e4e7ec;display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#667085}
 .cl-body{font-size:12px;line-height:1.55;color:#1d2939}
 .cl-body p{margin:0 0 8px}

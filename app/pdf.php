@@ -7,6 +7,11 @@ function pdf_text(string $value): string
     return str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', '', ' '], $ascii ?: $value);
 }
 
+function pdf_fill_dark(): string
+{
+    return "0.063 0.094 0.157 rg\n";
+}
+
 function build_pdf(string $title, array $lines, ?array $tenant = null): string
 {
     $lh = null;
@@ -82,6 +87,7 @@ function build_pdf(string $title, array $lines, ?array $tenant = null): string
             [$r, $g, $b] = letterhead_pdf_rgb((string)$lh['color']);
             $ink = letterhead_ink((string)$lh['color']);
             [$ir, $ig, $ib] = letterhead_pdf_rgb($ink);
+            $stream .= "q\n";
             $stream .= sprintf("%.3f %.3f %.3f rg\n0 758 595 84 re f\n", $r, $g, $b);
             $textX = 50;
             if ($imgId && $jpeg) {
@@ -97,8 +103,10 @@ function build_pdf(string $title, array $lines, ?array $tenant = null): string
             $kind = strtoupper((string)($lh['document_kind'] ?: ''));
             $stream .= "0 -10 Td\n(".pdf_text(trim($kind.' '.$lh['document'])).") Tj\n";
             $stream .= "0 -10 Td\n(".pdf_text('CEP '.$lh['cep'].'  ·  '.$lh['address']).") Tj\nET\n";
+            $stream .= "Q\n";
             $titleY = 738;
         }
+        $stream .= pdf_fill_dark();
         $stream .= "BT\n/F2 16 Tf\n50 $titleY Td\n(".pdf_text($title).") Tj\n";
         $stream .= "/F1 9 Tf\n0 -18 Td\n(Gerado em ".date('d/m/Y H:i').") Tj\n0 -20 Td\n";
         foreach ($chunk as $line) {

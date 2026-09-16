@@ -254,7 +254,8 @@ function contract_pdf_header(?array $lh, ?array $jpeg): string
     }
     [$r, $g, $b] = letterhead_pdf_rgb((string)$lh['color']);
     [$ir, $ig, $ib] = letterhead_pdf_rgb(letterhead_ink((string)$lh['color']));
-    $s = sprintf("%.3f %.3f %.3f rg\n0 742 595 100 re f\n", $r, $g, $b);
+    $s = "q\n";
+    $s .= sprintf("%.3f %.3f %.3f rg\n0 742 595 100 re f\n", $r, $g, $b);
     $textX = 50;
     if ($jpeg) {
         $ih = 56;
@@ -270,6 +271,7 @@ function contract_pdf_header(?array $lh, ?array $jpeg): string
         $s .= "BT /F1 8 Tf $textX $yy Td (".pdf_text((string)$line).") Tj ET\n";
         $yy -= 11;
     }
+    $s .= "Q\n".pdf_fill_dark();
     return $s;
 }
 
