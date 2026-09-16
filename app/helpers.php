@@ -1041,10 +1041,24 @@ function analytics_config(array $tenant): array
     return json_arr($tenant['analytics_config'] ?? '{}');
 }
 
+function request_header(string $name): string
+{
+    $want = strtolower($name);
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() ?: [] as $k => $v) {
+            if (strtolower((string)$k) === $want) {
+                return trim((string)$v);
+            }
+        }
+    }
+    $key = 'HTTP_'.strtoupper(str_replace('-', '_', $name));
+    return trim((string)($_SERVER[$key] ?? ''));
+}
+
 function normalize_site_host(string $value): string
 {
     $value = strtolower(trim($value));
-    if ($value === '' || $value === '*') {
+    if ($value === '' || $value === '*' || $value === 'null') {
         return '';
     }
     if (!str_contains($value, '://')) {
@@ -1066,7 +1080,7 @@ function tenant_webhook_hosts(array $tenant): array
     $hosts = [];
     foreach (preg_split('/[\s,;]+/', $raw) ?: [] as $part) {
         $host = normalize_site_host($part);
-        if ($host !== '' && $host !== 'localhost' && !str_ends_with($host, '.local')) {
+        if ($host !== '' && $host !== 'localhost' && !str_ends_with($host, '.local') && str_contains($host, '.')) {
             $hosts[] = $host;
         }
     }
@@ -1078,6 +1092,14 @@ function webhook_origin_host(?string $origin): string
     return normalize_site_host((string)$origin);
 }
 
+function webhook_host_covers(string $incoming, string $allowed): bool
+{
+    if ($incoming === '' || $allowed === '') {
+        return false;
+    }
+    return $incoming === $allowed || str_ends_with($incoming, '.'.$allowed);
+}
+
 function webhook_origin_matches(array $tenant, string $originOrUrl): bool
 {
     $host = webhook_origin_host($originOrUrl);
@@ -1085,20 +1107,42 @@ function webhook_origin_matches(array $tenant, string $originOrUrl): bool
         return false;
     }
     foreach (tenant_webhook_hosts($tenant) as $ok) {
-        if ($host === $ok) {
+        if (webhook_host_covers($host, $ok)) {
             return true;
         }
     }
     return false;
 }
 
+function webhook_cors_origin_value(string $originOrUrl): string
+{
+    $originOrUrl = trim($originOrUrl);
+    if ($originOrUrl === '' || strcasecmp($originOrUrl, 'null') === 0) {
+        return '';
+    }
+    if (!str_contains($originOrUrl, '://')) {
+        $originOrUrl = 'https://'.$originOrUrl;
+    }
+    $p = parse_url($originOrUrl);
+    $scheme = strtolower((string)($p['scheme'] ?? 'https'));
+    if ($scheme !== 'http' && $scheme !== 'https') {
+        return '';
+    }
+    $host = (string)($p['host'] ?? '');
+    if ($host === '') {
+        return '';
+    }
+    $port = isset($p['port']) ? ':'.$p['port'] : '';
+    return $scheme.'://'.$host.$port;
+}
+
 function request_webhook_origin(): string
 {
-    $origin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
-    if ($origin !== '') {
+    $origin = request_header('Origin');
+    if ($origin !== '' && strcasecmp($origin, 'null') !== 0) {
         return $origin;
     }
-    return trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
+    return request_header('Referer');
 }
 
 require_once __DIR__ . '/letterhead.php';

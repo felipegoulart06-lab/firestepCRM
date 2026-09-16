@@ -7,7 +7,7 @@ $siteDomain = (string)($siteDomain ?? '');
 <h1>Webhooks</h1>
 <div class="card" style="padding:20px;margin-bottom:16px">
   <h2 style="margin-top:0">Domínio do site</h2>
-  <p style="color:#667085">O endpoint de entrada só aceita requisições do domínio cadastrado (cabeçalho Origin). Sem domínio, o webhook não recebe nada e o endereço fica oculto.</p>
+  <p style="color:#667085">Informe o domínio do site que envia as solicitações (ex.: <b>meusite.com.br</b>). Vale também <b>www</b> e subdomínios. Sem esse cadastro o endpoint recusa a chamada. O endereço do CRM não é o domínio do site.</p>
   <form method="post" action="/app/webhooks/dominio">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
     <label class="label">Domínio autorizado</label>
@@ -43,7 +43,7 @@ $siteDomain = (string)($siteDomain ?? '');
     <span class="badge" style="background:<?= !empty($inbound['active'])?'#dcfce7':'#fee2e2' ?>;color:<?= !empty($inbound['active'])?'#166534':'#991b1b' ?>"><?= !empty($inbound['active'])?'ATIVO':'INATIVO' ?></span>
     <form method="post" action="/app/webhooks/toggle" style="display:inline"><input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><button class="btn btn-ghost"><?= !empty($inbound['active'])?'Desativar':'Ativar' ?></button></form>
   </p>
-  <p style="font-size:13px;color:#667085">Campos mínimos: <b>name</b> e <b>phone</b> ou <b>email</b>. O navegador do visitante precisa chamar a partir do domínio salvo (CORS). Chamadas sem Origin ou de outro site são recusadas.</p>
+  <p style="font-size:13px;color:#667085">Campos mínimos: <b>name</b> e <b>phone</b> ou <b>email</b>. O formulário no site precisa chamar este endpoint com <code>fetch</code> (JSON). Chamadas de outro domínio aparecem em “Últimas requisições” como origem bloqueada.</p>
   <pre style="background:#0f1c2e;color:#dbeafe;padding:14px;border-radius:10px;overflow:auto;font-size:12px">{
   "name": "Maria Oliveira",
   "phone": "47999999999",

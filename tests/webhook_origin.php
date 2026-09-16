@@ -23,8 +23,16 @@ $tenant = ['analytics_config' => json_encode(['site_domain' => 'firestep.cloud']
 expect(tenant_webhook_hosts($tenant) === ['firestep.cloud'], 'lista o domínio salvo');
 expect(webhook_origin_matches($tenant, 'https://firestep.cloud') === true, 'Origin do site passa');
 expect(webhook_origin_matches($tenant, 'https://www.firestep.cloud') === true, 'www equivale');
+expect(webhook_origin_matches($tenant, 'https://lp.firestep.cloud') === true, 'subdomínio do domínio salvo passa');
 expect(webhook_origin_matches($tenant, 'https://evil.test') === false, 'outro domínio bloqueado');
+expect(webhook_origin_matches($tenant, 'https://firestep.cloud.evil.test') === false, 'sufixo falso bloqueado');
 expect(webhook_origin_matches(['analytics_config' => '{}'], 'https://firestep.cloud') === false, 'sem domínio cadastrado bloqueia');
+expect(webhook_cors_origin_value('https://www.firestep.cloud/form') === 'https://www.firestep.cloud', 'CORS ecoa só o origin');
+
+$_SERVER['HTTP_ORIGIN'] = '';
+$_SERVER['HTTP_REFERER'] = 'https://www.firestep.cloud/contato';
+expect(request_webhook_origin() === 'https://www.firestep.cloud/contato', 'Referer entra se Origin vier vazio');
+expect(webhook_origin_matches($tenant, request_webhook_origin()) === true, 'Referer do site salvo autoriza');
 
 if ($fail) {
     fwrite(STDERR, "$fail teste(s) de origem do webhook falharam.\n");

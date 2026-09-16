@@ -458,7 +458,7 @@ $hourLine = static function (array $h) {
           <input class="input" name="site_domain" value="<?= e($analytics['site_domain'] ?? '') ?>" placeholder="www.seusite.com.br">
         </div>
       </div>
-      <p class="settings-hint">O domínio também trava o webhook: só o site nesse endereço envia solicitações. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
+      <p class="settings-hint">Cadastre o mesmo domínio do site (não o do CRM). Ele libera o webhook: <b>www</b> e subdomínios entram juntos. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
       <div class="settings-actions">
         <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
         <button class="btn btn-primary">Salvar integração</button>

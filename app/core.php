@@ -255,6 +255,16 @@ function convert_request_to_appointment(array $tenant, array $req, ?string $user
     return $res;
 }
 
+function webhook_log_origin_denied(array $tenant, array $hook, string $from): void
+{
+    q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,http_status,status,response,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
+        uid(), $tenant['id'], $hook['id'], 'Origem bloqueada',
+        json_encode(['origin'=>$from], JSON_UNESCAPED_UNICODE),
+        403, 'error', 'Domínio não autorizado.',
+        $from !== '' ? webhook_origin_host($from) : 'sem-origem', now(),
+    ]);
+}
+
 function ingest_webhook(string $token, array $body, string $ip): array
 {
     if (!rate_ok('wh:'.$token.':'.$ip, 40, 600)) {
@@ -271,10 +281,7 @@ function ingest_webhook(string $token, array $body, string $ip): array
     }
     $from = request_webhook_origin();
     if ($from === '' || !webhook_origin_matches($tenant, $from)) {
-        q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,http_status,status,response,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
-            uid(), $tenant['id'], $hook['id'], 'Origem bloqueada', json_encode(['origin'=>$from], JSON_UNESCAPED_UNICODE),
-            403, 'error', 'Domínio não autorizado.', $from !== '' ? webhook_origin_host($from) : 'sem-origem', now(),
-        ]);
+        webhook_log_origin_denied($tenant, $hook, $from);
         return [403, ['error'=>'Este webhook só aceita o domínio cadastrado do site.']];
     }
     unset($body['tenant_id'], $body['company_id'], $body['role'], $body['is_admin']);

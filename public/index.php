@@ -34,6 +34,66 @@ if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
 }
 
 db();
+
+/* -------- webhook público (domínio cadastrado do tenant; sem sessão/cookie) -------- */
+if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
+    $hookRow = one('SELECT * FROM webhooks WHERE token=? AND direction=?', [$m[1], 'INBOUND']);
+    $hookTenant = $hookRow ? one('SELECT * FROM tenants WHERE id=?', [$hookRow['tenant_id']]) : null;
+    $reqOrigin = request_webhook_origin();
+    $echoOrigin = webhook_cors_origin_value($reqOrigin);
+    $corsOk = (bool)($hookTenant && $echoOrigin !== '' && webhook_origin_matches($hookTenant, $reqOrigin));
+    header('Cross-Origin-Resource-Policy: cross-origin');
+    if ($echoOrigin !== '') {
+        header('Access-Control-Allow-Origin: '.$echoOrigin);
+        header('Vary: Origin');
+        header('Access-Control-Allow-Headers: Content-Type, Accept');
+        header('Access-Control-Allow-Methods: POST, OPTIONS');
+        header('Access-Control-Max-Age: 600');
+    }
+    if ($method === 'OPTIONS') {
+        http_response_code($echoOrigin !== '' ? 204 : 403);
+        exit;
+    }
+    if ($method !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode(['error'=>'Use POST']);
+        exit;
+    }
+    if (!$hookRow || !$hookTenant) {
+        http_response_code(404);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error'=>'Webhook inválido.']);
+        exit;
+    }
+    if (!$corsOk) {
+        webhook_log_origin_denied($hookTenant, $hookRow, $reqOrigin);
+        http_response_code(403);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error'=>'Este webhook só aceita o domínio cadastrado do site.']);
+        exit;
+    }
+    if (!rate_ok('wh:'.$m[1].':'.$ip, 40, 300)) {
+        http_response_code(429);
+        header('Content-Type: application/json');
+        echo json_encode(['error'=>'Limite de requisições excedido.']);
+        exit;
+    }
+    $raw = file_get_contents('php://input');
+    $body = json_decode($raw ?: '[]', true);
+    if (!is_array($body)) {
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['error'=>'JSON inválido.']);
+        exit;
+    }
+    [$code, $out] = ingest_webhook($m[1], $body, $ip);
+    http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($out, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 boot_session();
 
 function current_user(): ?array
@@ -90,56 +150,6 @@ function collect_hours(): string
         ];
     }
     return json_encode($hours);
-}
-
-/* -------- webhook público (só o domínio cadastrado do tenant) -------- */
-if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
-    $hookRow = one('SELECT * FROM webhooks WHERE token=? AND direction=?', [$m[1], 'INBOUND']);
-    $hookTenant = $hookRow ? one('SELECT * FROM tenants WHERE id=?', [$hookRow['tenant_id']]) : null;
-    $reqOrigin = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
-    $corsOk = $hookTenant && $reqOrigin !== '' && webhook_origin_matches($hookTenant, $reqOrigin);
-    if ($corsOk) {
-        header('Access-Control-Allow-Origin: '.$reqOrigin);
-        header('Vary: Origin');
-        header('Access-Control-Allow-Headers: Content-Type');
-        header('Access-Control-Allow-Methods: POST, OPTIONS');
-        header('Access-Control-Max-Age: 600');
-    }
-    if ($method === 'OPTIONS') {
-        http_response_code($corsOk ? 204 : 403);
-        exit;
-    }
-    if ($method !== 'POST') {
-        http_response_code(405);
-        header('Content-Type: application/json');
-        echo json_encode(['error'=>'Use POST']);
-        exit;
-    }
-    if (!$corsOk) {
-        http_response_code(403);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error'=>'Este webhook só aceita o domínio cadastrado do site.']);
-        exit;
-    }
-    if (!rate_ok('wh:'.$m[1].':'.$ip, 40, 300)) {
-        http_response_code(429);
-        header('Content-Type: application/json');
-        echo json_encode(['error'=>'Limite de requisições excedido.']);
-        exit;
-    }
-    $raw = file_get_contents('php://input');
-    $body = json_decode($raw ?: '[]', true);
-    if (!is_array($body)) {
-        http_response_code(400);
-        header('Content-Type: application/json');
-        echo json_encode(['error'=>'JSON inválido.']);
-        exit;
-    }
-    [$code, $out] = ingest_webhook($m[1], $body, $ip);
-    http_response_code($code);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($out, JSON_UNESCAPED_UNICODE);
-    exit;
 }
 
 if ($path === '/' ) redirect('/login');
