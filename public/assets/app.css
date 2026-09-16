@@ -7,8 +7,8 @@ a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit}
 button{color:inherit}
 .ico{display:block;flex:0 0 auto}
-.wrap{display:flex;min-height:100vh}
-.sidebar{width:252px;background:var(--navy);color:#d0d5dd;padding:20px 14px 14px;position:sticky;top:0;height:100vh;overflow:auto;flex-shrink:0;border-right:1px solid #1d2939}
+.wrap{display:flex;align-items:stretch;min-height:100vh}
+.sidebar{width:252px;background:var(--navy);color:#d0d5dd;padding:20px 14px 14px;position:relative;align-self:stretch;min-height:100vh;height:auto;overflow:visible;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #1d2939}
 .brand{display:flex;gap:11px;align-items:flex-start;padding:0 8px 22px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:12px}
 .logo{width:34px;height:34px;border-radius:6px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:800}
 .brand-name{font-size:15px;color:#fff;font-weight:700;letter-spacing:-.01em}
@@ -32,7 +32,8 @@ button{color:inherit}
 .nav a:focus-visible,.nav-group>summary:focus-visible{outline:2px solid rgba(255,255,255,.35);outline-offset:-2px}
 .nav a .ico{opacity:.82;flex:0 0 auto}.nav a.active .ico,.nav a:hover .ico{opacity:1}
 .nav-spacer{flex:1}
-.sidebar-foot{margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+.nav{flex:1;display:flex;flex-direction:column;min-height:0}
+.sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
 .main{flex:1;min-width:0}
 .top{margin:12px 18px;padding:7px 10px;display:flex;gap:9px;align-items:center;position:sticky;top:8px;z-index:25;box-shadow:0 3px 12px rgba(16,24,40,.05)!important}
 .content{padding:6px 20px 44px;max-width:1600px;margin:auto}
@@ -376,7 +377,7 @@ a.fx-x{text-decoration:none;color:#344054}
 @media(max-width:1050px){.g3{grid-template-columns:1fr 1fr}.user-info{display:none}}
 @media(max-width:1100px){
   .wrap{display:block}
-  .sidebar{position:fixed;left:0;top:0;width:min(300px,88vw);height:100dvh;transform:translateX(-105%);z-index:50;transition:transform .2s ease;box-shadow:none;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .sidebar{position:fixed;left:0;top:0;width:min(300px,88vw);height:100dvh;max-height:none;overflow:auto;transform:translateX(-105%);z-index:50;transition:transform .2s ease;box-shadow:none;padding-bottom:max(14px,env(safe-area-inset-bottom))}
   .sidebar.open{transform:none;box-shadow:18px 0 40px rgba(16,24,40,.28)}
   .hamb{display:inline-flex}
   .top{margin:8px 10px;top:max(4px,env(safe-area-inset-top))}
