@@ -990,6 +990,87 @@ function default_hours(): array
     ];
 }
 
+function platform_secret_key(): string
+{
+    $raw = env_str('APP_KEY') ?: env_str('MASTER_PASSWORD') ?: env_str('DATABASE_URL') ?: 'firestep-platform';
+    return hash('sha256', 'firestep.secret.v1|' . $raw, true);
+}
+
+function platform_encrypt_secret(string $plain): string
+{
+    $plain = trim($plain);
+    if ($plain === '') {
+        return '';
+    }
+    $iv = random_bytes(12);
+    $tag = '';
+    $cipher = openssl_encrypt($plain, 'aes-256-gcm', platform_secret_key(), OPENSSL_RAW_DATA, $iv, $tag);
+    if ($cipher === false || strlen($tag) !== 16) {
+        throw new RuntimeException('Não foi possível cifrar o segredo.');
+    }
+    return 'enc1:' . base64_encode($iv . $tag . $cipher);
+}
+
+function platform_decrypt_secret(string $stored): string
+{
+    $stored = trim($stored);
+    if ($stored === '') {
+        return '';
+    }
+    if (!str_starts_with($stored, 'enc1:')) {
+        return '';
+    }
+    $bin = base64_decode(substr($stored, 5), true);
+    if ($bin === false || strlen($bin) < 29) {
+        return '';
+    }
+    $plain = openssl_decrypt(substr($bin, 28), 'aes-256-gcm', platform_secret_key(), OPENSSL_RAW_DATA, substr($bin, 0, 12), substr($bin, 12, 16));
+    return $plain === false ? '' : $plain;
+}
+
+function platform_leaflet_row(): array
+{
+    try {
+        $row = one("SELECT value FROM platform_settings WHERE key='leaflet'");
+    } catch (Throwable) {
+        return [];
+    }
+    return json_arr($row['value'] ?? '{}');
+}
+
+function platform_leaflet_has_token(): bool
+{
+    return trim((string)(platform_leaflet_row()['token'] ?? '')) !== '';
+}
+
+function platform_leaflet_token(): string
+{
+    return platform_decrypt_secret((string)(platform_leaflet_row()['token'] ?? ''));
+}
+
+function platform_leaflet_save(?string $plain, bool $clear = false): void
+{
+    $now = now();
+    $token = $clear ? '' : platform_encrypt_secret((string)$plain);
+    $encoded = json_encode(['token' => $token, 'updated_at' => $now], JSON_UNESCAPED_UNICODE);
+    if (is_pgsql()) {
+        q("INSERT INTO platform_settings(key,value,updated_at) VALUES('leaflet', CAST(? AS jsonb), ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at", [$encoded, $now]);
+        return;
+    }
+    q("INSERT OR REPLACE INTO platform_settings(key,value,updated_at) VALUES('leaflet',?,?)", [$encoded, $now]);
+}
+
+function geocoder_env_token(): string
+{
+    foreach (['LEAFLET_TOKEN', 'GEOCODER_TOKEN', 'MAPTILER_KEY', 'MAPBOX_TOKEN'] as $key) {
+        $v = env_str($key);
+        if ($v) {
+            return $v;
+        }
+    }
+    return '';
+}
+
 function json_arr(mixed $value, array $fallback = []): array
 {
     if (is_array($value)) {

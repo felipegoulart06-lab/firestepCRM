@@ -48,7 +48,18 @@ expect(str_contains($geojs, '/app/geo/search') && str_contains($geojs, 'bindGeoL
 expect(str_contains($cliente, 'data-geo-box') && str_contains($forn, 'data-geo-box'), 'cliente e fornecedor usam o mapa');
 expect(str_contains($modal, 'visit_lats[]') && str_contains($modal, 'data-geo-line'), 'paradas do atendimento externo');
 expect(str_contains($layout, 'geo.js'), 'geo.js no layout');
-expect(str_contains($cov, 'LEAFLET_TOKEN') && str_contains($cov, 'maptiler'), 'token Leaflet/MapTiler no servidor');
+expect(str_contains($cov, 'maptiler') && str_contains(file_get_contents($root . '/app/helpers.php'), 'LEAFLET_TOKEN'), 'token Leaflet/MapTiler no servidor');
+
+$cipher = platform_encrypt_secret('leaflet-test-token-xyz');
+expect(str_starts_with($cipher, 'enc1:') && !str_contains($cipher, 'leaflet-test-token-xyz'), 'token cifrado, sem plaintext');
+expect(platform_decrypt_secret($cipher) === 'leaflet-test-token-xyz', 'cifra e decifra o token');
+expect(platform_decrypt_secret('nao-e-cifra') === '', 'texto solto no banco não vaza como token');
+
+$tecnico = file_get_contents($root . '/views/master/tecnico.php');
+expect(str_contains($index, '/master/configuracoes/leaflet'), 'POST master salva o token Leaflet');
+expect(str_contains($tecnico, 'name="leaflet_token"') && str_contains($tecnico, 'type="password"'), 'campo senha no painel master');
+expect(!str_contains($tecnico, 'platform_leaflet_token()'), 'view não imprime o token decifrado');
+expect(str_contains($index, "'leaflet.token_saved'") && str_contains($index, 'platform_leaflet_save'), 'auditoria sem gravar o valor em log');
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");

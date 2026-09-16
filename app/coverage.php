@@ -106,13 +106,11 @@ function coverage_skip_remote_geo(): bool
 
 function geocoder_token(): string
 {
-    foreach (['LEAFLET_TOKEN', 'GEOCODER_TOKEN', 'MAPTILER_KEY', 'MAPBOX_TOKEN'] as $key) {
-        $v = env_str($key);
-        if ($v) {
-            return $v;
-        }
+    $fromEnv = geocoder_env_token();
+    if ($fromEnv !== '') {
+        return $fromEnv;
     }
-    return '';
+    return platform_leaflet_token();
 }
 
 function geocoder_provider(): string

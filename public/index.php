@@ -342,6 +342,38 @@ if (str_starts_with($path, '/master')) {
             flash('Credenciais técnicas do Google salvas. O login dos profissionais fica no painel de cada cliente.');
             redirect('/master/configuracoes/tecnico');
         }
+        if ($path === '/master/configuracoes/leaflet') {
+            $hasToken = platform_leaflet_has_token();
+            $replace = post('replace_token') === '1' || !$hasToken;
+            $clear = post('clear_token') === '1';
+            $token = trim((string)post('leaflet_token', ''));
+            if ($clear) {
+                if (post('confirm_clear') !== '1') {
+                    flash('Marque a confirmação para remover o token. Nada foi alterado.');
+                    redirect('/master/configuracoes/tecnico?edit=leaflet');
+                }
+                platform_leaflet_save(null, true);
+                audit(null, $user['id'], 'leaflet.token_cleared', 'platform', 'leaflet');
+                flash('Token do geocoder removido. Os mapas passam a usar Nominatim até cadastrar outro.');
+                redirect('/master/configuracoes/tecnico');
+            }
+            if (!$replace) {
+                flash('Nada foi alterado. O token atual permanece oculto.');
+                redirect('/master/configuracoes/tecnico');
+            }
+            if ($token === '') {
+                flash('Cole o token novo para substituir o atual. O valor nunca é exibido de novo.');
+                redirect('/master/configuracoes/tecnico?edit=leaflet');
+            }
+            if (strlen($token) < 16) {
+                flash('O token parece curto demais. Confira o valor copiado do provedor.');
+                redirect('/master/configuracoes/tecnico?edit=leaflet');
+            }
+            platform_leaflet_save($token);
+            audit(null, $user['id'], 'leaflet.token_saved', 'platform', 'leaflet');
+            flash('Token do geocoder salvo de forma cifrada. Ele não aparece de novo nesta tela.');
+            redirect('/master/configuracoes/tecnico');
+        }
         if ($path === '/master/configuracoes/folha') {
             try {
                 $cfg = letterhead_from_post(platform_letterhead_config());
