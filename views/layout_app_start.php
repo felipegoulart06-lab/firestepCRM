@@ -7,7 +7,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<?php head_viewport(); ?>
 <meta name="csrf" content="<?= e(csrf()) ?>">
 <title>FirestepCRM · <?= e($tenant['display_name'] ?: $tenant['business_name']) ?></title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">

@@ -848,6 +848,32 @@ function view(string $file, array $data = []): void
     require VIEWS . '/' . $file . '.php';
 }
 
+function head_viewport(): void
+{
+    echo '<meta name="viewport" id="fs-viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'."\n";
+    echo <<<'JS'
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|IEMobile|Opera Mini|webOS/i.test(ua)
+    || (/Android/i.test(ua) && /Mobile/i.test(ua));
+  if (!phone || /iPad|Tablet|PlayBook/i.test(ua)) return;
+  var meta = document.getElementById('fs-viewport');
+  if (meta) {
+    meta.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover');
+  }
+  document.documentElement.style.touchAction = 'manipulation';
+  function stopPinch(e) {
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', stopPinch, { passive: false });
+})();
+</script>
+JS;
+}
+
 function layout_start(string $kind, array $data): void
 {
     extract($data, EXTR_SKIP);
