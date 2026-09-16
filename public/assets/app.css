@@ -9,10 +9,11 @@ button{color:inherit}
 .ico{display:block;flex:0 0 auto}
 .wrap{display:flex;min-height:100vh}
 .sidebar{width:252px;background:var(--navy);color:#d0d5dd;padding:20px 14px 14px;position:sticky;top:0;height:100vh;overflow:auto;flex-shrink:0;border-right:1px solid #1d2939}
-.brand{display:flex;gap:11px;align-items:center;padding:0 8px 22px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:12px}
+.brand{display:flex;gap:11px;align-items:flex-start;padding:0 8px 22px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:12px}
 .logo{width:34px;height:34px;border-radius:6px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:800}
 .brand-name{font-size:15px;color:#fff;font-weight:700;letter-spacing:-.01em}
-.brand-sub{max-width:158px;font-size:11px;color:#98a2b3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{max-width:210px;font-size:11px;color:#98a2b3;line-height:1.35;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.brand-agent{max-width:210px;margin-top:4px;font-size:11px;color:#d0d5dd;line-height:1.35;font-weight:600;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .nav-cat{font-size:10px;letter-spacing:.1em;color:#667085;padding:15px 10px 6px;font-weight:700}
 .nav-group{margin:2px 0 8px}
 .nav-group>summary{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:5px;color:#b9c2d0;cursor:pointer;list-style:none;font-weight:500;min-height:36px}

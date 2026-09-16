@@ -13,14 +13,20 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=r2">
+<link rel="stylesheet" href="/assets/app.css?v=r3">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
 <div class="wrap">
 <aside class="sidebar">
   <div class="brand">
-    <div><div class="brand-name">FirestepCRM</div><div class="brand-sub"><?= e($tenant['display_name'] ?: $tenant['business_name']) ?></div></div>
+    <div>
+      <div class="brand-name">FirestepCRM</div>
+      <div class="brand-sub"><?= e($tenant['business_name'] ?: $tenant['name'] ?: $tenant['display_name']) ?></div>
+      <?php if (is_user_agent($user)): ?>
+        <div class="brand-agent"><?= e($user['name']) ?></div>
+      <?php endif; ?>
+    </div>
   </div>
   <nav class="nav">
     <a href="/app/agenda" class="<?= $path==='/app/agenda'?'active':'' ?>"><?= icon('calendar') ?> Agenda</a>

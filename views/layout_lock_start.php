@@ -6,7 +6,7 @@
 <title>Definir senha · FirestepCRM</title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="/assets/app.css?v=r2">
+<link rel="stylesheet" href="/assets/app.css?v=r3">
 </head>
 <body class="lock-body">
 <main class="lock-wrap">
