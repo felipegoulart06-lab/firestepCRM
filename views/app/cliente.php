@@ -86,12 +86,22 @@ $fill = static fn(string $key, ?string $fallback = '') => old_fill($old, $key, $
         </select>
       </div>
     </div>
-    <div id="cnpj-geo" class="grid g2 js-cnpj-only" style="margin-top:12px">
-      <div class="fx-block-title" style="grid-column:1/-1">Endereço (obrigatório para CNPJ)</div>
+    <div id="cnpj-geo" class="js-cnpj-only geo-box" data-geo-box style="margin-top:12px">
+      <div class="fx-block-title">Endereço (obrigatório para CNPJ)</div>
+      <p class="muted" style="margin:0 0 8px">Busque na API do mapa. O pin alimenta a Abrangência.</p>
+      <div class="geo-search">
+        <input class="input geo-q" type="search" autocomplete="off" placeholder="Buscar rua, CEP ou cidade no Brasil">
+        <ul class="geo-suggest" hidden></ul>
+      </div>
+      <div class="geo-map" hidden></div>
+      <input type="hidden" name="lat" value="<?= e($fill('lat')) ?>">
+      <input type="hidden" name="lng" value="<?= e($fill('lng')) ?>">
+      <div class="grid g2" style="margin-top:10px">
       <div><label class="label">Logradouro</label><input class="input" name="address" value="<?= e($fill('address')) ?>" data-req-cnpj placeholder="Rua, número, bairro"></div>
       <div><label class="label">Cidade</label><input class="input" name="city" value="<?= e($fill('city')) ?>" data-req-cnpj></div>
       <div><label class="label">UF</label><input class="input" name="state" maxlength="2" value="<?= e($fill('state')) ?>" data-req-cnpj placeholder="SP"></div>
       <div><label class="label">CEP</label><input class="input" name="cep" value="<?= e($fill('cep')) ?>" data-req-cnpj placeholder="00000-000" inputmode="numeric"></div>
+      </div>
     </div>
     <?php if ($fields): ?>
     <div class="grid g2" style="margin-top:12px">

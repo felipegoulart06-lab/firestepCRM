@@ -195,8 +195,15 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
           <p class="muted" style="margin:6px 0 0">Marque para informar um ou mais endereços. Cada endereço vira um pin verde no mapa de Abrangência.</p>
           <div data-visit-fields <?= $isExternal ? '' : 'hidden' ?> style="margin-top:10px">
             <div data-visit-list class="grid" style="gap:8px">
-              <?php foreach ($stopLines as $line): ?>
-                <input class="input" name="visit_addresses[]" value="<?= e($line) ?>" placeholder="Rua, número, cidade, UF ou CEP">
+              <?php foreach ($stopLines as $i => $line):
+                $stop = is_array($edit) ? (($edit['stops'] ?? [])[$i] ?? []) : [];
+              ?>
+                <div class="geo-line" data-geo-line>
+                  <input class="input geo-q" name="visit_addresses[]" value="<?= e($line) ?>" placeholder="Buscar endereço no mapa" autocomplete="off">
+                  <ul class="geo-suggest" hidden></ul>
+                  <input type="hidden" name="visit_lats[]" value="<?= e((string)($stop['lat'] ?? '')) ?>">
+                  <input type="hidden" name="visit_lngs[]" value="<?= e((string)($stop['lng'] ?? '')) ?>">
+                </div>
               <?php endforeach; ?>
             </div>
             <button type="button" class="btn btn-ghost" data-visit-add style="margin-top:8px"><?= icon('plus') ?> Outro endereço</button>

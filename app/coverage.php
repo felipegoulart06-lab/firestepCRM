@@ -104,6 +104,167 @@ function coverage_skip_remote_geo(): bool
     return env_str('FIRESTEP_SQLITE') !== null || env_str('FIRESTEP_NO_GEO') === '1';
 }
 
+function geocoder_token(): string
+{
+    foreach (['LEAFLET_TOKEN', 'GEOCODER_TOKEN', 'MAPTILER_KEY', 'MAPBOX_TOKEN'] as $key) {
+        $v = env_str($key);
+        if ($v) {
+            return $v;
+        }
+    }
+    return '';
+}
+
+function geocoder_provider(): string
+{
+    $set = strtolower((string)(env_str('GEOCODER_PROVIDER') ?? ''));
+    if (in_array($set, ['maptiler', 'mapbox', 'locationiq', 'nominatim'], true)) {
+        return $set;
+    }
+    return geocoder_token() !== '' ? 'maptiler' : 'nominatim';
+}
+
+function geo_point_ok(float $lat, float $lng): bool
+{
+    return $lat >= -35 && $lat <= 6 && $lng >= -75 && $lng <= -32;
+}
+
+function geo_posted_point(mixed $latRaw, mixed $lngRaw): ?array
+{
+    if ($latRaw === null || $lngRaw === null || $latRaw === '' || $lngRaw === '') {
+        return null;
+    }
+    $lat = (float)$latRaw;
+    $lng = (float)$lngRaw;
+    return geo_point_ok($lat, $lng) ? ['lat' => $lat, 'lng' => $lng] : null;
+}
+
+function geocode_search(string $query, int $limit = 6): array
+{
+    $query = trim($query);
+    if ($query === '' || coverage_skip_remote_geo()) {
+        return [];
+    }
+    $limit = max(1, min(8, $limit));
+    $provider = geocoder_provider();
+    $token = geocoder_token();
+    $items = [];
+    if ($provider === 'maptiler' && $token !== '') {
+        $raw = coverage_http_json('https://api.maptiler.com/geocoding/'.rawurlencode($query).'.json?'.http_build_query([
+            'key' => $token, 'language' => 'pt', 'country' => 'br', 'limit' => $limit,
+        ]));
+        foreach ((array)($raw['features'] ?? []) as $f) {
+            $parsed = geocode_parse_feature($f);
+            if ($parsed) {
+                $items[] = $parsed;
+            }
+        }
+    } elseif ($provider === 'mapbox' && $token !== '') {
+        $raw = coverage_http_json('https://api.mapbox.com/geocoding/v5/mapbox.places/'.rawurlencode($query).'.json?'.http_build_query([
+            'access_token' => $token, 'country' => 'BR', 'language' => 'pt', 'limit' => $limit, 'types' => 'address,place,poi',
+        ]));
+        foreach ((array)($raw['features'] ?? []) as $f) {
+            $parsed = geocode_parse_feature($f);
+            if ($parsed) {
+                $items[] = $parsed;
+            }
+        }
+    } elseif ($provider === 'locationiq' && $token !== '') {
+        $raw = coverage_http_json('https://api.locationiq.com/v1/autocomplete?'.http_build_query([
+            'key' => $token, 'q' => $query, 'countrycodes' => 'br', 'limit' => $limit, 'format' => 'json', 'normalizecity' => 1,
+        ]));
+        foreach (is_array($raw) ? $raw : [] as $f) {
+            $parsed = geocode_parse_nominatim($f, (string)($f['display_name'] ?? ''));
+            if ($parsed) {
+                $items[] = $parsed;
+            }
+        }
+    }
+    if (!$items) {
+        $raw = coverage_http_json('https://nominatim.openstreetmap.org/search?'.http_build_query([
+            'format' => 'json', 'limit' => $limit, 'countrycodes' => 'br', 'q' => $query, 'addressdetails' => 1,
+        ]));
+        foreach (is_array($raw) ? $raw : [] as $f) {
+            $parsed = geocode_parse_nominatim($f, (string)($f['display_name'] ?? ''));
+            if ($parsed) {
+                $items[] = $parsed;
+            }
+        }
+    }
+    return $items;
+}
+
+function geocode_parse_feature(array $f): ?array
+{
+    $coords = $f['center'] ?? $f['geometry']['coordinates'] ?? null;
+    if (!is_array($coords) || count($coords) < 2) {
+        return null;
+    }
+    $lng = (float)$coords[0];
+    $lat = (float)$coords[1];
+    if (!geo_point_ok($lat, $lng)) {
+        return null;
+    }
+    $label = (string)($f['place_name'] ?? $f['place_name_pt'] ?? $f['properties']['label'] ?? $f['text'] ?? '');
+    $ctx = $f['context'] ?? [];
+    $city = '';
+    $state = '';
+    $cep = '';
+    foreach (is_array($ctx) ? $ctx : [] as $c) {
+        $id = (string)($c['id'] ?? '');
+        if (str_starts_with($id, 'postcode') || str_starts_with($id, 'postal')) {
+            $cep = (string)($c['text'] ?? '');
+        }
+        if (str_starts_with($id, 'place') || str_starts_with($id, 'locality')) {
+            $city = (string)($c['text'] ?? '');
+        }
+        if (str_starts_with($id, 'region')) {
+            $short = (string)($c['short_code'] ?? '');
+            $state = str_contains($short, '-') ? strtoupper(substr($short, -2)) : br_detect_uf((string)($c['text'] ?? ''));
+        }
+    }
+    $address = (string)($f['text'] ?? $f['properties']['name'] ?? '');
+    $props = is_array($f['properties'] ?? null) ? $f['properties'] : [];
+    $city = $city ?: (string)($props['city'] ?? $props['locality'] ?? '');
+    $state = $state ?: br_detect_uf((string)($props['state'] ?? $label));
+    $cep = $cep ?: (string)($props['postcode'] ?? '');
+    return [
+        'label' => $label !== '' ? $label : trim($address.' '.$city.' '.$state),
+        'address' => $address,
+        'city' => $city,
+        'state' => $state,
+        'cep' => $cep,
+        'lat' => $lat,
+        'lng' => $lng,
+    ];
+}
+
+function geocode_parse_nominatim(array $f, string $label): ?array
+{
+    $lat = isset($f['lat']) ? (float)$f['lat'] : null;
+    $lng = isset($f['lon']) ? (float)$f['lon'] : (isset($f['lng']) ? (float)$f['lng'] : null);
+    if ($lat === null || $lng === null || !geo_point_ok($lat, $lng)) {
+        return null;
+    }
+    $a = is_array($f['address'] ?? null) ? $f['address'] : [];
+    $road = trim((string)($a['road'] ?? $a['pedestrian'] ?? ''));
+    $num = trim((string)($a['house_number'] ?? ''));
+    $suburb = trim((string)($a['suburb'] ?? $a['neighbourhood'] ?? ''));
+    $address = trim($road.($num !== '' ? ', '.$num : '').($suburb !== '' ? ' — '.$suburb : ''));
+    $city = (string)($a['city'] ?? $a['town'] ?? $a['village'] ?? $a['municipality'] ?? '');
+    $state = br_detect_uf((string)($a['state'] ?? '')) ?: br_detect_uf($label);
+    $cep = (string)($a['postcode'] ?? '');
+    return [
+        'label' => $label !== '' ? $label : trim($address.' '.$city.' '.$state),
+        'address' => $address !== '' ? $address : $label,
+        'city' => $city,
+        'state' => $state,
+        'cep' => $cep,
+        'lat' => $lat,
+        'lng' => $lng,
+    ];
+}
+
 function locate_br_address(string $address, ?string $city = null, ?string $state = null, ?string $cep = null): array
 {
     $parts = array_filter([$address, $city, $state ? strtoupper($state) : null, $cep ? 'CEP '.$cep : null, 'Brasil']);
@@ -121,11 +282,9 @@ function locate_br_address(string $address, ?string $city = null, ?string $state
         }
     }
     if (!coverage_skip_remote_geo()) {
-        $geo = coverage_http_json('https://nominatim.openstreetmap.org/search?'.http_build_query([
-            'format' => 'json', 'limit' => 1, 'countrycodes' => 'br', 'q' => $query,
-        ]));
-        if (is_array($geo) && isset($geo[0]['lat'], $geo[0]['lon'])) {
-            return ['lat' => (float)$geo[0]['lat'], 'lng' => (float)$geo[0]['lon']];
+        $hits = geocode_search($query, 1);
+        if ($hits && isset($hits[0]['lat'], $hits[0]['lng'])) {
+            return ['lat' => (float)$hits[0]['lat'], 'lng' => (float)$hits[0]['lng']];
         }
     }
     $uf = strtoupper(trim((string)$state)) ?: br_detect_uf($query);
@@ -169,13 +328,15 @@ function save_appointment_visits(string $tenantId, string $appointmentId, array 
     if (!is_array($lines)) {
         $lines = [$lines];
     }
+    $lats = $in['visit_lats'] ?? [];
+    $lngs = $in['visit_lngs'] ?? [];
     $i = 0;
-    foreach ($lines as $line) {
+    foreach ($lines as $idx => $line) {
         $addr = trim((string)$line);
         if ($addr === '') {
             continue;
         }
-        $pos = locate_br_address($addr);
+        $pos = geo_posted_point($lats[$idx] ?? null, $lngs[$idx] ?? null) ?: locate_br_address($addr);
         q('INSERT INTO appointment_stops(id,tenant_id,appointment_id,sort_order,address,lat,lng,created_at) VALUES(?,?,?,?,?,?,?,?)', [
             uid(), $tenantId, $appointmentId, $i, $addr, $pos['lat'], $pos['lng'], now(),
         ]);
@@ -186,13 +347,13 @@ function save_appointment_visits(string $tenantId, string $appointmentId, array 
     }
 }
 
-function locate_client_if_cnpj(string $tenantId, string $clientId, ?string $document, ?string $address, ?string $city, ?string $state, ?string $cep): void
+function locate_client_if_cnpj(string $tenantId, string $clientId, ?string $document, ?string $address, ?string $city, ?string $state, ?string $cep, mixed $latRaw = null, mixed $lngRaw = null): void
 {
     coverage_ensure_schema();
     $lat = null;
     $lng = null;
     if (br_doc_kind_from_value($document) === 'cnpj' && trim((string)$address.$city.$state.$cep) !== '') {
-        $pos = locate_br_address((string)$address, $city, $state, $cep);
+        $pos = geo_posted_point($latRaw, $lngRaw) ?: locate_br_address((string)$address, $city, $state, $cep);
         $lat = $pos['lat'];
         $lng = $pos['lng'];
     }

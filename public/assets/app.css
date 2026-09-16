@@ -432,3 +432,11 @@ body.nav-open .sidebar-scrim{display:block}
 .cv-dot.cv-supplier{background:#d97706}
 .cv-dot.cv-client{background:#2563eb}
 .cv-dot.cv-visit{background:#16a34a}
+.geo-box{padding:12px;border:1px solid var(--line-soft);border-radius:8px;background:#fff}
+.geo-search{position:relative}
+.geo-suggest{position:absolute;z-index:20;left:0;right:0;margin:4px 0 0;padding:4px 0;list-style:none;background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 20px rgba(16,24,40,.12);max-height:220px;overflow:auto}
+.geo-suggest li{padding:8px 12px;cursor:pointer;font-size:13px;line-height:1.35}
+.geo-suggest li:hover{background:var(--primary-soft)}
+.geo-map{height:180px;margin-top:10px;border-radius:8px;border:1px solid var(--line);overflow:hidden}
+.geo-line{position:relative}
+.geo-line .geo-suggest{top:100%}

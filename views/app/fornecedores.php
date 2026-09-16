@@ -28,10 +28,23 @@ $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_k
     <div><label class="label">Contato responsável</label><input class="input" name="contact_name" value="<?= e(old_fill($old, 'contact_name', $src['contact_name'] ?? '')) ?>"></div>
     <div><label class="label">Telefone</label><input class="input" name="phone" inputmode="tel" value="<?= e(old_fill($old, 'phone', $src['phone'] ?? '')) ?>"></div>
     <div><label class="label">E-mail</label><input class="input" type="email" name="email" value="<?= e(old_fill($old, 'email', $src['email'] ?? '')) ?>"></div>
-    <div><label class="label">Endereço</label><input class="input" name="address" value="<?= e(old_fill($old, 'address', $src['address'] ?? '')) ?>"></div>
+    <div class="geo-box" data-geo-box style="grid-column:1/-1">
+      <label class="label">Endereço no mapa</label>
+      <p class="muted" style="margin:0 0 8px">Busque o local. CNPJ com coordenada aparece na Abrangência.</p>
+      <div class="geo-search">
+        <input class="input geo-q" type="search" autocomplete="off" placeholder="Buscar rua, CEP ou cidade no Brasil">
+        <ul class="geo-suggest" hidden></ul>
+      </div>
+      <div class="geo-map" hidden></div>
+      <input type="hidden" name="lat" value="<?= e(old_fill($old, 'lat', (string)($src['lat'] ?? ''))) ?>">
+      <input type="hidden" name="lng" value="<?= e(old_fill($old, 'lng', (string)($src['lng'] ?? ''))) ?>">
+      <div class="grid g2" style="margin-top:10px">
+    <div><label class="label">Logradouro</label><input class="input" name="address" value="<?= e(old_fill($old, 'address', $src['address'] ?? '')) ?>"></div>
     <div><label class="label">Cidade</label><input class="input" name="city" value="<?= e(old_fill($old, 'city', $src['city'] ?? '')) ?>"></div>
     <div><label class="label">UF</label><input class="input" name="state" maxlength="2" value="<?= e(old_fill($old, 'state', $src['state'] ?? '')) ?>"></div>
     <div><label class="label">CEP</label><input class="input" name="cep" inputmode="numeric" value="<?= e(old_fill($old, 'cep', $src['cep'] ?? '')) ?>"></div>
+      </div>
+    </div>
     <div style="grid-column:1/-1"><label class="label">Observações</label><textarea class="textarea" name="notes"><?= e(old_fill($old, 'notes', $src['notes'] ?? '')) ?></textarea></div>
     <p class="muted" style="grid-column:1/-1;margin:0">Fornecedor com CNPJ e endereço aparece no mapa de Abrangência. CPF fica só nesta lista.</p>
     <div style="grid-column:1/-1;display:flex;gap:8px">

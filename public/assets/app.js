@@ -151,11 +151,12 @@ function bindExternalVisit(){
     add?.addEventListener('click', function(e){
       e.preventDefault();
       if (!list) return;
-      const input = document.createElement('input');
-      input.className = 'input';
-      input.name = 'visit_addresses[]';
-      input.placeholder = 'Rua, número, cidade, UF ou CEP';
-      list.appendChild(input);
+      const wrap = document.createElement('div');
+      wrap.className = 'geo-line';
+      wrap.setAttribute('data-geo-line', '');
+      wrap.innerHTML = '<input class="input geo-q" name="visit_addresses[]" placeholder="Buscar endereço no mapa" autocomplete="off"><ul class="geo-suggest" hidden></ul><input type="hidden" name="visit_lats[]"><input type="hidden" name="visit_lngs[]">';
+      list.appendChild(wrap);
+      if (window.bindGeoLine) window.bindGeoLine(wrap);
     });
     sync();
   });

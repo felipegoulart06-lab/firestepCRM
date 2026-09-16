@@ -623,8 +623,9 @@ if (str_starts_with($path, '/app')) {
                 redirect($id ? $back : $retryNew);
             }
             $isExt = is_user_crm($user) && (post('external_visit') === '1' || post('external_visit') === 'on');
-            $visitAddrs = array_values(array_filter(array_map('trim', (array)($_POST['visit_addresses'] ?? [])), static fn($v) => $v !== ''));
-            if ($isExt && !$visitAddrs) {
+            $visitAddrs = (array)($_POST['visit_addresses'] ?? []);
+            $visitFilled = array_values(array_filter(array_map('trim', $visitAddrs), static fn($v) => $v !== ''));
+            if ($isExt && !$visitFilled) {
                 flash('Para atendimento externo, informe ao menos um endereço.', 'error');
                 redirect($id ? $back : $retryNew);
             }
@@ -647,7 +648,7 @@ if (str_starts_with($path, '/app')) {
                 if (post('status')==='CANCELLED') { notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.'); emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]); }
                 push_google_sheets($tid, 'appointment', 'upsert', $id);
                 sync_appointment_finance($tid, $id);
-                save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs]);
+                save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
                 flash('Agendamento atualizado.');
             } else {
                 $res = create_appointment($tenant, [
@@ -658,7 +659,7 @@ if (str_starts_with($path, '/app')) {
                 ]);
                 flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
                 if ($res['ok']) {
-                    save_appointment_visits($tid, (string)$res['id'], ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs]);
+                    save_appointment_visits($tid, (string)$res['id'], ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
                 }
                 redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos?ver='.urlencode((string)$res['id'])) : $retryNew);
             }
@@ -725,7 +726,7 @@ if (str_starts_with($path, '/app')) {
                 else q('INSERT INTO custom_field_values(id,tenant_id,field_id,client_id,value) VALUES(?,?,?,?,?)', [uid(),$tid,$f['id'],$id,$val]);
             }
             push_google_sheets($tid, 'client', 'upsert', $id);
-            locate_client_if_cnpj($tid, $id, $document, $address, $city, $state, $cep);
+            locate_client_if_cnpj($tid, $id, $document, $address, $city, $state, $cep, post('lat'), post('lng'));
             flash('Cadastro salvo.');
             redirect('/app/clientes/ver?id='.$id);
         }
@@ -832,7 +833,7 @@ if (str_starts_with($path, '/app')) {
             $lat = null;
             $lng = null;
             if ($kind === 'cnpj' && ($address !== '' || $city !== '' || $cep !== '')) {
-                $pos = locate_br_address($address, $city, $state, $cep);
+                $pos = geo_posted_point(post('lat'), post('lng')) ?: locate_br_address($address, $city, $state, $cep);
                 $lat = $pos['lat'];
                 $lng = $pos['lng'];
             }
@@ -1232,6 +1233,18 @@ if (str_starts_with($path, '/app')) {
         q('DELETE FROM calendar_blocks WHERE id=? AND tenant_id=?', [$_GET['delblock'], $tenant['id']]);
         flash('Bloqueio removido.');
         redirect('/app/agenda');
+    }
+
+    if ($path === '/app/geo/search') {
+        header('Content-Type: application/json; charset=utf-8');
+        if (!rate_ok('geo:'.($user['id'] ?? $ip), 40, 60)) {
+            http_response_code(429);
+            echo json_encode(['ok'=>false,'items'=>[],'error'=>'Muitas buscas.']);
+            exit;
+        }
+        $q = trim((string)($_GET['q'] ?? ''));
+        echo json_encode(['ok'=>true,'items'=>geocode_search($q)], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     if ($path === '/app/metricas') {

@@ -918,7 +918,7 @@ function appointment_detail(string $tenantId, string $id): ?array
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
     if ($row) {
         coverage_ensure_schema();
-        $row['stops'] = all('SELECT address FROM appointment_stops WHERE tenant_id=? AND appointment_id=? ORDER BY sort_order, created_at', [$tenantId, $id]);
+        $row['stops'] = all('SELECT address, lat, lng FROM appointment_stops WHERE tenant_id=? AND appointment_id=? ORDER BY sort_order, created_at', [$tenantId, $id]);
     }
     return $row;
 }
