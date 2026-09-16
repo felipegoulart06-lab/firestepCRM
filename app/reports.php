@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const REPORT_KINDS = ['atendimentos', 'clientes', 'origens', 'financeiro', 'cliente_resumo', 'contratos'];
+const REPORT_KINDS = ['atendimentos', 'clientes', 'origens', 'financeiro', 'cliente_resumo', 'contratos', 'abrangencia', 'fornecedores'];
 
 function report_date(?string $value, string $fallback): string
 {
@@ -310,6 +310,83 @@ function report_financeiro(array $tenant, array $filters): array
     return [report_section('Caixa', ['Data', 'Valor', 'Descrição', 'Status', 'Origem'], $table, $foot)];
 }
 
+function report_abrangencia(array $tenant, array $filters): array
+{
+    coverage_ensure_schema();
+    $tid = $tenant['id'];
+    $from = $filters['from'].' 00:00:00';
+    $to = $filters['to'].' 23:59:59';
+    $supRows = [];
+    foreach (all('SELECT name,cnpj,document_kind,address,city,state,created_at FROM suppliers WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [$tid, $from, $to]) as $r) {
+        $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cnpj'] ?? '');
+        if ($kind !== 'cnpj') {
+            continue;
+        }
+        $supRows[] = [
+            (string)$r['name'],
+            format_br_document($r['cnpj'], 'cnpj'),
+            trim(($r['address'] ?? '').' '.($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—',
+        ];
+    }
+    $cliRows = [];
+    foreach (all('SELECT name,cpf,address,city,state FROM clients WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [$tid, $from, $to]) as $r) {
+        if (br_doc_kind_from_value($r['cpf'] ?? '') !== 'cnpj') {
+            continue;
+        }
+        $cliRows[] = [
+            (string)$r['name'],
+            format_br_document($r['cpf'], 'cnpj'),
+            trim(($r['address'] ?? '').' '.($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—',
+        ];
+    }
+    $visitRows = [];
+    foreach (all("SELECT s.address,c.name client_name,a.starts_at
+        FROM appointment_stops s
+        JOIN appointments a ON a.id=s.appointment_id AND a.tenant_id=s.tenant_id
+        JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+        WHERE s.tenant_id=? AND a.visit_type='externo' AND a.source='Manual' AND a.status!='CANCELLED'
+          AND a.starts_at>=? AND a.starts_at<=?
+        ORDER BY a.starts_at", [$tid, $from, $to]) as $r) {
+        $visitRows[] = [
+            date('d/m/Y H:i', strtotime((string)$r['starts_at'])),
+            (string)$r['client_name'],
+            (string)$r['address'],
+        ];
+    }
+    $sections = [
+        report_section('Fornecedores CNPJ no mapa', ['Nome', 'CNPJ', 'Local'], $supRows, $filters['include_totals'] ? ['Total: '.count($supRows)] : []),
+        report_section('Clientes CNPJ no mapa', ['Nome', 'CNPJ', 'Local'], $cliRows, $filters['include_totals'] ? ['Total: '.count($cliRows)] : []),
+        report_section('Agendamentos externos (manual)', ['Data', 'Cliente', 'Endereço'], $visitRows, $filters['include_totals'] ? ['Total: '.count($visitRows)] : []),
+    ];
+    return $sections;
+}
+
+function report_fornecedores(array $tenant, array $filters): array
+{
+    coverage_ensure_schema();
+    $tid = $tenant['id'];
+    $rows = all('SELECT * FROM suppliers WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [
+        $tid, $filters['from'].' 00:00:00', $filters['to'].' 23:59:59',
+    ]);
+    $table = [];
+    foreach ($rows as $r) {
+        $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cnpj'] ?? '');
+        $doc = ($kind === 'cpf' || $kind === 'cnpj') ? format_br_document($r['cnpj'], $kind) : (string)($r['cnpj'] ?: '—');
+        $table[] = [
+            (string)$r['name'],
+            strtoupper($kind ?: '—'),
+            $doc,
+            (string)($r['product_type'] ?: '—'),
+            (string)($r['contact_name'] ?: '—'),
+            phone_fmt($r['phone'] ?? '') ?: '—',
+            (string)($r['email'] ?: '—'),
+            trim(($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—',
+        ];
+    }
+    $foot = $filters['include_totals'] ? ['Fornecedores: '.count($table)] : [];
+    return [report_section('Fornecedores', ['Nome', 'Tipo', 'Documento', 'Produto', 'Contato', 'Telefone', 'E-mail', 'Cidade'], $table, $foot)];
+}
+
 function report_cliente_resumo_only(array $tenant, array $filters): array
 {
     $copy = $filters;
@@ -330,6 +407,8 @@ function report_build(array $tenant, array $filters): array
         'financeiro' => 'Resumo do caixa',
         'cliente_resumo' => 'Resumo por cliente',
         'contratos' => 'Contrato de prestação',
+        'abrangencia' => 'Abrangência',
+        'fornecedores' => 'Fornecedores',
     ];
     $sections = [];
     $contract = null;
@@ -344,6 +423,8 @@ function report_build(array $tenant, array $filters): array
             'origens' => report_origens($tenant, $filters),
             'financeiro' => report_financeiro($tenant, $filters),
             'cliente_resumo' => report_cliente_resumo_only($tenant, $filters),
+            'abrangencia' => report_abrangencia($tenant, $filters),
+            'fornecedores' => report_fornecedores($tenant, $filters),
             default => [],
         };
         foreach ($part as $sec) {

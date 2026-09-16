@@ -290,11 +290,9 @@ a.fx-x{text-decoration:none;color:#344054}
 .fx-folder-name{cursor:default;flex:1}
 .fx-ico{width:16px;height:16px;flex:0 0 16px;color:#d97706}
 .fx-kids{margin:0;padding:0 0 4px 14px;list-style:none;border-left:1px dotted #d0d5dd;margin-left:14px}
-.fx-file{display:flex;align-items:center;gap:7px;width:100%;padding:5px 8px;margin:1px 0;border:0;background:transparent;border-radius:4px;cursor:pointer;color:#344054;font:inherit;text-align:left}
-.fx-file .ico{color:#b42318;flex:0 0 16px}
+.fx-file{display:flex;align-items:center;gap:7px;width:100%;padding:5px 8px;margin:1px 0;border:0;background:transparent;border-radius:4px;cursor:pointer;color:#344054;font:inherit;text-align:left;font-weight:500}
 .fx-file:hover{background:#e8eef7}
 .fx-file.is-on{background:var(--primary);color:#fff}
-.fx-file.is-on .ico{color:#fff}
 .fx-twist:focus{outline:none}
 .fx-twist:focus-visible,.fx-file:focus-visible{outline:2px solid color-mix(in srgb,var(--primary) 55%,transparent);outline-offset:1px}
 .fx-stage{display:flex;flex-direction:column;min-width:0;background:#f6f7f9}

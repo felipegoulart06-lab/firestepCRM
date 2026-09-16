@@ -99,6 +99,24 @@ expect((int)$sum['sections'][0]['rows'][0][1] === 2, 'Ana com 2 atendimentos');
 $orig = report_build($tenantA, array_merge($base, ['kinds' => ['origens']]));
 expect($orig['sections'][0]['rows'][0][0] === 'Instagram', 'origem Instagram');
 
+coverage_ensure_schema();
+q('INSERT INTO suppliers(id,tenant_id,name,cnpj,document_kind,product_type,city,state,created_at) VALUES(?,?,?,?,?,?,?,?,?)', [
+    'sup-a', 'ten-a', 'Peças Silva', '529.982.247-25', 'cpf', 'Peças', 'São Paulo', 'SP', $now,
+]);
+q('INSERT INTO suppliers(id,tenant_id,name,cnpj,document_kind,product_type,city,state,created_at) VALUES(?,?,?,?,?,?,?,?,?)', [
+    'sup-cnpj', 'ten-a', 'Atacado Ltda', '11.222.333/0001-81', 'cnpj', 'Limpeza', 'Campinas', 'SP', $now,
+]);
+$forn = report_build($tenantA, array_merge($base, ['kinds' => ['fornecedores']]));
+expect($forn['sections'][0]['title'] === 'Fornecedores', 'relatório de fornecedores');
+expect(count($forn['sections'][0]['rows']) === 2, 'dois fornecedores no período');
+$abr = report_build($tenantA, array_merge($base, ['kinds' => ['abrangencia']]));
+expect(count($abr['sections']) === 3, 'abrangência com três blocos');
+expect($abr['sections'][0]['rows'][0][0] === 'Atacado Ltda', 'só CNPJ no bloco de mapa de fornecedores');
+
+$tree = file_get_contents(dirname(__DIR__).'/views/app/relatorios_fx.php');
+expect(str_contains($tree, "'name' => 'Abrangência'") && str_contains($tree, "'name' => 'Fornecedores'"), 'pastas Abrangência e Fornecedores');
+expect(!str_contains($tree, "icon('pdf'"), 'lista de relatórios sem ícone de PDF');
+
 $_GET = ['from' => $base['from'], 'to' => $base['to'], 'types' => ['clientes', 'origens']];
 $parsed = report_filters_from_request();
 expect($parsed['kinds'] === ['clientes', 'origens'], 'types[] no request');

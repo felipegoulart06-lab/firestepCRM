@@ -8,21 +8,21 @@ $clientWord = lower($terms['clients']);
 $fxRoot = $fxRoot ?? 'Relatórios';
 $fxFolders = $fxFolders ?? [
     ['name' => 'Atendimento', 'files' => [
-        ['kind' => 'atendimentos', 'file' => 'Resumo de atendimentos.pdf', 'hint' => 'Horários, clientes, serviços e status.'],
+        ['kind' => 'atendimentos', 'file' => 'Resumo de atendimentos', 'hint' => 'Horários, clientes, serviços e status.'],
     ]],
     ['name' => 'Relacionamento', 'files' => [
-        ['kind' => 'clientes', 'file' => 'Resumo de '.$clientWord.'.pdf', 'hint' => 'Cadastros, contatos, origem e atendimentos.'],
-        ['kind' => 'origens', 'file' => 'Resumo de origens.pdf', 'hint' => 'Canais que geraram cadastros e solicitações.'],
+        ['kind' => 'clientes', 'file' => 'Resumo de '.$clientWord, 'hint' => 'Cadastros, contatos, origem e atendimentos.'],
+        ['kind' => 'origens', 'file' => 'Resumo de origens', 'hint' => 'Canais que geraram cadastros e solicitações.'],
     ]],
     ['name' => 'Financeiro', 'files' => [
-        ['kind' => 'financeiro', 'file' => 'Resumo do caixa.pdf', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
+        ['kind' => 'financeiro', 'file' => 'Resumo do caixa', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
     ]],
     ['name' => 'Contratos', 'files' => (static function () use ($tenant) {
         $files = [];
         foreach (clauses_lists($tenant) as $list) {
             $files[] = [
                 'kind' => 'contratos',
-                'file' => $list['name'].'.pdf',
+                'file' => $list['name'],
                 'hint' => 'Cabeçalho, agendamentos desta lista, valores, cláusulas e rodapé.',
                 'contract_id' => $list['id'],
             ];
@@ -30,13 +30,19 @@ $fxFolders = $fxFolders ?? [
         if (!$files) {
             $files[] = [
                 'kind' => 'contratos',
-                'file' => 'Contrato de prestação.pdf',
+                'file' => 'Contrato de prestação',
                 'hint' => 'Crie listas em Configurações → Contratos de agendamentos. Sem lista, o PDF usa o período filtrado.',
                 'contract_id' => '',
             ];
         }
         return $files;
     })()],
+    ['name' => 'Abrangência', 'files' => [
+        ['kind' => 'abrangencia', 'file' => 'Mapa de abrangência', 'hint' => 'Fornecedores CNPJ, clientes CNPJ e atendimentos externos manuais no período.'],
+    ]],
+    ['name' => 'Fornecedores', 'files' => [
+        ['kind' => 'fornecedores', 'file' => 'Lista de fornecedores', 'hint' => 'Cadastro administrativo: documento, produto, contato e local.'],
+    ]],
 ];
 $fileCount = 0;
 foreach ($fxFolders as $folder) {
@@ -58,7 +64,7 @@ foreach ($fxFolders as $folder) {
             <?php foreach ($folder['files'] as $file): ?>
               <li>
                 <button type="button" class="fx-file" data-kind="<?= e($file['kind']) ?>" data-file="<?= e($file['file']) ?>" data-folder-name="<?= e($folder['name']) ?>" data-hint="<?= e($file['hint']) ?>" data-contract-id="<?= e((string)($file['contract_id'] ?? '')) ?>">
-                  <?= icon('pdf', 16) ?> <?= e($file['file']) ?>
+                  <?= e($file['file']) ?>
                 </button>
               </li>
             <?php endforeach; ?>
@@ -73,7 +79,7 @@ foreach ($fxFolders as $folder) {
     <div class="fx-idle">
       <div class="fx-idle-ico"><?= icon('folder', 28) ?></div>
       <b>Nenhum arquivo aberto</b>
-      <p>Clique no <b>+</b> para expandir a pasta. Dois cliques abrem a pasta ou o PDF — aí entram os filtros.</p>
+      <p>Clique no <b>+</b> para expandir a pasta. Dois cliques no nome abrem os filtros para gerar o arquivo.</p>
     </div>
     <div class="fx-status"><?= count($fxFolders) ?> pastas · <?= $fileCount ?> arquivos · PDF operacional</div>
   </div>
@@ -110,6 +116,8 @@ foreach ($fxFolders as $folder) {
           <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
           <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
           <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
+          <label><input type="checkbox" name="types[]" value="abrangencia"> Abrangência</label>
+          <label><input type="checkbox" name="types[]" value="fornecedores"> Fornecedores</label>
         </div>
       </div>
 
