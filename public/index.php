@@ -942,6 +942,20 @@ if (str_starts_with($path, '/app')) {
             flash('Serviço salvo.');
             redirect('/app/servicos');
         }
+        if ($path === '/app/servicos/excluir') {
+            $delId = (string)post('id', '');
+            $svc = one('SELECT id FROM services WHERE id=? AND tenant_id=?', [$delId, $tid]);
+            if (!$svc) {
+                flash('Serviço não encontrado.', 'error');
+                redirect('/app/servicos');
+            }
+            q('UPDATE appointments SET service_id=NULL WHERE tenant_id=? AND service_id=?', [$tid, $delId]);
+            q('UPDATE requests SET service_id=NULL WHERE tenant_id=? AND service_id=?', [$tid, $delId]);
+            q('DELETE FROM services WHERE id=? AND tenant_id=?', [$delId, $tid]);
+            push_google_sheets($tid, 'service', 'delete', $delId);
+            flash('Serviço excluído.');
+            redirect('/app/servicos');
+        }
         if ($path === '/app/solicitacoes/converter') {
             $req = one('SELECT * FROM requests WHERE id=? AND tenant_id=?', [post('id'), $tid]);
             if (!$req) { flash('Solicitação não encontrada.'); redirect('/app/solicitacoes'); }
