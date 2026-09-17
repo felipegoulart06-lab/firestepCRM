@@ -88,7 +88,7 @@ if (!$show): ?>
   <div class="card overlay-panel" style="max-width:560px;padding:18px" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:17px">Detalhes da solicitação</h2>
-      <a class="btn btn-ghost" href="/app/solicitacoes">Fechar</a>
+      <button class="btn btn-ghost" type="button" data-close-modal>Fechar</button>
     </div>
     <div class="detail-grid" style="margin-top:12px">
       <div class="detail-item"><small>Cliente</small><strong><?= e($detail['name']) ?></strong></div>
@@ -112,7 +112,7 @@ if (!$show): ?>
       <?php if ($canConvert($detail)): ?>
         <a class="btn btn-primary" href="/app/solicitacoes?ver=<?= e($detail['id']) ?>&amp;converter=1">Converter em agendamento</a>
       <?php endif; ?>
-      <a class="btn btn-ghost" href="/app/solicitacoes">Fechar</a>
+      <button class="btn btn-ghost" type="button" data-close-modal>Fechar</button>
     </div>
   </div>
 </div>
@@ -122,11 +122,25 @@ if (!$show): ?>
     <h2 style="margin-top:0;font-size:17px">Converter solicitação?</h2>
     <p style="color:#475467">Deseja realmente converter a solicitação de <b><?= e($detail['name']) ?></b> em agendamento?</p>
     <p style="color:#667085;font-size:13px">O horário <?= e(trim((!empty($detail['desired_date']) ? date('d/m/Y', strtotime($detail['desired_date'])) : date('d/m/Y')).' '.($detail['desired_time'] ?: '09:00'))) ?> será criado na agenda e o registro aparecerá em Agendamentos.</p>
-    <form method="post" action="/app/solicitacoes/converter" class="row-actions">
+    <form method="post" action="/app/solicitacoes/converter">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= e($detail['id']) ?>">
-      <button class="btn btn-primary" type="submit">Sim, converter</button>
-      <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($detail['id']) ?>">Cancelar</a>
+      <label class="label">Serviço da reserva</label>
+      <?php if (!$services): ?>
+        <p class="settings-hint">Nenhum serviço ativo no catálogo. Cadastre em <a href="/app/servicos">Serviços</a> para converter esta solicitação.</p>
+      <?php else: ?>
+        <select class="select" name="service_id" required>
+          <option value="">Selecione</option>
+          <?php foreach ($services as $s): ?>
+            <option value="<?= e($s['id']) ?>" <?= (($detail['service_id'] ?? '') === $s['id']) ? 'selected' : '' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min</option>
+          <?php endforeach; ?>
+        </select>
+        <p class="settings-hint">A duração do serviço define quanto tempo o horário fica reservado.</p>
+      <?php endif; ?>
+      <div class="row-actions" style="margin-top:12px">
+        <button class="btn btn-primary" type="submit" <?= $services ? '' : 'disabled' ?>>Sim, converter</button>
+        <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($detail['id']) ?>">Cancelar</a>
+      </div>
     </form>
   </div>
 </div>

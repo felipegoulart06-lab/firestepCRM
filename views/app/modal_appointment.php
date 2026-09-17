@@ -30,10 +30,16 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
     ?>
       <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px">
         <div class="avatar"><?= e(strtoupper(substr($edit['client_name'],0,1))) ?></div>
-        <div style="flex:1"><b style="font-size:15px"><?= e($edit['client_name']) ?></b><div style="font-size:12px;color:#667085"><?= e($edit['service_name'] ?: 'Serviço não informado') ?></div></div>
+        <div style="flex:1"><b style="font-size:15px"><?= e($edit['client_name']) ?></b><div style="font-size:12px;color:#667085"><?= e($edit['service_name'] ?: 'Sem serviço atribuído') ?></div></div>
         <?= badge_appt($edit['status']) ?>
       </div>
+      <?php if (empty($edit['service_name'])): ?>
+        <p class="settings-hint">O serviço desta reserva saiu do catálogo. Cadastre o serviço em <a href="/app/servicos">Serviços</a> e atribua pelo botão Editar; até lá ele não aparece nos detalhes nem no PDF.</p>
+      <?php endif; ?>
       <div class="detail-grid">
+        <?php if (!empty($edit['service_name'])): ?>
+          <div class="detail-item"><small>Serviço</small><strong><?= e($edit['service_name']) ?></strong></div>
+        <?php endif; ?>
         <div class="detail-item"><small>Data</small><strong><?= e(date('d/m/Y',strtotime($edit['starts_at']))) ?></strong></div>
         <div class="detail-item"><small>Horário</small><strong><?= e(substr($edit['starts_at'],11,5)) ?> – <?= e(substr($edit['ends_at'],11,5)) ?></strong></div>
         <div class="detail-item"><small>Telefone</small><strong><?= e(phone_fmt($edit['client_phone'] ?: $edit['client_whatsapp'])) ?></strong></div>

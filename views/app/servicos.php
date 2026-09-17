@@ -55,7 +55,7 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
           <td>
             <div class="row-actions">
               <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?>&view=table">Editar</a>
-              <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço?')">
+              <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço? Os agendamentos continuam na agenda, mas ficam sem serviço atribuído.')">
                 <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
                 <input type="hidden" name="id" value="<?= e($s['id']) ?>">
                 <button class="btn btn-ghost">Excluir</button>
@@ -81,7 +81,7 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
         <div class="service-data"><span><?= (int)$s['duration_minutes'] ?> min · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(money((float)$s['price'])) ?></strong></div>
         <div class="row-actions" style="justify-content:flex-start;margin-top:8px">
           <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?>">Editar</a>
-          <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço?')">
+          <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço? Os agendamentos continuam na agenda, mas ficam sem serviço atribuído.')">
             <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
             <input type="hidden" name="id" value="<?= e($s['id']) ?>">
             <button class="btn btn-ghost">Excluir</button>

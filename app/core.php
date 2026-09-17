@@ -192,7 +192,7 @@ function outside_hours(array $tenant, string $start, string $end): bool
 function create_appointment(array $tenant, array $in): array
 {
     $svc = !empty($in['service_id']) ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$in['service_id'], $tenant['id']]) : null;
-    if (!$svc && empty($in['allow_waiting'])) {
+    if (!$svc) {
         return ['ok'=>false,'message'=>'Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.'];
     }
     $dur = service_span_minutes($svc);
@@ -233,15 +233,19 @@ function create_appointment(array $tenant, array $in): array
     return ['ok'=>true,'id'=>$id];
 }
 
-function convert_request_to_appointment(array $tenant, array $req, ?string $userId = null): array
+function convert_request_to_appointment(array $tenant, array $req, ?string $userId = null, ?string $serviceId = null): array
 {
+    $serviceId = $serviceId ?: ($req['service_id'] ?? null);
+    if (!$serviceId || !one('SELECT id FROM services WHERE id=? AND tenant_id=?', [$serviceId, $tenant['id']])) {
+        return ['ok'=>false,'message'=>'Escolha o serviço da reserva. Se o serviço saiu do catálogo, cadastre-o em Serviços antes de converter.'];
+    }
     $client = find_or_create_client($tenant['id'], $req['name'], $req['phone'] ?? null, $req['email'] ?? null, $req['source'] ?? 'Manual', $req['phone'] ?? null);
     $date = $req['desired_date'] ?: date('Y-m-d');
     $start = substr((string)($req['desired_time'] ?: '09:00'), 0, 5);
     $meta = !empty($req['metadata']) ? (json_decode($req['metadata'], true) ?: null) : $req;
     $res = create_appointment($tenant, [
         'client_id' => $client['id'],
-        'service_id' => $req['service_id'] ?? null,
+        'service_id' => $serviceId,
         'date' => $date,
         'start' => $start,
         'status' => 'SCHEDULED',

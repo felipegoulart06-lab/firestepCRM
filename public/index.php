@@ -956,9 +956,9 @@ if (str_starts_with($path, '/app')) {
             if (!$req) { flash('Solicitação não encontrada.'); redirect('/app/solicitacoes'); }
             if ($req['status'] === 'SCHEDULED') { flash('Esta solicitação já foi convertida.'); redirect('/app/agendamentos'); }
             if ($req['status'] === 'ARCHIVED') { flash('Reabra a solicitação antes de converter.'); redirect('/app/solicitacoes?ver='.$req['id']); }
-            $res = convert_request_to_appointment($tenant, $req, $user['id']);
-            flash($res['ok'] ? 'Solicitação convertida em agendamento.' : $res['message']);
-            redirect($res['ok'] ? '/app/agendamentos?ver='.urlencode((string)$res['id']) : '/app/solicitacoes?ver='.$req['id']);
+            $res = convert_request_to_appointment($tenant, $req, $user['id'], (string)post('service_id', '') ?: null);
+            flash($res['ok'] ? 'Solicitação convertida em agendamento.' : $res['message'], $res['ok'] ? 'ok' : 'error');
+            redirect($res['ok'] ? '/app/agendamentos?ver='.urlencode((string)$res['id']) : '/app/solicitacoes?ver='.$req['id'].'&converter=1');
         }
         if ($path === '/app/solicitacoes/criar') {
             redirect('/app/solicitacoes');

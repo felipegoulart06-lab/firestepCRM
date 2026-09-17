@@ -253,14 +253,16 @@ function send_appointment_pdf(array $tenant, array $a): never
         'WhatsApp: '.phone_fmt($a['client_whatsapp'] ?? null),
         'E-mail: '.($a['client_email'] ?: 'Não informado'),
         str_repeat('-', 80),
-        'Serviço: '.($a['service_name'] ?: 'Não informado'),
-        'Duração: '.(((int)($a['duration_minutes'] ?? 0)) > 0 ? (int)$a['duration_minutes'].' min' : '—'),
-        'Data: '.($start ? date('d/m/Y', strtotime($start)) : '—'),
-        'Horário: '.($start && $end ? substr($start, 11, 5).' – '.substr($end, 11, 5) : '—'),
-        'Status: '.$status,
-        'Origem: '.($a['source'] ?: '—'),
-        'Criado em: '.(!empty($a['created_at']) ? date('d/m/Y H:i', strtotime($a['created_at'])) : '—'),
     ];
+    if (!empty($a['service_name'])) {
+        $lines[] = 'Serviço: '.$a['service_name'];
+        $lines[] = 'Duração: '.(((int)($a['duration_minutes'] ?? 0)) > 0 ? (int)$a['duration_minutes'].' min' : '—');
+    }
+    $lines[] = 'Data: '.($start ? date('d/m/Y', strtotime($start)) : '—');
+    $lines[] = 'Horário: '.($start && $end ? substr($start, 11, 5).' – '.substr($end, 11, 5) : '—');
+    $lines[] = 'Status: '.$status;
+    $lines[] = 'Origem: '.($a['source'] ?: '—');
+    $lines[] = 'Criado em: '.(!empty($a['created_at']) ? date('d/m/Y H:i', strtotime($a['created_at'])) : '—');
     if (!empty($a['notes'])) {
         $lines[] = 'Observações: '.$a['notes'];
     }
