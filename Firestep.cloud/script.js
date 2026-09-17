@@ -90,6 +90,14 @@
     });
   }, { passive: true });
 
+  document.querySelectorAll("[data-interesse]").forEach(function (link) {
+    link.addEventListener("click", function () {
+      var sel = document.getElementById("interesse");
+      var val = link.getAttribute("data-interesse");
+      if (sel && val) sel.value = val;
+    });
+  });
+
   var form = document.getElementById("form-teste");
   if (form) {
     var HOOK = "https://crm.firestep.cloud/api/webhooks/aba15e1aaaa7f4b382a5e79f156e886c";
@@ -100,30 +108,37 @@
       var interesseEl = document.getElementById("interesse");
       var interesse = interesseEl ? interesseEl.value : "completo";
       var interesseLabel = {
-        completo: "Site + FirestepCRM (solução completa)",
-        templates: "Website / template Firestep",
-        crm: "Assinatura do FirestepCRM"
+        completo: "Site + FirestepCRM",
+        templates: "Website / template",
+        crm: "FirestepCRM",
+        sistema: "Sistema",
+        catalogo: "Catálogo",
+        bio: "Link na bio",
+        outro: "Ainda não sei"
       }[interesse] || interesse;
       var nome = (document.getElementById("nome").value || "").trim();
       var email = (document.getElementById("email").value || "").trim();
       var whats = (document.getElementById("whats").value || "").trim();
-      var fone = (document.getElementById("fone").value || "").trim();
       var empresa = (document.getElementById("empresa").value || "").trim();
-      if (!nome || !email || !whats || !fone) {
-        showStatus("Preencha nome, e-mail e os dois telefones.", false);
+      var segmento = ((document.getElementById("segmento") || {}).value || "").trim();
+      var mensagem = ((document.getElementById("mensagem") || {}).value || "").trim();
+      if (!nome || !email || !whats) {
+        showStatus("Preencha nome, e-mail e WhatsApp.", false);
         return;
       }
       var msg = "Interesse Firestep: " + interesseLabel + ".";
       if (empresa) msg += " Empresa: " + empresa + ".";
-      msg += " WhatsApp: " + whats + ". Telefone para ligação: " + fone + ".";
+      if (segmento) msg += " Segmento: " + segmento + ".";
+      msg += " WhatsApp: " + whats + ".";
+      if (mensagem) msg += " Pedido: " + mensagem;
       var payload = {
         type: "request",
         name: nome,
         email: email,
         phone: whats,
         whatsapp: whats,
-        phone_call: fone,
         company: empresa,
+        segment: segmento,
         interest: interesse,
         source: "Website",
         utm_source: "firestep.cloud",
@@ -148,7 +163,7 @@
       }).then(function (out) {
         if (out.ok && out.data && out.data.ok) {
           form.reset();
-          showStatus("Recebemos seus dados. Em breve falamos com você.", true);
+          showStatus("Recebemos sua solicitação. Em breve falamos com você.", true);
         } else {
           showStatus((out.data && out.data.error) || "Não foi possível enviar. Tente de novo.", false);
         }
@@ -157,7 +172,7 @@
       }).finally(function () {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = "Enviar interesse";
+          submitBtn.textContent = "Enviar solicitação";
         }
       });
     });
