@@ -116,6 +116,7 @@ $resumo = build_pdf('Resumo do cliente', ['Cliente: Felipe Goulart', 'Telefone: 
     'signature_config' => '{}',
 ]);
 expect(substr_count($resumo, pdf_fill_dark()) >= 1 && str_contains($resumo, 'Felipe Goulart'), 'resumo do cliente com texto escuro');
+expect(str_contains($resumo, '/F2 9 Tf') && str_contains($resumo, '50 700 Td'), 'rótulos em negrito e título afastado do cabeçalho');
 
 @unlink($tmp);
 exit($fail ? 1 : 0);

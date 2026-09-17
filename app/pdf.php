@@ -12,6 +12,14 @@ function pdf_fill_dark(): string
     return "0.063 0.094 0.157 rg\n";
 }
 
+function pdf_labeled_line(string $line): string
+{
+    if (preg_match('/^([^:\-][^:]{0,48}:)(\s*)(.*)$/u', $line, $m)) {
+        return '/F2 9 Tf ('.pdf_text($m[1]).") Tj /F1 9 Tf (".pdf_text($m[2].$m[3]).") Tj\n0 -16 Td\n";
+    }
+    return '/F1 9 Tf ('.pdf_text($line).") Tj\n0 -16 Td\n";
+}
+
 function build_pdf(string $title, array $lines, ?array $tenant = null): string
 {
     $lh = null;
@@ -45,7 +53,7 @@ function build_pdf(string $title, array $lines, ?array $tenant = null): string
             'logo' => '',
         ];
     }
-    $perPage = $lh ? 34 : 43;
+    $perPage = $lh ? 32 : 43;
     if ($sig) {
         $perPage -= 5;
     }
@@ -104,13 +112,13 @@ function build_pdf(string $title, array $lines, ?array $tenant = null): string
             $stream .= "0 -10 Td\n(".pdf_text(trim($kind.' '.$lh['document'])).") Tj\n";
             $stream .= "0 -10 Td\n(".pdf_text('CEP '.$lh['cep'].'  ·  '.$lh['address']).") Tj\nET\n";
             $stream .= "Q\n";
-            $titleY = 738;
+            $titleY = 700;
         }
         $stream .= pdf_fill_dark();
         $stream .= "BT\n/F2 16 Tf\n50 $titleY Td\n(".pdf_text($title).") Tj\n";
-        $stream .= "/F1 9 Tf\n0 -18 Td\n(Gerado em ".date('d/m/Y H:i').") Tj\n0 -20 Td\n";
+        $stream .= "/F1 9 Tf\n0 -18 Td\n(Gerado em ".date('d/m/Y H:i').") Tj\n0 -22 Td\n";
         foreach ($chunk as $line) {
-            $stream .= '('.pdf_text((string)$line).") Tj\n0 -16 Td\n";
+            $stream .= pdf_labeled_line((string)$line);
         }
         $stream .= "ET";
         if ($sigId && $sigJpeg && $index === $total - 1) {
@@ -265,7 +273,7 @@ function send_appointment_pdf(array $tenant, array $a): never
     }
     $who = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)($a['client_name'] ?? 'reserva'))) ?: 'reserva';
     $when = $start ? date('Y-m-d-Hi', strtotime($start)) : date('Y-m-d');
-    download_pdf('Reserva · '.($a['client_name'] ?? 'Agendamento'), $lines, 'reserva-'.$who.'-'.$when.'.pdf', $tenant);
+    download_pdf('Agendamento: '.($a['client_name'] ?? 'cliente'), $lines, 'agendamento-'.$who.'-'.$when.'.pdf', $tenant);
 }
 
 function send_tenant_dossier_pdf(array $tenant, ?array $admin, ?array $segment): never
