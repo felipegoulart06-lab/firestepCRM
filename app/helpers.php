@@ -1249,6 +1249,15 @@ function tenant_webhook_hosts(array $tenant): array
     return array_values(array_unique($hosts));
 }
 
+function save_tenant_webhook_hosts(string $tenantId, array $tenant, array $hosts): void
+{
+    $cfg = analytics_config($tenant);
+    $cfg['site_domain'] = implode(', ', tenant_webhook_hosts(['analytics_config' => json_encode(['site_domain' => implode(', ', $hosts)])]));
+    q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
+        json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tenantId,
+    ]);
+}
+
 function webhook_origin_host(?string $origin): string
 {
     return normalize_site_host((string)$origin);

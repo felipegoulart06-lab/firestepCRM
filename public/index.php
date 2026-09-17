@@ -1001,19 +1001,30 @@ if (str_starts_with($path, '/app')) {
             redirect('/app/kanban');
         }
         if ($path === '/app/webhooks/dominio') {
-            $domain = trim((string)post('site_domain', ''));
-            $host = normalize_site_host($domain);
-            if ($host === '') {
-                flash('Informe o domínio do site que vai enviar as solicitações (ex.: meusite.com.br).', 'error');
+            $host = normalize_site_host((string)post('site_domain', ''));
+            $valid = tenant_webhook_hosts(['analytics_config' => json_encode(['site_domain' => $host])]);
+            if (!$valid) {
+                flash('Informe um domínio válido (ex.: meusite.com.br).', 'error');
                 redirect('/app/webhooks');
             }
-            $cfg = analytics_config($tenant);
-            $cfg['site_domain'] = $host;
-            q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
-                json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
-            ]);
+            $host = $valid[0];
+            $hosts = tenant_webhook_hosts($tenant);
+            if (in_array($host, $hosts, true)) {
+                flash('Esse domínio já está autorizado.');
+                redirect('/app/webhooks');
+            }
+            $hosts[] = $host;
+            save_tenant_webhook_hosts($tid, $tenant, $hosts);
             audit($tid, $user['id'], 'webhook.domain_saved', 'tenant', $tid);
-            flash('Domínio salvo. Só esse site consegue chamar o webhook.');
+            flash('Domínio autorizado. O site nesse endereço pode chamar o webhook.');
+            redirect('/app/webhooks');
+        }
+        if ($path === '/app/webhooks/dominio/remover') {
+            $drop = normalize_site_host((string)post('host', ''));
+            $hosts = array_values(array_filter(tenant_webhook_hosts($tenant), static fn($h) => $h !== $drop));
+            save_tenant_webhook_hosts($tid, $tenant, $hosts);
+            audit($tid, $user['id'], 'webhook.domain_removed', 'tenant', $tid);
+            flash('Domínio removido da lista autorizada.');
             redirect('/app/webhooks');
         }
         if ($path === '/app/webhooks/rotacionar') {
@@ -1200,8 +1211,7 @@ if (str_starts_with($path, '/app')) {
             }
             $cfg = analytics_config($tenant);
             $cfg['gtm_id'] = $gtm;
-            $domain = trim((string)post('site_domain', ''));
-            $cfg['site_domain'] = $domain === '' ? '' : (normalize_site_host($domain) ?: $domain);
+            $cfg['site_domain'] = implode(', ', tenant_webhook_hosts(['analytics_config' => json_encode(['site_domain' => (string)post('site_domain', '')])]));
             q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
                 json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
             ]);
@@ -1656,7 +1666,6 @@ if (str_starts_with($path, '/app')) {
             'hosts'=>$hosts,
             'ready'=>$ready,
             'reveal'=>$reveal,
-            'siteDomain'=>(string)(analytics_config($tenant)['site_domain'] ?? ''),
             'logs'=>all('SELECT * FROM webhook_logs WHERE tenant_id=? ORDER BY created_at DESC LIMIT 30', [$tenant['id']]),
         ]);
         layout_end('app');

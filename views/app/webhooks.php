@@ -2,31 +2,14 @@
 $hosts = $hosts ?? [];
 $ready = !empty($ready);
 $reveal = !empty($reveal);
-$siteDomain = (string)($siteDomain ?? '');
 ?>
 <h1>Webhooks</h1>
 <div class="card" style="padding:20px;margin-bottom:16px">
-  <h2 style="margin-top:0">Domínio do site</h2>
-  <p style="color:#667085">Informe o domínio do site que envia as solicitações (ex.: <b>meusite.com.br</b>). Vale também <b>www</b> e subdomínios. Sem esse cadastro o endpoint recusa a chamada. O endereço do CRM não é o domínio do site.</p>
-  <form method="post" action="/app/webhooks/dominio">
-    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-    <label class="label">Domínio autorizado</label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <input class="input" name="site_domain" required value="<?= e($siteDomain) ?>" placeholder="meusite.com.br" style="max-width:360px">
-      <button class="btn btn-primary">Salvar domínio</button>
-    </div>
-  </form>
-  <?php if ($hosts): ?>
-    <p class="settings-hint">Liberado para: <b><?= e(implode(', ', $hosts)) ?></b></p>
-  <?php endif; ?>
-</div>
-
-<div class="card" style="padding:20px;margin-bottom:16px">
   <h2 style="margin-top:0">Integração do seu site</h2>
   <?php if (!$ready): ?>
-    <p style="color:#667085">Cadastre o domínio acima para liberar o endereço. Enquanto isso o webhook recusa qualquer origem.</p>
+    <p style="color:#667085">Abra “Origens autorizadas” no fim deste bloco e cadastre o domínio do site. Enquanto isso o webhook recusa qualquer origem.</p>
   <?php elseif (!$reveal): ?>
-    <p style="color:#667085">O endereço fica oculto. Só o site no domínio salvo consegue enviar solicitações. Não publique o link em página aberta.</p>
+    <p style="color:#667085">O endereço fica oculto. Só os sites nos domínios autorizados conseguem enviar solicitações. Não publique o link em página aberta.</p>
     <a class="btn btn-ghost" href="/app/webhooks?show=1">Mostrar endpoint neste painel</a>
   <?php else: ?>
     <p style="color:#667085">Use este endereço apenas no código do site <b><?= e(implode(', ', $hosts)) ?></b>.</p>
@@ -57,6 +40,34 @@ $siteDomain = (string)($siteDomain ?? '');
   "utm_medium": "social",
   "utm_campaign": "agenda_setembro"
 }</pre>
+  <details class="settings-details webhook-origins">
+    <summary>Origens autorizadas</summary>
+    <p class="settings-hint">Só altere se o formulário do site deixar de enviar. Vários endereços são aceitos (site, landing, www). Remover um domínio recusa as chamadas daquele site.</p>
+    <?php if ($hosts): ?>
+      <ul class="webhook-host-list">
+        <?php foreach ($hosts as $h): ?>
+          <li>
+            <code><?= e($h) ?></code>
+            <form method="post" action="/app/webhooks/dominio/remover" onsubmit="return confirm('Remover <?= e($h) ?> da lista? Solicitações desse site passam a ser recusadas.');">
+              <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+              <input type="hidden" name="host" value="<?= e($h) ?>">
+              <button type="submit" class="btn btn-ghost">Remover</button>
+            </form>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php else: ?>
+      <p class="settings-hint">Nenhum domínio. O webhook recusa todas as origens.</p>
+    <?php endif; ?>
+    <form method="post" action="/app/webhooks/dominio" onsubmit="return confirm('Autorizar este domínio a enviar solicitações para o CRM?');">
+      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+      <label class="label">Adicionar domínio</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="input" name="site_domain" required placeholder="meusite.com.br" style="max-width:280px">
+        <button class="btn btn-ghost" type="submit">Autorizar</button>
+      </div>
+    </form>
+  </details>
 </div>
 <form method="post" action="/app/webhooks/saida" class="card" style="padding:20px;margin-bottom:16px">
   <h2 style="margin-top:0">Webhook de saída</h2>

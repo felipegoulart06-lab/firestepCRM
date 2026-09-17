@@ -27,6 +27,12 @@ expect(webhook_origin_matches($tenant, 'https://lp.firestep.cloud') === true, 's
 expect(webhook_origin_matches($tenant, 'https://evil.test') === false, 'outro domínio bloqueado');
 expect(webhook_origin_matches($tenant, 'https://firestep.cloud.evil.test') === false, 'sufixo falso bloqueado');
 expect(webhook_origin_matches(['analytics_config' => '{}'], 'https://firestep.cloud') === false, 'sem domínio cadastrado bloqueia');
+
+$multi = ['analytics_config' => json_encode(['site_domain' => 'templates.firestep.cloud, outro.com.br'])];
+expect(tenant_webhook_hosts($multi) === ['templates.firestep.cloud', 'outro.com.br'], 'aceita vários domínios');
+expect(webhook_origin_matches($multi, 'https://templates.firestep.cloud') === true, 'primeiro domínio da lista passa');
+expect(webhook_origin_matches($multi, 'https://www.outro.com.br') === true, 'segundo domínio da lista passa');
+expect(webhook_origin_matches($multi, 'https://evil.test') === false, 'fora da lista continua bloqueado');
 expect(webhook_cors_origin_value('https://www.firestep.cloud/form') === 'https://www.firestep.cloud', 'CORS ecoa só o origin');
 
 $_SERVER['HTTP_ORIGIN'] = '';

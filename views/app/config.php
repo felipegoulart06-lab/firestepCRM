@@ -469,7 +469,7 @@ $hourLine = static function (array $h) {
   <?php if (!$edit): ?>
     <dl class="settings-kv">
       <div><dt>Container</dt><dd><?= !empty($analytics['gtm_id']) ? e($analytics['gtm_id']) : 'Não configurado' ?></dd></div>
-      <div><dt>Domínio</dt><dd><?= $dash($analytics['site_domain'] ?? '') ?></dd></div>
+      <div><dt>Domínios do webhook</dt><dd><?= $dash($analytics['site_domain'] ?? '') ?></dd></div>
     </dl>
   <?php else: ?>
     <form method="post" action="/app/configuracoes/analytics" onsubmit="return confirm('Salvar a integração analítica?')">
@@ -480,11 +480,11 @@ $hourLine = static function (array $h) {
           <input class="input" name="gtm_id" value="<?= e($analytics['gtm_id'] ?? '') ?>" placeholder="GTM-XXXXXXX">
         </div>
         <div>
-          <label class="label">Domínio do site (obrigatório para o webhook)</label>
-          <input class="input" name="site_domain" value="<?= e($analytics['site_domain'] ?? '') ?>" placeholder="www.seusite.com.br">
+          <label class="label">Domínios autorizados no webhook</label>
+          <textarea class="input" name="site_domain" rows="3" placeholder="meusite.com.br, lp.meusite.com.br"><?= e($analytics['site_domain'] ?? '') ?></textarea>
         </div>
       </div>
-      <p class="settings-hint">Cadastre o mesmo domínio do site (não o do CRM). Ele libera o webhook: <b>www</b> e subdomínios entram juntos. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
+      <p class="settings-hint">Separe vários endereços por vírgula. Não use o domínio do CRM. <b>www</b> e subdomínios de cada um entram juntos. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
       <div class="settings-actions">
         <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
         <button class="btn btn-primary">Salvar integração</button>

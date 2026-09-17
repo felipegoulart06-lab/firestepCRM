@@ -214,6 +214,12 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .settings-list span{color:#667085;font-size:12px}
 .settings-details{margin-top:8px}
 .settings-details summary{cursor:pointer;font-size:13px;font-weight:600;color:#344054}
+.webhook-origins{margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.webhook-origins summary{color:#667085;font-weight:500}
+.webhook-host-list{list-style:none;padding:0;margin:10px 0 14px}
+.webhook-host-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+.webhook-host-list form{margin:0}
+.webhook-host-list .btn{font-size:12px;padding:4px 8px;color:#667085}
 .color-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:6px;border:1px solid rgba(16,24,40,.12)}
 .lh-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
 .lh-toggle{margin:0}
