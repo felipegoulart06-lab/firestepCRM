@@ -57,7 +57,7 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
       <?php endif; ?>
       <?php if ($viewOnly): ?>
         <div class="row-actions" style="margin-top:14px;justify-content:flex-start">
-          <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($edit['id']) ?>"><?= icon('download') ?> PDF</a>
+          <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($edit['id']) ?>"><?= icon('download') ?> Baixar PDF</a>
           <?php if ($allowEditFromDetails): ?>
             <a class="btn btn-primary" href="<?= e($editHref ?? '/app/agendamentos?edit='.urlencode($edit['id'])) ?>">Editar</a>
           <?php endif; ?>

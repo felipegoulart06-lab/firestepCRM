@@ -66,9 +66,8 @@ $total = count($items);
       <td><?= badge_appt($a['status']) ?></td>
       <td>
         <div class="row-actions">
-          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'ver'=>$a['id']]))) ?>">Ver</a>
+          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'ver'=>$a['id']]))) ?>">Ver detalhes</a>
           <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$a['id']]))) ?>">Editar</a>
-          <a class="btn btn-ghost" href="/app/agendamentos/reserva.pdf?id=<?= e($a['id']) ?>"><?= icon('download') ?> PDF</a>
         </div>
       </td>
     </tr>

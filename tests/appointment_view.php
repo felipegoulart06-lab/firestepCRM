@@ -45,6 +45,18 @@ if (!str_contains($agendamentos, '$allowEditFromDetails = $viewOnly')) {
     echo "FAIL Lista Agendamentos não oferece Editar a partir de Ver\n";
     $fail++;
 }
+if (!str_contains($agendamentos, 'Ver detalhes')) {
+    echo "FAIL Lista Agendamentos sem botão Ver detalhes\n";
+    $fail++;
+}
+if (str_contains($agendamentos, 'reserva.pdf')) {
+    echo "FAIL Lista Agendamentos ainda mostra download de PDF na tabela\n";
+    $fail++;
+}
+if (!str_contains($modal, 'reserva.pdf') || !str_contains($modal, '$viewOnly')) {
+    echo "FAIL PDF da reserva não fica nos detalhes\n";
+    $fail++;
+}
 if (!str_contains($agenda, 'data-density') || !str_contains($agenda, 'cal-busy-') || !str_contains($agenda, 'agenda_busy_level')) {
     echo "FAIL Agenda não compacta reservas quando o dia enche\n";
     $fail++;
