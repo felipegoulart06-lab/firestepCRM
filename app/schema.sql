@@ -249,6 +249,7 @@ CREATE TABLE IF NOT EXISTS finance_entries (
   source_id TEXT,
   amount_paid REAL DEFAULT 0,
   payment_method TEXT,
+  agent_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

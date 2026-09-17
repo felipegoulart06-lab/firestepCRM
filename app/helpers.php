@@ -346,10 +346,20 @@ function migrate_database(PDO $pdo): void
         ],
         'users' => [
             'last_login_at' => 'TEXT',
+            'document_kind' => 'TEXT',
+            'cpf' => 'TEXT',
         ],
         'clients' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'address' => 'TEXT', 'city' => 'TEXT', 'state' => 'TEXT', 'cep' => 'TEXT', 'lat' => 'REAL', 'lng' => 'REAL', 'trade_name' => 'TEXT', 'state_registration' => 'TEXT', 'contact_name' => 'TEXT'],
         'requests' => ['utm_source' => 'TEXT', 'utm_medium' => 'TEXT', 'utm_campaign' => 'TEXT', 'metadata' => 'TEXT'],
-        'appointments' => ['request_id' => 'TEXT', 'metadata' => 'TEXT', 'visit_type' => "TEXT DEFAULT 'interno'"],
+        'appointments' => [
+            'request_id' => 'TEXT',
+            'metadata' => 'TEXT',
+            'visit_type' => "TEXT DEFAULT 'interno'",
+            'commission_agent_id' => 'TEXT',
+            'commission_type' => 'TEXT',
+            'commission_value' => 'REAL',
+            'commission_amount' => 'REAL',
+        ],
         'services' => [
             'buffer_minutes' => 'INTEGER DEFAULT 0',
             'deposit' => 'REAL DEFAULT 0',
@@ -368,6 +378,7 @@ function migrate_database(PDO $pdo): void
             'source_id' => 'TEXT',
             'amount_paid' => 'REAL DEFAULT 0',
             'payment_method' => 'TEXT',
+            'agent_id' => 'TEXT',
         ],
     ];
     foreach ($columns as $table => $wanted) {
@@ -396,6 +407,7 @@ function migrate_database(PDO $pdo): void
       source_id TEXT,
       amount_paid REAL DEFAULT 0,
       payment_method TEXT,
+      agent_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )");
@@ -831,6 +843,24 @@ function money(float $n): string
     return 'R$ ' . number_format($n, 2, ',', '.');
 }
 
+function parse_money_input(?string $raw): float
+{
+    $s = trim(str_replace(['R$', 'r$', ' '], '', (string)$raw));
+    if ($s === '') {
+        return 0.0;
+    }
+    if (str_contains($s, ',') && str_contains($s, '.')) {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } elseif (str_contains($s, ',')) {
+        $s = str_replace(',', '.', $s);
+    }
+    if (!is_numeric($s)) {
+        return 0.0;
+    }
+    return round((float)$s, 2);
+}
+
 function phone_fmt(?string $v): string
 {
     if (!$v) return '—';
@@ -991,11 +1021,12 @@ function all(string $sql, array $p = []): array
 
 function appointment_detail(string $tenantId, string $id): ?array
 {
-    $row = one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign
+    $row = one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, s.price service_price, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign, ag.name commission_agent_name
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
         LEFT JOIN requests r ON r.id=a.request_id AND r.tenant_id=a.tenant_id
+        LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
     if ($row) {
         coverage_ensure_schema();

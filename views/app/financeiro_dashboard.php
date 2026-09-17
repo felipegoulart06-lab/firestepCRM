@@ -17,9 +17,15 @@ $recent = all("SELECT f.*, c.name client_name FROM finance_entries f
 </div>
 <div class="grid g4">
   <div class="card stat"><span class="stat-label">Previsto</span><b><?= e(money($ov['previsto'])) ?></b><div class="stat-foot">Recebíveis (abertos + recebidos)</div></div>
-  <div class="card stat"><span class="stat-label">A receber</span><b><?= e(money($ov['receber'])) ?></b><div class="stat-foot">Ainda não entrou no caixa<?= $ov['vencido']>0 ? ' · vencido '.e(money($ov['vencido'])) : '' ?></div></div>
   <div class="card stat"><span class="stat-label">Recebido no mês</span><b><?= e(money($ov['recebido'])) ?></b><div class="stat-foot">Somente valores pagos</div></div>
-  <div class="card stat"><span class="stat-label">Saldo do mês</span><b><?= e(money($ov['saldo'])) ?></b><div class="stat-foot">A pagar <?= e(money($ov['pagar'])) ?> · Saídas <?= e(money($ov['saidas'])) ?></div></div>
+  <div class="card stat"><span class="stat-label">A pagar</span><b><?= e(money($ov['pagar'])) ?></b><div class="stat-foot">Inclui repasses em aberto</div></div>
+  <div class="card stat"><span class="stat-label">Saldo do mês</span><b><?= e(money($ov['saldo'])) ?></b><div class="stat-foot">Saídas <?= e(money($ov['saidas'])) ?><?= $ov['vencido']>0 ? ' · vencido '.e(money($ov['vencido'])) : '' ?></div></div>
+</div>
+<div class="grid g4" style="margin-top:14px">
+  <div class="card stat"><span class="stat-label">Lucro presumido</span><b><?= e(money((float)($ov['lucro_presumido'] ?? 0))) ?></b><div class="stat-foot">Previsto menos o repasse aos agentes</div></div>
+  <div class="card stat"><span class="stat-label">A receber</span><b><?= e(money($ov['receber'])) ?></b><div class="stat-foot">Ainda não entrou no caixa</div></div>
+  <div class="card stat"><span class="stat-label">Repasse/comissão</span><b><?= e(money((float)($ov['repasse'] ?? 0))) ?></b><div class="stat-foot">Aberto <?= e(money((float)($ov['repasse_aberto'] ?? 0))) ?> em contas a pagar</div></div>
+  <div class="card stat"><span class="stat-label">Lucro líquido</span><b><?= e(money((float)($ov['lucro_liquido'] ?? $ov['saldo']))) ?></b><div class="stat-foot">Recebido menos saídas (inclui repasses pagos)</div></div>
 </div>
 <div class="grid g4" style="margin-top:14px">
   <a class="card card-hover insight" href="/app/financeiro/receber"><?= icon('inbox') ?><div><b>Contas a receber</b><div style="color:#667085">Em aberto até o pagamento. Fatura só sai com Faturar.</div></div></a>

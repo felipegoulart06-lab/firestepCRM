@@ -143,15 +143,135 @@ function ensure_finance_schema(): void
     finance_try('ALTER TABLE finance_entries ADD COLUMN source_id VARCHAR(64)');
     finance_try('ALTER TABLE finance_entries ADD COLUMN amount_paid DECIMAL(12,2) DEFAULT 0');
     finance_try('ALTER TABLE finance_entries ADD COLUMN payment_method VARCHAR(40)');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN agent_id VARCHAR(64)');
     finance_try('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries (tenant_id, kind, status)');
     finance_try('CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries (tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL');
+    appointment_commission_ensure_schema();
     $ready = true;
+}
+
+function appointment_commission_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (is_pgsql()) {
+            db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_agent_id text');
+            db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_type text');
+            db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_value numeric(12,2)');
+            db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_amount numeric(12,2)');
+            db()->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS document_kind text');
+            db()->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf text');
+            db()->exec('ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS agent_id text');
+            return;
+        }
+        $appt = array_column(db()->query('PRAGMA table_info(appointments)')->fetchAll(), 'name');
+        foreach (['commission_agent_id' => 'TEXT', 'commission_type' => 'TEXT', 'commission_value' => 'REAL', 'commission_amount' => 'REAL'] as $col => $def) {
+            if (!in_array($col, $appt, true)) {
+                db()->exec("ALTER TABLE appointments ADD COLUMN $col $def");
+            }
+        }
+        $users = array_column(db()->query('PRAGMA table_info(users)')->fetchAll(), 'name');
+        foreach (['document_kind' => 'TEXT', 'cpf' => 'TEXT'] as $col => $def) {
+            if (!in_array($col, $users, true)) {
+                db()->exec("ALTER TABLE users ADD COLUMN $col $def");
+            }
+        }
+        $fin = array_column(db()->query('PRAGMA table_info(finance_entries)')->fetchAll(), 'name');
+        if (!in_array('agent_id', $fin, true)) {
+            db()->exec('ALTER TABLE finance_entries ADD COLUMN agent_id TEXT');
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function parse_appointment_commission(string $tenantId, float $servicePrice): array
+{
+    $on = in_array((string)post('commission_on', ''), ['1', 'on'], true);
+    if (!$on) {
+        return ['ok' => true, 'enabled' => false];
+    }
+    $agentId = (string)post('commission_agent_id', '');
+    $agent = one("SELECT id, name FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$agentId, $tenantId]);
+    if (!$agent) {
+        return ['ok' => false, 'message' => 'Selecione o agente cadastrado para o repasse/comissão.'];
+    }
+    $type = strtolower((string)post('commission_type', ''));
+    if (!in_array($type, ['fixed', 'percent'], true)) {
+        return ['ok' => false, 'message' => 'Escolha comissão em valor fixo ou em porcentagem.'];
+    }
+    $raw = parse_money_input(post('commission_value'));
+    if ($raw <= 0) {
+        return ['ok' => false, 'message' => 'Informe o valor da comissão.'];
+    }
+    if ($servicePrice <= 0) {
+        return ['ok' => false, 'message' => 'O serviço precisa ter preço para calcular o repasse.'];
+    }
+    if ($type === 'percent' && $raw > 100) {
+        return ['ok' => false, 'message' => 'A porcentagem de comissão não pode passar de 100%.'];
+    }
+    $amount = $type === 'percent' ? round($servicePrice * ($raw / 100), 2) : round($raw, 2);
+    if ($amount > $servicePrice + 0.001) {
+        return ['ok' => false, 'message' => 'O repasse/comissão não pode ser maior que o valor do serviço.'];
+    }
+    return [
+        'ok' => true,
+        'enabled' => true,
+        'agent_id' => (string)$agent['id'],
+        'type' => $type,
+        'value' => $raw,
+        'amount' => $amount,
+    ];
+}
+
+function store_appointment_commission(string $tenantId, string $appointmentId, array $parsed): void
+{
+    appointment_commission_ensure_schema();
+    if (empty($parsed['enabled'])) {
+        q('UPDATE appointments SET commission_agent_id=NULL, commission_type=NULL, commission_value=NULL, commission_amount=NULL WHERE id=? AND tenant_id=?', [
+            $appointmentId, $tenantId,
+        ]);
+        return;
+    }
+    q('UPDATE appointments SET commission_agent_id=?, commission_type=?, commission_value=?, commission_amount=? WHERE id=? AND tenant_id=?', [
+        $parsed['agent_id'], $parsed['type'], $parsed['value'], $parsed['amount'], $appointmentId, $tenantId,
+    ]);
+}
+
+function finance_cancel_open(?array $row): void
+{
+    if ($row && in_array($row['status'], ['open', 'billed'], true)) {
+        q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [
+            now(), $row['id'], $row['tenant_id'],
+        ]);
+    }
+}
+
+function finance_sum_source(string $tenantId, string $sourceType, array $statuses): float
+{
+    $sql = 'SELECT COALESCE(SUM(amount),0) c FROM finance_entries WHERE tenant_id=? AND source_type=?';
+    $p = [$tenantId, $sourceType];
+    if ($statuses) {
+        $sql .= ' AND status IN ('.implode(',', array_fill(0, count($statuses), '?')).')';
+        array_push($p, ...$statuses);
+    }
+    return (float)(one($sql, $p)['c'] ?? 0);
 }
 
 function finance_source_label(?string $type, ?string $id): string
 {
     if ($type === 'appointment' && $id) {
         return 'Agendamento #'.substr($id, 0, 8);
+    }
+    if ($type === 'appointment_commission' && $id) {
+        return 'Repasse agente #'.substr($id, 0, 8);
+    }
+    if ($type === 'appointment_commission_reversal' && $id) {
+        return 'Estorno de repasse #'.substr($id, 0, 8);
     }
     if ($type === 'appointment_reversal' && $id) {
         return 'Estorno agendamento #'.substr($id, 0, 8);
@@ -176,6 +296,8 @@ function finance_overview(string $tenantId, ?string $from = null, ?string $to = 
     $pagar = finance_sum($tenantId, 'payable', ['open']);
     $saidas = finance_sum($tenantId, 'entry', ['paid'], 'out', $from, $to)
         + finance_sum($tenantId, 'payable', ['paid'], 'out', $from, $to);
+    $repasse = finance_sum_source($tenantId, 'appointment_commission', ['open', 'paid']);
+    $saldo = $recebido - $saidas;
     $today = date('Y-m-d');
     $vencido = (float)(one(
         "SELECT COALESCE(SUM(amount),0) c FROM finance_entries WHERE tenant_id=? AND kind='receivable' AND status='open' AND due_date IS NOT NULL AND due_date<?",
@@ -188,8 +310,12 @@ function finance_overview(string $tenantId, ?string $from = null, ?string $to = 
         'vencido' => $vencido,
         'pagar' => $pagar,
         'saidas' => $saidas,
-        'saldo' => $recebido - $saidas,
+        'saldo' => $saldo,
         'faturado' => finance_sum($tenantId, 'receivable', ['billed']),
+        'repasse' => $repasse,
+        'repasse_aberto' => finance_sum_source($tenantId, 'appointment_commission', ['open']),
+        'lucro_presumido' => $previsto - $repasse,
+        'lucro_liquido' => $saldo,
     ];
 }
 
@@ -200,9 +326,10 @@ function sync_appointment_finance(string $tenantId, string $appointmentId): void
         return;
     }
     $appt = one(
-        "SELECT a.*, s.name service_name, s.price service_price
+        "SELECT a.*, s.name service_name, s.price service_price, ag.name commission_agent_name
          FROM appointments a
          LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+         LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
          WHERE a.id=? AND a.tenant_id=?",
         [$appointmentId, $tenantId]
     );
@@ -213,37 +340,60 @@ function sync_appointment_finance(string $tenantId, string $appointmentId): void
     $due = substr((string)$appt['starts_at'], 0, 10);
     $desc = trim('Agendamento · '.((string)($appt['service_name'] ?? 'Serviço')));
     $row = finance_find_source($tenantId, 'appointment', $appointmentId);
+    $comm = finance_find_source($tenantId, 'appointment_commission', $appointmentId);
     $cancelled = ($appt['status'] ?? '') === 'CANCELLED';
+    $commAmount = round((float)($appt['commission_amount'] ?? 0), 2);
+    $agentId = trim((string)($appt['commission_agent_id'] ?? ''));
+    $agentName = trim((string)($appt['commission_agent_name'] ?? '')) ?: 'agente';
+    $commDesc = 'Repasse/comissão · '.$agentName.' · '.((string)($appt['service_name'] ?? 'Serviço'));
 
     if ($cancelled) {
-        if ($row && in_array($row['status'], ['open', 'billed'], true)) {
-            q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
-        } elseif ($row && $row['status'] === 'paid' && !finance_find_source($tenantId, 'appointment_reversal', $appointmentId)) {
+        finance_cancel_open($row);
+        finance_cancel_open($comm);
+        if ($row && $row['status'] === 'paid' && !finance_find_source($tenantId, 'appointment_reversal', $appointmentId)) {
             q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                 uid(), $tenantId, 'entry', 'out', 'paid', 'Estorno · '.$desc, (float)$row['amount'], $due, now(),
                 $appt['client_id'], 'Cancelamento após recebimento', 'appointment_reversal', $appointmentId, now(), now(),
+            ]);
+        }
+        if ($comm && $comm['status'] === 'paid' && !finance_find_source($tenantId, 'appointment_commission_reversal', $appointmentId)) {
+            q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,agent_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                uid(), $tenantId, 'entry', 'in', 'paid', 'Estorno de repasse · '.$agentName, (float)$comm['amount'], $due, now(),
+                $appt['client_id'], $agentId !== '' ? $agentId : ($comm['agent_id'] ?? null), 'Cancelamento após pagamento da comissão',
+                'appointment_commission_reversal', $appointmentId, now(), now(),
             ]);
         }
         return;
     }
 
     if ($amount <= 0) {
-        if ($row && in_array($row['status'], ['open', 'billed'], true)) {
-            q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
-        }
-        return;
-    }
-
-    if (!$row) {
+        finance_cancel_open($row);
+    } elseif (!$row) {
         q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
             uid(), $tenantId, 'receivable', 'in', 'open', $desc, $amount, $due, null,
             $appt['client_id'], 'Gerado automaticamente pelo agendamento', 'appointment', $appointmentId, now(), now(),
         ]);
-        return;
-    }
-    if (in_array($row['status'], ['open', 'billed'], true)) {
+    } elseif (in_array($row['status'], ['open', 'billed'], true)) {
         q('UPDATE finance_entries SET description=?, amount=?, due_date=?, client_id=?, updated_at=? WHERE id=? AND tenant_id=? AND status IN (?,?)', [
             $desc, $amount, $due, $appt['client_id'], now(), $row['id'], $tenantId, 'open', 'billed',
+        ]);
+    }
+
+    $wantComm = $commAmount > 0 && $agentId !== '';
+    if (!$wantComm) {
+        finance_cancel_open($comm);
+        return;
+    }
+    if (!$comm) {
+        q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,paid_at,client_id,agent_id,notes,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+            uid(), $tenantId, 'payable', 'out', 'open', $commDesc, $commAmount, $due, null,
+            $appt['client_id'], $agentId, 'Repasse automático ao agente', 'appointment_commission', $appointmentId, now(), now(),
+        ]);
+        return;
+    }
+    if (in_array($comm['status'], ['open', 'billed'], true)) {
+        q('UPDATE finance_entries SET description=?, amount=?, due_date=?, client_id=?, agent_id=?, updated_at=? WHERE id=? AND tenant_id=? AND status IN (?,?)', [
+            $commDesc, $commAmount, $due, $appt['client_id'], $agentId, now(), $comm['id'], $tenantId, 'open', 'billed',
         ]);
     }
 }
@@ -282,8 +432,9 @@ function finance_backfill_appointments(string $tenantId): void
 
 function finance_query(string $tenantId, string $page, string $search = ''): array
 {
-    $sql = "SELECT f.*, c.name client_name, c.cpf client_cpf FROM finance_entries f
+    $sql = "SELECT f.*, c.name client_name, c.cpf client_cpf, u.name agent_name FROM finance_entries f
             LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
+            LEFT JOIN users u ON u.id=f.agent_id AND u.tenant_id=f.tenant_id
             WHERE f.tenant_id=?";
     $p = [$tenantId];
     $kind = finance_kind_for_page($page);
@@ -302,8 +453,9 @@ function finance_query(string $tenantId, string $page, string $search = ''): arr
     }
     $search = trim($search);
     if ($search !== '') {
-        $sql .= ' AND (f.description LIKE ? OR COALESCE(c.name,\'\') LIKE ?)';
+        $sql .= ' AND (f.description LIKE ? OR COALESCE(c.name,\'\') LIKE ? OR COALESCE(u.name,\'\') LIKE ?)';
         $like = '%'.$search.'%';
+        $p[] = $like;
         $p[] = $like;
         $p[] = $like;
     }

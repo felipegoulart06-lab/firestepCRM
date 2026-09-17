@@ -40,6 +40,9 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
         <?php if (!empty($edit['service_name'])): ?>
           <div class="detail-item"><small>Serviço</small><strong><?= e($edit['service_name']) ?></strong></div>
         <?php endif; ?>
+        <?php if (!empty($edit['commission_amount']) && (float)$edit['commission_amount'] > 0): ?>
+          <div class="detail-item"><small>Repasse/comissão</small><strong><?= e(money((float)$edit['commission_amount'])) ?> · <?= e($edit['commission_agent_name'] ?: 'Agente') ?><?= ($edit['commission_type'] ?? '') === 'percent' ? ' ('.e((string)$edit['commission_value']).'%)' : '' ?></strong></div>
+        <?php endif; ?>
         <div class="detail-item"><small>Data</small><strong><?= e(date('d/m/Y',strtotime($edit['starts_at']))) ?></strong></div>
         <div class="detail-item"><small>Horário</small><strong><?= e(substr($edit['starts_at'],11,5)) ?> – <?= e(substr($edit['ends_at'],11,5)) ?></strong></div>
         <div class="detail-item"><small>Telefone</small><strong><?= e(phone_fmt($edit['client_phone'] ?: $edit['client_whatsapp'])) ?></strong></div>
@@ -168,10 +171,10 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
               <a class="muted" href="/app/servicos" style="text-decoration:underline;text-underline-offset:2px">editar serviços</a>
             <?php endif; ?>
           </div>
-          <select class="select" name="service_id" required style="margin-top:6px">
+          <select class="select" name="service_id" required style="margin-top:6px" data-service-select>
             <option value="">Selecione</option>
             <?php foreach ($services as $s): ?>
-              <option value="<?= e($s['id']) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min</option>
+              <option value="<?= e($s['id']) ?>" data-price="<?= e((string)(float)($s['price'] ?? 0)) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min · <?= e(money((float)($s['price'] ?? 0))) ?></option>
             <?php endforeach; ?>
           </select>
           <?php if (!$services): ?><p class="muted">Cadastre um serviço em Serviços para definir a duração do atendimento.</p><?php endif; ?>
@@ -181,6 +184,47 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
           <div><label class="label">Início</label><input class="input" type="time" name="start" value="<?= e($start) ?>" required></div>
         </div>
         <p class="muted" style="margin:0">O término usa a duração do serviço (Serviços → Agenda e valor). Se esse período cruzar outro agendamento, não será possível salvar até excluir ou alterar o horário ocupado.</p>
+        <?php if (is_user_crm($user ?? null)):
+          $agents = $agents ?? [];
+          $hasComm = is_array($edit) && (float)($edit['commission_amount'] ?? 0) > 0 && !empty($edit['commission_agent_id']);
+        ?>
+        <div data-commission-box>
+          <label class="fx-check" style="margin:0">
+            <input type="checkbox" name="commission_on" value="1" <?= $hasComm ? 'checked' : '' ?>>
+            <span>Repasse/comissão ao agente</span>
+          </label>
+          <p class="muted" style="margin:6px 0 0">O agente precisa estar cadastrado em Agentes. O valor não pode passar do preço do serviço.</p>
+          <div data-commission-fields <?= $hasComm ? '' : 'hidden' ?> style="margin-top:10px" class="grid" >
+            <div>
+              <label class="label">Agente</label>
+              <?php if (!$agents): ?>
+                <p class="settings-hint">Nenhum agente ativo. Cadastre em <a href="/app/agentes">Agentes</a>.</p>
+              <?php else: ?>
+                <select class="select" name="commission_agent_id">
+                  <option value="">Selecione</option>
+                  <?php foreach ($agents as $ag): ?>
+                    <option value="<?= e($ag['id']) ?>" <?= (is_array($edit) && ($edit['commission_agent_id'] ?? '') === $ag['id']) ? 'selected' : '' ?>><?= e($ag['name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              <?php endif; ?>
+            </div>
+            <div>
+              <label class="label">Tipo de comissão</label>
+              <select class="select" name="commission_type">
+                <option value="">Selecione</option>
+                <option value="fixed" <?= (is_array($edit) && ($edit['commission_type'] ?? '') === 'fixed') ? 'selected' : '' ?>>Valor fixo (R$)</option>
+                <option value="percent" <?= (is_array($edit) && ($edit['commission_type'] ?? '') === 'percent') ? 'selected' : '' ?>>Porcentagem do serviço (%)</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Valor</label>
+              <input class="input" name="commission_value" inputmode="decimal" value="<?= e(is_array($edit) && $hasComm ? (string)$edit['commission_value'] : '') ?>" placeholder="0,00">
+              <p class="muted" data-commission-preview style="margin:6px 0 0"></p>
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
+        <?php if ($edit): ?>
         <div><label class="label">Status</label>
           <select class="select" name="status">
             <?php foreach (APPT_STATUS as $k=>$v): ?>
@@ -188,6 +232,10 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
             <?php endforeach; ?>
           </select>
         </div>
+        <?php else: ?>
+          <input type="hidden" name="status" value="SCHEDULED">
+          <p class="muted" style="margin:0">O horário entra como <b>Agendado</b>. Ao mudar para Finalizado (aqui, na Pipeline ou na Agenda), o Financeiro acompanha o status.</p>
+        <?php endif; ?>
         <?php if (is_user_crm($user ?? null)):
           $isExternal = is_array($edit) && (($edit['visit_type'] ?? '') === 'externo');
           $stopLines = is_array($edit) ? array_values(array_filter(array_map(static fn($s) => trim((string)($s['address'] ?? '')), $edit['stops'] ?? []))) : [];

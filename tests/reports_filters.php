@@ -38,8 +38,8 @@ q('INSERT INTO tenants(id,name,business_name,slug,segment,email,status,created_a
 q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,must_change_password,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
     'ua', 'ten-a', 'Admin A', 'ua@ex.com', 'ua', 'x', 'TENANT_ADMIN', 0, 1, $now,
 ]);
-q('INSERT INTO clients(id,tenant_id,name,phone,email,source,status,created_at) VALUES(?,?,?,?,?,?,?,?)', [
-    'cli-a', 'ten-a', 'Ana', '11', 'ana@ex.com', 'Instagram', 'ACTIVE', $now,
+q('INSERT INTO clients(id,tenant_id,name,phone,email,cpf,source,status,created_at) VALUES(?,?,?,?,?,?,?,?,?)', [
+    'cli-a', 'ten-a', 'Ana', '11', 'ana@ex.com', '529.982.247-25', 'Instagram', 'ACTIVE', $now,
 ]);
 q('INSERT INTO clients(id,tenant_id,name,phone,email,source,status,created_at) VALUES(?,?,?,?,?,?,?,?)', [
     'cli-b', 'ten-b', 'Bia', '22', 'bia@ex.com', 'Google', 'ACTIVE', $now,
@@ -139,6 +139,11 @@ expect(count($svcRep['sections'][0]['rows']) === 2, 'dois serviços no catálogo
 $tree = file_get_contents(dirname(__DIR__).'/views/app/relatorios_fx.php');
 expect(str_contains($tree, "'name' => 'Abrangência'") && str_contains($tree, "'name' => 'Fornecedores'"), 'pastas Abrangência e Fornecedores');
 expect(str_contains($tree, "'kind' => 'agendamentos'") && str_contains($tree, "'kind' => 'agentes'"), 'árvore com agendamentos e agentes');
+expect(str_contains($tree, "'name' => 'Documentos'") && str_contains($tree, "'kind' => 'documentos_cpf'"), 'pasta Documentos com CPF/CNPJ/agentes');
+
+$docs = report_build($tenantA, array_merge($base, ['kinds' => ['documentos']]));
+expect(count($docs['sections']) === 3, 'documentos com clientes CPF, CNPJ e agentes');
+expect($docs['sections'][0]['rows'][0][0] === 'Ana', 'cliente CPF no relatório de documentos');
 expect(!str_contains($tree, "icon('pdf'"), 'lista de relatórios sem ícone de PDF');
 
 $_GET = ['from' => $base['from'], 'to' => $base['to'], 'types' => ['clientes', 'origens']];

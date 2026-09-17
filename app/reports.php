@@ -4,6 +4,7 @@ declare(strict_types=1);
 const REPORT_KINDS = [
     'atendimentos', 'agendamentos', 'solicitacoes', 'clientes', 'agentes', 'servicos',
     'origens', 'financeiro', 'cliente_resumo', 'contratos', 'abrangencia', 'fornecedores',
+    'documentos', 'documentos_cpf', 'documentos_cnpj', 'documentos_agentes',
 ];
 
 function report_date(?string $value, string $fallback): string
@@ -57,6 +58,8 @@ function report_kinds_from_request(): array
         '/app/relatorios/servicos.pdf' => ['servicos'],
         '/app/relatorios/origens.pdf' => ['origens'],
         '/app/relatorios/contrato.pdf' => ['contratos'],
+        '/app/relatorios/fornecedores.pdf' => ['fornecedores'],
+        '/app/relatorios/documentos.pdf' => ['documentos'],
         '/app/financeiro/relatorio.pdf' => ['financeiro'],
         default => ['atendimentos'],
     };
@@ -392,10 +395,12 @@ function report_financeiro(array $tenant, array $filters): array
 {
     ensure_finance_schema();
     $tid = $tenant['id'];
-    $sql = "SELECT f.*, c.name client_name, a.service_id
+    $sql = "SELECT f.*, c.name client_name, u.name agent_name, a.service_id
         FROM finance_entries f
         LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
-        LEFT JOIN appointments a ON f.source_type='appointment' AND a.id=f.source_id AND a.tenant_id=f.tenant_id
+        LEFT JOIN users u ON u.id=f.agent_id AND u.tenant_id=f.tenant_id
+        LEFT JOIN appointments a ON a.id=f.source_id AND a.tenant_id=f.tenant_id
+          AND f.source_type IN ('appointment','appointment_commission')
         WHERE f.tenant_id=? AND f.status!='cancelled'
           AND COALESCE(f.due_date, substr(f.created_at,1,10))>=?
           AND COALESCE(f.due_date, substr(f.created_at,1,10))<=?";
@@ -416,10 +421,14 @@ function report_financeiro(array $tenant, array $filters): array
         $st = FINANCE_STATUS[$r['status']][0] ?? $r['status'];
         $sign = ($r['flow'] ?? '') === 'out' ? '-' : '+';
         $orig = finance_source_label($r['source_type'] ?? null, $r['source_id'] ?? null);
+        $who = ($r['source_type'] ?? '') === 'appointment_commission'
+            ? ('Agente: '.((string)($r['agent_name'] ?: '—')))
+            : ('Cliente: '.((string)($r['client_name'] ?: '—')));
         $table[] = [
             date('d/m/Y', strtotime((string)($r['due_date'] ?: $r['created_at']))),
             $sign.number_format((float)$r['amount'], 2, ',', '.'),
             (string)$r['description'],
+            $who,
             (string)$st,
             $orig,
         ];
@@ -427,9 +436,62 @@ function report_financeiro(array $tenant, array $filters): array
     $ov = finance_overview($tid, $filters['from'].' 00:00:00', $filters['to'].' 23:59:59');
     $foot = [];
     if ($filters['include_totals']) {
-        $foot[] = 'Previsto: '.money($ov['previsto']).' · A receber: '.money($ov['receber']).' · Saldo: '.money($ov['saldo']);
+        $foot[] = 'Previsto: '.money($ov['previsto']).' · A receber: '.money($ov['receber']).' · Repasse: '.money((float)($ov['repasse'] ?? 0));
+        $foot[] = 'Lucro presumido: '.money((float)($ov['lucro_presumido'] ?? 0)).' · Lucro líquido: '.money((float)($ov['lucro_liquido'] ?? $ov['saldo']));
     }
-    return [report_section('Caixa', ['Data', 'Valor', 'Descrição', 'Status', 'Origem'], $table, $foot)];
+    return [report_section('Caixa', ['Data', 'Valor', 'Descrição', 'Atribuição', 'Status', 'Origem'], $table, $foot)];
+}
+
+function report_documentos(array $tenant, array $filters, string $scope = 'all'): array
+{
+    appointment_commission_ensure_schema();
+    $tid = $tenant['id'];
+    $sections = [];
+    $wantCpf = in_array($scope, ['all', 'cpf'], true);
+    $wantCnpj = in_array($scope, ['all', 'cnpj'], true);
+    $wantAgents = in_array($scope, ['all', 'agentes'], true);
+    if ($wantCpf || $wantCnpj) {
+        $cpfRows = [];
+        $cnpjRows = [];
+        foreach (all('SELECT name, cpf, phone, email, status FROM clients WHERE tenant_id=? ORDER BY name', [$tid]) as $r) {
+            $kind = br_doc_kind_from_value($r['cpf'] ?? '');
+            $line = [
+                (string)$r['name'],
+                $kind ? format_br_document($r['cpf'], $kind) : '—',
+                phone_fmt($r['phone'] ?? '') ?: '—',
+                (string)($r['email'] ?: '—'),
+                ($r['status'] ?? '') === 'INACTIVE' ? 'Inativo' : 'Ativo',
+            ];
+            if ($kind === 'cnpj') {
+                $cnpjRows[] = $line;
+            } elseif ($kind === 'cpf') {
+                $cpfRows[] = $line;
+            }
+        }
+        $headers = ['Nome', 'Documento', 'Telefone', 'E-mail', 'Status'];
+        if ($wantCpf) {
+            $sections[] = report_section('Clientes CPF', $headers, $cpfRows, $filters['include_totals'] ? ['Total: '.count($cpfRows)] : []);
+        }
+        if ($wantCnpj) {
+            $sections[] = report_section('Clientes CNPJ', $headers, $cnpjRows, $filters['include_totals'] ? ['Total: '.count($cnpjRows)] : []);
+        }
+    }
+    if ($wantAgents) {
+        $agentRows = [];
+        foreach (all("SELECT name, email, phone, document_kind, cpf, active FROM users WHERE tenant_id=? AND role='user_agent' ORDER BY name", [$tid]) as $r) {
+            $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cpf'] ?? '');
+            $agentRows[] = [
+                (string)$r['name'],
+                $kind ? strtoupper($kind) : '—',
+                ($kind === 'cpf' || $kind === 'cnpj') ? format_br_document($r['cpf'], $kind) : ((string)($r['cpf'] ?: '—')),
+                phone_fmt($r['phone'] ?? '') ?: '—',
+                (string)($r['email'] ?: '—'),
+                !empty($r['active']) ? 'Ativo' : 'Inativo',
+            ];
+        }
+        $sections[] = report_section('Agentes', ['Nome', 'Tipo', 'Documento', 'Telefone', 'E-mail', 'Situação'], $agentRows, $filters['include_totals'] ? ['Total: '.count($agentRows)] : []);
+    }
+    return $sections;
 }
 
 function report_abrangencia(array $tenant, array $filters): array
@@ -531,6 +593,10 @@ function report_build(array $tenant, array $filters): array
         'servicos' => 'Relatório de serviços',
         'origens' => 'Resumo de origens',
         'financeiro' => 'Resumo do caixa',
+        'documentos' => 'Documentos',
+        'documentos_cpf' => 'Documentos de clientes CPF',
+        'documentos_cnpj' => 'Documentos de clientes CNPJ',
+        'documentos_agentes' => 'Documentos de agentes',
         'cliente_resumo' => 'Resumo por cliente',
         'contratos' => 'Contrato de prestação',
         'abrangencia' => 'Abrangência',
@@ -552,6 +618,10 @@ function report_build(array $tenant, array $filters): array
             'servicos' => report_servicos($tenant, $filters),
             'origens' => report_origens($tenant, $filters),
             'financeiro' => report_financeiro($tenant, $filters),
+            'documentos' => report_documentos($tenant, $filters, 'all'),
+            'documentos_cpf' => report_documentos($tenant, $filters, 'cpf'),
+            'documentos_cnpj' => report_documentos($tenant, $filters, 'cnpj'),
+            'documentos_agentes' => report_documentos($tenant, $filters, 'agentes'),
             'cliente_resumo' => report_cliente_resumo_only($tenant, $filters),
             'abrangencia' => report_abrangencia($tenant, $filters),
             'fornecedores' => report_fornecedores($tenant, $filters),

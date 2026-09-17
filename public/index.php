@@ -665,6 +665,14 @@ if (str_starts_with($path, '/app')) {
                 flash('Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.', 'error');
                 redirect($id ? $back : $retryNew);
             }
+            $commission = ['ok' => true, 'enabled' => false];
+            if (is_user_crm($user)) {
+                $commission = parse_appointment_commission($tid, (float)($svc['price'] ?? 0));
+                if (empty($commission['ok'])) {
+                    flash((string)$commission['message'], 'error');
+                    redirect($id ? $back : $retryNew);
+                }
+            }
             $isExt = is_user_crm($user) && (post('external_visit') === '1' || post('external_visit') === 'on');
             $visitAddrs = (array)($_POST['visit_addresses'] ?? []);
             $visitFilled = array_values(array_filter(array_map('trim', $visitAddrs), static fn($v) => $v !== ''));
@@ -692,13 +700,17 @@ if (str_starts_with($path, '/app')) {
                 push_google_sheets($tid, 'appointment', 'upsert', $id);
                 sync_appointment_finance($tid, $id);
                 save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
+                if (is_user_crm($user)) {
+                    store_appointment_commission($tid, $id, $commission);
+                }
                 flash('Agendamento atualizado.');
             } else {
                 $res = create_appointment($tenant, [
                     'client_id'=>$cid,'service_id'=>post('service_id'),'date'=>post('date'),'start'=>post('start'),
-                    'status'=>post('status','SCHEDULED'),'notes'=>post('notes'),'request_id'=>$rid,'user_id'=>$user['id'],
+                    'status'=>'SCHEDULED','notes'=>post('notes'),'request_id'=>$rid,'user_id'=>$user['id'],
                     'source'=>$req['source'] ?? 'Manual',
                     'metadata'=>$req && !empty($req['metadata']) ? (json_decode($req['metadata'], true) ?: null) : null,
+                    'commission'=> is_user_crm($user) ? $commission : null,
                 ]);
                 flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
                 if ($res['ok']) {
@@ -806,6 +818,14 @@ if (str_starts_with($path, '/app')) {
                 flash('Agente não encontrado.', 'error');
                 redirect('/app/agentes');
             }
+            $kind = strtolower(trim((string)post('document_kind', '')));
+            $document = null;
+            if ($kind !== '' || trim((string)post('cpf', '')) !== '') {
+                [$docOk, $document, $docErr] = parse_br_document($kind, post('cpf'), true);
+                if (!$docOk) {
+                    bounce_form($back, $docErr ?: 'Informe o CPF ou CNPJ do agente.');
+                }
+            }
             if (!$existing && $password === '') {
                 bounce_form($back, 'Defina a senha inicial do agente.');
             }
@@ -815,20 +835,20 @@ if (str_starts_with($path, '/app')) {
             $active = isset($_POST['active']) ? db_bool(true) : db_bool(false);
             if ($existing) {
                 if ($password !== '') {
-                    q('UPDATE users SET name=?, email=?, username=?, phone=?, password_hash=?, must_change_password='.sql_lit_bool(true).', active=? WHERE id=? AND tenant_id=? AND role=?',
-                        [$name, $email, $username, $phone !== '' ? $phone : null, password_hash($password, PASSWORD_DEFAULT), $active, $id, $tid, 'user_agent']);
+                    q('UPDATE users SET name=?, email=?, username=?, phone=?, password_hash=?, document_kind=?, cpf=?, must_change_password='.sql_lit_bool(true).', active=? WHERE id=? AND tenant_id=? AND role=?',
+                        [$name, $email, $username, $phone !== '' ? $phone : null, password_hash($password, PASSWORD_DEFAULT), $kind !== '' ? $kind : null, $document, $active, $id, $tid, 'user_agent']);
                 } else {
-                    q('UPDATE users SET name=?, email=?, username=?, phone=?, active=? WHERE id=? AND tenant_id=? AND role=?',
-                        [$name, $email, $username, $phone !== '' ? $phone : null, $active, $id, $tid, 'user_agent']);
+                    q('UPDATE users SET name=?, email=?, username=?, phone=?, document_kind=?, cpf=?, active=? WHERE id=? AND tenant_id=? AND role=?',
+                        [$name, $email, $username, $phone !== '' ? $phone : null, $kind !== '' ? $kind : null, $document, $active, $id, $tid, 'user_agent']);
                 }
                 audit($tid, $user['id'], 'agent.updated', 'user', $id);
                 flash('Agente atualizado.');
             } else {
                 $id = uid();
-                q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,phone,must_change_password,active,created_at)
-                   VALUES(?,?,?,?,?,?,?,?,'.sql_lit_bool(true).',?,?)', [
+                q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,phone,document_kind,cpf,must_change_password,active,created_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,'.sql_lit_bool(true).',?,?)', [
                     $id, $tid, $name, $email, $username, password_hash($password, PASSWORD_DEFAULT), 'user_agent',
-                    $phone !== '' ? $phone : null, $active, now(),
+                    $phone !== '' ? $phone : null, $kind !== '' ? $kind : null, $document, $active, now(),
                 ]);
                 audit($tid, $user['id'], 'agent.created', 'user', $id);
                 flash('Agente criado. Ele entra no mesmo login do CRM, com o usuário informado.');
@@ -1460,6 +1480,7 @@ if (str_starts_with($path, '/app')) {
             'tenant'=>$tenant,'events'=>$events,
             'clients'=>all('SELECT id,name,phone FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
             'services'=>all('SELECT * FROM services WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
+            'agents'=>all("SELECT id, name FROM users WHERE tenant_id=? AND role='user_agent' AND ".sql_true('active')." ORDER BY name", [$tenant['id']]),
         ]);
         layout_end('app');
         exit;
@@ -1511,6 +1532,7 @@ if (str_starts_with($path, '/app')) {
             'forcedClient'=>$forcedClient,
             'clients'=>all('SELECT id,name,phone FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
             'services'=>all('SELECT * FROM services WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
+            'agents'=>all("SELECT id, name FROM users WHERE tenant_id=? AND role='user_agent' AND ".sql_true('active')." ORDER BY name", [$tenant['id']]),
         ]);
         layout_end('app');
         exit;

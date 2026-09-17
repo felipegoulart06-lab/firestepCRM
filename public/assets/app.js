@@ -36,7 +36,12 @@ function toggleSide(){
   document.body.classList.toggle('nav-open', side.classList.contains('open'));
 }
 document.addEventListener('keydown', function(e){
-  if (e.key === 'Escape') closeSide();
+  if (e.key !== 'Escape') return;
+  if (document.querySelector('.overlay, .token-modal:not([hidden])')) {
+    closeModal();
+    return;
+  }
+  closeSide();
 });
 document.addEventListener('click', function(e){
   if (!window.matchMedia('(max-width:1100px)').matches) return;
@@ -47,8 +52,16 @@ function closeModal(){
   ['ver','converter','nova','new','edit','block','convert','delblock','client_id','from'].forEach(k => url.searchParams.delete(k));
   location.href = url.pathname + url.search;
 }
+function hoistModal(el){
+  if (!el || el.parentElement === document.body) return el;
+  document.body.appendChild(el);
+  return el;
+}
 function lockBehindModal(){
-  const overlay = document.querySelector('.overlay') || document.querySelector('.token-modal:not([hidden])');
+  const overlay = document.querySelector('.overlay')
+    || document.querySelector('.token-modal:not([hidden])')
+    || document.querySelector('.fx-overlay:not([hidden])');
+  if (overlay) hoistModal(overlay);
   const on = !!overlay;
   document.documentElement.classList.toggle('is-modal-open', on);
   document.body.classList.toggle('is-modal-open', on);
@@ -60,9 +73,16 @@ function blockScrollBehindModal(e){
   if (t.closest('.overlay-panel, .overlay, .fx-overlay, .fx-filter-panel, .fx-preview-shell, .fx-a4-wrap, .fx-checks-scroll, .cl-panel, .token-modal')) return;
   e.preventDefault();
 }
-document.addEventListener('click', e=>{
-  if(e.target.classList.contains('overlay')) closeModal();
-});
+document.addEventListener('click', function(e){
+  const t = e.target;
+  if (!(t instanceof Element)) return;
+  if (t.closest('[data-close-modal]')) {
+    e.preventDefault();
+    closeModal();
+    return;
+  }
+  if (t.classList.contains('overlay') || t.classList.contains('token-modal')) closeModal();
+}, true);
 document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('DOMContentLoaded', lockBehindModal);
@@ -131,6 +151,70 @@ function bindDocFields(root){
 }
 document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
 document.addEventListener('DOMContentLoaded', bindExternalVisit);
+document.addEventListener('DOMContentLoaded', bindCommissionBox);
+function bindCommissionBox(){
+  document.querySelectorAll('[data-commission-box]').forEach(function(box){
+    const form = box.closest('form');
+    if (!form || box.dataset.bound) return;
+    box.dataset.bound = '1';
+    const toggle = form.querySelector('[name="commission_on"]');
+    const fields = form.querySelector('[data-commission-fields]');
+    const agent = form.querySelector('[name="commission_agent_id"]');
+    const type = form.querySelector('[name="commission_type"]');
+    const value = form.querySelector('[name="commission_value"]');
+    const preview = form.querySelector('[data-commission-preview]');
+    const service = form.querySelector('[data-service-select], select[name="service_id"]');
+    const servicePrice = function(){
+      const opt = service && service.options[service.selectedIndex];
+      return opt ? Number(opt.getAttribute('data-price') || 0) : 0;
+    };
+    const parsedAmount = function(){
+      const raw = String(value && value.value || '').replace(/\s/g,'').replace('R$','').replace(/\./g,'').replace(',', '.');
+      const n = Number(raw);
+      if (!n || n <= 0) return 0;
+      const price = servicePrice();
+      if ((type && type.value) === 'percent') return Math.round((price * n / 100) * 100) / 100;
+      return n;
+    };
+    const sync = function(){
+      const on = !!(toggle && toggle.checked);
+      if (fields) fields.hidden = !on;
+      if (agent) agent.required = on;
+      if (type) type.required = on;
+      if (value) value.required = on;
+      if (!preview) return;
+      if (!on) { preview.textContent = ''; return; }
+      const price = servicePrice();
+      const amount = parsedAmount();
+      if (!price) { preview.textContent = 'Selecione um serviço com preço.'; return; }
+      if (!amount) { preview.textContent = 'Serviço: R$ ' + price.toFixed(2).replace('.', ',') + '. Informe o repasse.'; return; }
+      if (amount > price) {
+        preview.textContent = 'Repasse maior que o serviço (R$ ' + price.toFixed(2).replace('.', ',') + '). Não será possível confirmar.';
+        return;
+      }
+      preview.textContent = 'Repasse de R$ ' + amount.toFixed(2).replace('.', ',') + ' · líquido presumido R$ ' + (price - amount).toFixed(2).replace('.', ',');
+    };
+    toggle?.addEventListener('change', sync);
+    type?.addEventListener('change', sync);
+    value?.addEventListener('input', sync);
+    service?.addEventListener('change', sync);
+    form.addEventListener('submit', function(e){
+      if (!(toggle && toggle.checked)) return;
+      const price = servicePrice();
+      const amount = parsedAmount();
+      if (!agent || !agent.value) {
+        e.preventDefault();
+        alert('Selecione o agente do repasse.');
+        return;
+      }
+      if (amount <= 0 || amount > price) {
+        e.preventDefault();
+        alert('O repasse/comissão não pode ser zero nem maior que o valor do serviço.');
+      }
+    });
+    sync();
+  });
+}
 function bindExternalVisit(){
   document.querySelectorAll('[data-external-visit]').forEach(function(box){
     const form = box.closest('form');
@@ -177,7 +261,7 @@ function bindReportsExplorer(){
     document.documentElement.classList.toggle('is-modal-open', on);
     document.body.classList.toggle('is-modal-open', on);
   };
-  const openOverlay = (el)=>{ el.hidden = false; lock(true); };
+  const openOverlay = (el)=>{ hoistModal(el); el.hidden = false; lock(true); };
   const closeOverlays = ()=>{
     if (filters) filters.hidden = true;
     if (preview) preview.hidden = true;

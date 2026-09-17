@@ -18,6 +18,12 @@ $fxFolders = $fxFolders ?? [
         ['kind' => 'servicos', 'file' => 'Relatório de serviços', 'hint' => 'Catálogo, preço, duração e quantidade de agendamentos.'],
         ['kind' => 'origens', 'file' => 'Resumo de origens', 'hint' => 'Canais que geraram cadastros e solicitações.'],
     ]],
+    ['name' => 'Documentos', 'files' => [
+        ['kind' => 'documentos', 'file' => 'Todos os documentos', 'hint' => 'CPF e CNPJ de todos os clientes e documentos dos agentes.'],
+        ['kind' => 'documentos_cpf', 'file' => 'Clientes CPF', 'hint' => 'Documentos de todos os clientes pessoa física.'],
+        ['kind' => 'documentos_cnpj', 'file' => 'Clientes CNPJ', 'hint' => 'Documentos de todos os clientes pessoa jurídica.'],
+        ['kind' => 'documentos_agentes', 'file' => 'Agentes', 'hint' => 'CPF ou CNPJ cadastrado de cada agente.'],
+    ]],
     ['name' => 'Financeiro', 'files' => [
         ['kind' => 'financeiro', 'file' => 'Resumo do caixa', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
     ]],
@@ -123,6 +129,10 @@ foreach ($fxFolders as $folder) {
               <label><input type="checkbox" name="types[]" value="atendimentos"> Resumo de atendimentos</label>
               <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
               <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
+              <label><input type="checkbox" name="types[]" value="documentos"> Todos os documentos</label>
+              <label><input type="checkbox" name="types[]" value="documentos_cpf"> Clientes CPF</label>
+              <label><input type="checkbox" name="types[]" value="documentos_cnpj"> Clientes CNPJ</label>
+              <label><input type="checkbox" name="types[]" value="documentos_agentes"> Documentos de agentes</label>
               <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
               <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
               <label><input type="checkbox" name="types[]" value="abrangencia"> Abrangência</label>

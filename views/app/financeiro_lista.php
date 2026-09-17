@@ -35,7 +35,7 @@ $listPath = finance_pages()[$page][1];
     <tr>
       <th>Descrição</th>
       <th>Origem</th>
-      <th>Cliente</th>
+      <th>Atribuição</th>
       <th>Forma</th>
       <th>Valor</th>
       <th>Vencimento</th>
@@ -53,7 +53,15 @@ $listPath = finance_pages()[$page][1];
         <?php endif; ?>
       </td>
       <td><?= e(finance_source_label($row['source_type'] ?? null, $row['source_id'] ?? null)) ?></td>
-      <td><?= e($row['client_name'] ?: '—') ?><?php if (!empty($row['client_cpf'])): ?> <span style="color:#667085;font-size:12px"><?= e(format_br_document((string)$row['client_cpf'])) ?></span><?php endif; ?></td>
+      <td><?php
+        if (($row['source_type'] ?? '') === 'appointment_commission') {
+            echo 'Agente: '.e($row['agent_name'] ?: '—');
+            if (!empty($row['client_name'])) echo '<div style="font-size:12px;color:#667085">Cliente: '.e($row['client_name']).'</div>';
+        } else {
+            echo e($row['client_name'] ?: '—');
+            if (!empty($row['client_cpf'])) echo ' <span style="color:#667085;font-size:12px">'.e(format_br_document((string)$row['client_cpf'])).'</span>';
+        }
+      ?></td>
       <td><?= e(finance_pay_label($row['payment_method'] ?? '')) ?></td>
       <td><?= e(money((float)$row['amount'])) ?></td>
       <td><?= e($row['due_date'] ? date('d/m/Y', strtotime($row['due_date'])) : '—') ?></td>
