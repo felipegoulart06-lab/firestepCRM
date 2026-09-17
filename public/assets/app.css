@@ -9,7 +9,8 @@ button{color:inherit}
 .ico{display:block;flex:0 0 auto}
 .wrap{display:flex;align-items:stretch;min-height:100vh}
 .sidebar{width:252px;background:var(--navy);color:#d0d5dd;padding:20px 14px 14px;position:relative;align-self:stretch;min-height:100vh;height:auto;overflow:visible;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #1d2939}
-.brand{display:flex;gap:11px;align-items:flex-start;padding:0 8px 22px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:12px}
+.brand{display:flex;gap:11px;align-items:flex-start;padding:0 8px 22px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:12px;color:inherit}
+.brand:hover .brand-name{color:#fff}
 .logo{width:34px;height:34px;border-radius:6px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:15px;font-weight:800}
 .brand-name{font-size:15px;color:#fff;font-weight:700;letter-spacing:-.01em}
 .brand-sub{max-width:210px;font-size:11px;color:#98a2b3;line-height:1.35;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

@@ -211,6 +211,32 @@ $hourLine = static function (array $h) {
 <div class="card settings-panel" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
+      <h2>Tela inicial</h2>
+      <p>Menu que abre toda vez que alguém desta empresa entra no CRM — login, senha nova ou clique no nome FirestepCRM.</p>
+    </div>
+  </div>
+  <?php
+    $homeChoices = app_home_choices(null, $tenant);
+    $homeSaved = app_home_stored($tenant);
+  ?>
+  <form method="post" action="/app/configuracoes/inicio">
+    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+    <label class="label" for="home_path">Menu principal</label>
+    <select class="select" id="home_path" name="home_path" required>
+      <?php foreach ($homeChoices as $href => $label): ?>
+        <option value="<?= e($href) ?>" <?= $homeSaved===$href?'selected':'' ?>><?= e($label) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <p class="settings-hint">O padrão é Agenda. Se o menu for só de administrador, os agentes continuam entrando na Agenda.</p>
+    <div class="settings-actions">
+      <button class="btn btn-primary">Salvar tela inicial</button>
+    </div>
+  </form>
+</div>
+
+<div class="card settings-panel" style="margin-top:14px">
+  <div class="settings-panel-head">
+    <div>
       <h2>Campos personalizados</h2>
       <p>Aparecem nos cadastros desta empresa. Não dá para desfazer pelo formulário.</p>
     </div>

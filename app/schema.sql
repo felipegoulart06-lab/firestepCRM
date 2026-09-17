@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   access_token_generated_at TEXT,
   access_token_viewed_at TEXT,
   onboarding_done INTEGER DEFAULT 0,
+  home_path TEXT DEFAULT '/app/agenda',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

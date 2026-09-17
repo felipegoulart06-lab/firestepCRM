@@ -129,6 +129,7 @@ function require_tenant(): array
 {
     $u = require_login();
     if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
+    app_home_ensure_schema();
     $t = one('SELECT * FROM tenants WHERE id=?', [$u['tenant_id']]);
     if (!$t || $t['status'] === 'CANCELLED') {
         $_SESSION = [];
@@ -158,7 +159,7 @@ if ($path === '/' ) redirect('/login');
 if ($path === '/login' && $method === 'GET') {
     if (current_user()) {
         $u = current_user();
-        redirect(is_user_admin($u) ? '/master' : (!empty($u['must_change_password']) ? '/app/senha' : '/app/agenda'));
+        redirect_app_home(null, $u);
     }
     view('login', ['error' => null]);
     exit;
@@ -190,13 +191,7 @@ if ($path === '/login' && $method === 'POST') {
     if (empty($user['must_change_password'])) {
         q('UPDATE users SET last_login_at=? WHERE id=?', [now(), $user['id']]);
     }
-    if (is_user_admin($user)) {
-        redirect('/master');
-    }
-    if (!empty($user['must_change_password'])) {
-        redirect('/app/senha');
-    }
-    redirect('/app/agenda');
+    redirect_app_home(null, $user);
 }
 if ($path === '/logout' && $method === 'POST') {
     csrf_check();
@@ -543,7 +538,7 @@ if (str_starts_with($path, '/app')) {
     }
     if (is_user_agent($user) && agent_route_forbidden($path)) {
         flash('Este menu é exclusivo do administrador da empresa.', 'error');
-        redirect('/app/agenda');
+        redirect(app_home_path($tenant, $user));
     }
 
     if ($path === '/app/google/connect' && $method === 'GET') {
@@ -599,7 +594,7 @@ if (str_starts_with($path, '/app')) {
             ]);
             session_regenerate_id(true);
             flash('Senha definida. Bem-vindo ao painel.');
-            redirect(empty($tenant['onboarding_done']) ? '/app/onboarding' : '/app/agenda');
+            redirect(empty($tenant['onboarding_done']) ? '/app/onboarding' : app_home_path($tenant, $user));
         }
         if ($path === '/app/notificacoes/ler') {
             q('UPDATE notifications SET read_flag='.sql_lit_bool(true).' WHERE tenant_id=?', [$tid]);
@@ -1056,6 +1051,18 @@ if (str_starts_with($path, '/app')) {
             flash('Aparência atualizada.');
             redirect('/app/configuracoes?tab=avancado');
         }
+        if ($path === '/app/configuracoes/inicio') {
+            app_home_ensure_schema();
+            $choice = trim((string)post('home_path', '/app/agenda'));
+            $allowed = app_home_choices(null, $tenant);
+            if (!isset($allowed[$choice])) {
+                flash('Escolha um menu válido para a tela inicial.', 'error');
+                redirect('/app/configuracoes?tab=avancado');
+            }
+            q('UPDATE tenants SET home_path=?, updated_at=? WHERE id=?', [$choice, now(), $tid]);
+            flash('Tela inicial salva. Toda entrada no CRM abre nesse menu.');
+            redirect('/app/configuracoes?tab=avancado');
+        }
         if ($path === '/app/configuracoes/campo') {
             $label = post('label');
             $key = strtolower(preg_replace('/[^a-z0-9_]+/','_', $label ?? ''));
@@ -1162,7 +1169,7 @@ if (str_starts_with($path, '/app')) {
                 q('UPDATE users SET name=? WHERE id=? AND tenant_id=?', [post('name'), $user['id'], $tid]);
             }
             flash('Conta atualizada.');
-            redirect($mustChange && $pw ? '/app/agenda' : '/app/configuracoes?tab=conta');
+            redirect($mustChange && $pw ? app_home_path($tenant, $user) : '/app/configuracoes?tab=conta');
         }
         if ($path === '/app/configuracoes/analytics') {
             $gtm = strtoupper(post('gtm_id', ''));
@@ -1277,7 +1284,7 @@ if (str_starts_with($path, '/app')) {
 
     if ($path === '/app/senha') {
         if (empty($user['must_change_password'])) {
-            redirect('/app/agenda');
+            redirect(app_home_path($tenant, $user));
         }
         layout_start('lock', compact('user','tenant','path'));
         view('app/senha', compact('user','tenant'));
@@ -1382,6 +1389,10 @@ if (str_starts_with($path, '/app')) {
     }
 
     if ($path === '/app') {
+        $home = app_home_path($tenant, $user);
+        if ($home !== '/app') {
+            redirect($home);
+        }
         $today = date('Y-m-d');
         $week = date('Y-m-d', strtotime('+7 days'));
         layout_start('app', compact('user','tenant','path'));
@@ -1578,7 +1589,7 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/agentes') {
         if (!is_user_crm($user)) {
             flash('Somente o administrador da empresa gerencia agentes.', 'error');
-            redirect('/app/agenda');
+            redirect(app_home_path($tenant, $user));
         }
         $edit = null;
         $editId = trim((string)($_GET['id'] ?? ''));

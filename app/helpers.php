@@ -342,6 +342,7 @@ function migrate_database(PDO $pdo): void
             'clauses_config' => "TEXT DEFAULT '{}'",
             'access_token_generated_at' => 'TEXT',
             'access_token_viewed_at' => 'TEXT',
+            'home_path' => "TEXT DEFAULT '/app/agenda'",
         ],
         'users' => [
             'last_login_at' => 'TEXT',
@@ -595,6 +596,86 @@ function agent_route_forbidden(string $path): bool
         }
     }
     return false;
+}
+
+function app_home_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (is_pgsql()) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS home_path text NOT NULL DEFAULT '/app/agenda'");
+            return;
+        }
+        $cols = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
+        if (!in_array('home_path', $cols, true)) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN home_path TEXT DEFAULT '/app/agenda'");
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function app_home_choices(?array $user = null, ?array $tenant = null): array
+{
+    $terms = $tenant ? terms_of($tenant) : ['clients' => 'Clientes', 'requests' => 'Solicitações'];
+    $all = [
+        '/app/agenda' => 'Agenda',
+        '/app' => 'Visão geral',
+        '/app/metricas' => 'Métricas',
+        '/app/agendamentos' => 'Agendamentos',
+        '/app/solicitacoes' => (string)($terms['requests'] ?? 'Solicitações'),
+        '/app/kanban' => 'Pipeline',
+        '/app/clientes' => (string)($terms['clients'] ?? 'Clientes'),
+        '/app/agentes' => 'Agentes',
+        '/app/abrangencia' => 'Abrangência',
+        '/app/fornecedores' => 'Fornecedores',
+        '/app/servicos' => 'Serviços',
+        '/app/relatorios' => 'Relatórios',
+        '/app/financeiro' => 'Financeiro',
+        '/app/webhooks' => 'Webhooks',
+        '/app/configuracoes' => 'Configurações',
+    ];
+    if ($user && is_user_agent($user)) {
+        return array_filter($all, static fn(string $path) => !agent_route_forbidden($path), ARRAY_FILTER_USE_KEY);
+    }
+    return $all;
+}
+
+function app_home_stored(?array $tenant): string
+{
+    app_home_ensure_schema();
+    $raw = trim((string)($tenant['home_path'] ?? ''));
+    $all = app_home_choices(null, $tenant);
+    return isset($all[$raw]) ? $raw : '/app/agenda';
+}
+
+function app_home_path(?array $tenant, ?array $user = null): string
+{
+    $stored = app_home_stored($tenant);
+    $forUser = app_home_choices($user, $tenant);
+    if (isset($forUser[$stored])) {
+        return $stored;
+    }
+    return '/app/agenda';
+}
+
+function redirect_app_home(?array $tenant = null, ?array $user = null): void
+{
+    if ($user && is_user_admin($user)) {
+        redirect('/master');
+    }
+    if ($user && !empty($user['must_change_password'])) {
+        redirect('/app/senha');
+    }
+    app_home_ensure_schema();
+    if (!$tenant && $user && !empty($user['tenant_id'])) {
+        $tenant = one('SELECT * FROM tenants WHERE id=?', [$user['tenant_id']]);
+    }
+    redirect(app_home_path($tenant, $user));
 }
 
 function users_ensure_roles(?PDO $pdo = null): void
