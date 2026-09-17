@@ -164,10 +164,8 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .forced-client span{display:block;font-size:12px;color:#475467;margin-top:2px}
 .forced-client em{display:block;font-size:11px;color:#667085;margin-top:6px;font-style:normal}
 .payload{background:#111827;color:#d1d5db;border-radius:5px;padding:10px;overflow:auto;max-height:180px;font:11px/1.55 Consolas,monospace;white-space:pre-wrap}
-.kanban{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}
-.kanban-col{padding:8px;min-height:0;max-height:min(52vh,420px);overflow:auto;background:#fbfcfe}
-.kanban-col:nth-child(1),.kanban-col:nth-child(2){grid-column:span 3}
-.kanban-col:nth-child(n+3){grid-column:span 2}
+.kanban{display:grid;grid-template-columns:repeat(7,minmax(188px,1fr));gap:10px;align-items:start;overflow-x:auto;padding-bottom:6px}
+.kanban-col{padding:8px;min-height:0;max-height:min(62vh,540px);overflow:auto;background:#fbfcfe;min-width:188px}
 .kanban-col-head{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 8px;position:sticky;top:0;background:#fbfcfe;z-index:1}
 .kanban-col-head b{font-size:13px}
 .kcard{padding:8px 9px;margin-bottom:6px;transition:.15s ease}
@@ -178,7 +176,7 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .kanban-actions{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line-soft)}
 .kanban-actions small{font-size:10px;color:#98a2b3}
 .kanban-arrow{width:24px;height:24px;min-height:24px;padding:0;font-size:14px}
-@media(max-width:900px){.kanban{grid-template-columns:1fr 1fr}.kanban-col:nth-child(1),.kanban-col:nth-child(2),.kanban-col:nth-child(n+3){grid-column:auto}.kanban-col{max-height:320px}}
+@media(max-width:900px){.kanban{grid-template-columns:1fr 1fr}.kanban-col{max-height:320px;min-width:0}}
 @media(max-width:560px){.kanban{grid-template-columns:1fr}}
 .service-summary{display:flex;gap:22px;align-items:center;margin:-8px 0 12px;color:#667085;font-size:12px}.service-summary strong{color:#101828;font-size:14px;margin-right:3px}
 .service-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 160px auto auto;gap:7px;padding:8px;margin-bottom:12px}

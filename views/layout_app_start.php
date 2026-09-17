@@ -13,7 +13,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=r13">
+<link rel="stylesheet" href="/assets/app.css?v=r14">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -33,10 +33,10 @@ $qsearch = trim($_GET['q'] ?? '');
     <?php if (!is_user_agent($user)): ?>
     <a href="/app/metricas" class="<?= $path==='/app/metricas'?'active':'' ?>"><?= icon('chart') ?> Métricas</a>
     <?php endif; ?>
+    <a href="/app/kanban" class="<?= $path==='/app/kanban'?'active':'' ?>"><?= icon('kanban') ?> Pipeline</a>
     <div class="nav-cat">ATENDIMENTO</div>
     <a href="/app/agendamentos" class="<?= $path==='/app/agendamentos'?'active':'' ?>"><?= icon('list') ?> Agendamentos</a>
     <a href="/app/solicitacoes" class="<?= $path==='/app/solicitacoes'?'active':'' ?>"><?= icon('inbox') ?> <?= e($terms['requests']) ?></a>
-    <a href="/app/kanban" class="<?= $path==='/app/kanban'?'active':'' ?>"><?= icon('kanban') ?> Pipeline</a>
     <div class="nav-cat">RELACIONAMENTO</div>
     <a href="/app/clientes" class="<?= str_starts_with($path,'/app/clientes')?'active':'' ?>"><?= icon('users') ?> <?= e($terms['clients']) ?></a>
     <?php if (is_user_crm($user)): ?>

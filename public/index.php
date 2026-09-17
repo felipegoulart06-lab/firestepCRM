@@ -963,21 +963,42 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/solicitacoes/criar') {
             redirect('/app/solicitacoes');
         }
-        if ($path === '/app/solicitacoes/status' || $path === '/app/kanban') {
+        if ($path === '/app/solicitacoes/status') {
             $st = post('status');
             $allowed = ['NEW','CONTACTED','WAITING_CLIENT','SCHEDULED','DONE','LOST','ARCHIVED'];
             if (!in_array($st, $allowed, true)) {
                 flash('Status inválido.');
-                redirect($path === '/app/kanban' ? '/app/kanban' : '/app/solicitacoes');
+                redirect('/app/solicitacoes');
             }
             q('UPDATE requests SET status=? WHERE id=? AND tenant_id=?', [$st, post('id'), $tid]);
-            if ($path === '/app/kanban') {
-                redirect('/app/kanban');
-            }
             if ($st === 'ARCHIVED') flash('Solicitação arquivada.');
             $back = '/app/solicitacoes';
             if (post('f')) $back .= '?f='.urlencode((string)post('f'));
             redirect($back);
+        }
+        if ($path === '/app/kanban') {
+            $st = (string)post('status', '');
+            $id = (string)post('id', '');
+            if (!isset(APPT_STATUS[$st])) {
+                flash('Status inválido.');
+                redirect('/app/kanban');
+            }
+            $prev = one('SELECT * FROM appointments WHERE id=? AND tenant_id=?', [$id, $tid]);
+            if (!$prev) {
+                flash('Agendamento não encontrado.', 'error');
+                redirect('/app/kanban');
+            }
+            q('UPDATE appointments SET status=? WHERE id=? AND tenant_id=?', [$st, $id, $tid]);
+            if ($prev['status'] !== $st && $st === 'CONFIRMED') {
+                emit_outbound($tid, 'appointment.confirmed', ['id'=>$id]);
+            }
+            if ($st === 'CANCELLED') {
+                notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.');
+                emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]);
+            }
+            push_google_sheets($tid, 'appointment', 'upsert', $id);
+            sync_appointment_finance($tid, $id);
+            redirect('/app/kanban');
         }
         if ($path === '/app/webhooks/dominio') {
             $domain = trim((string)post('site_domain', ''));
@@ -1486,7 +1507,15 @@ if (str_starts_with($path, '/app')) {
     }
     if ($path === '/app/kanban') {
         layout_start('app', compact('user','tenant','path'));
-        view('app/kanban', ['items'=>all("SELECT r.*, s.name service_name FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? AND r.status NOT IN ('ARCHIVED','LOST') ORDER BY r.created_at DESC", [$tenant['id']])]);
+        view('app/kanban', ['items'=>all(
+            "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, s.name service_name
+             FROM appointments a
+             JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+             LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+             WHERE a.tenant_id=?
+             ORDER BY a.starts_at DESC",
+            [$tenant['id']]
+        )]);
         layout_end('app');
         exit;
     }
