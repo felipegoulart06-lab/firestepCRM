@@ -63,7 +63,7 @@ $activeOn = $edit ? !empty($src['active']) : true;
     <form method="post" action="/app/agentes/excluir" style="display:inline" onsubmit="return confirm('Remover este agente?')">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= e($r['id']) ?>">
-      <button class="btn btn-danger">Excluir</button>
+      <button class="btn btn-ghost">Excluir</button>
     </form>
   </td>
 </tr>

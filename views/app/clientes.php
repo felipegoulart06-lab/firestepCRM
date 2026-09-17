@@ -30,7 +30,7 @@
     <a class="btn btn-ghost" href="/app/agenda?new=1&amp;client_id=<?= e($r['id']) ?>&amp;from=clientes">Agendar</a>
     <form method="post" action="/app/clientes/excluir" style="display:inline" onsubmit="return confirm('Excluir este cadastro?')">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($r['id']) ?>">
-      <button class="btn btn-danger">Excluir</button>
+      <button class="btn btn-ghost">Excluir</button>
     </form>
   </td>
 </tr>
