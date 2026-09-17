@@ -392,6 +392,8 @@ footer {
 .duo-card .btn { margin-top: 4px; min-height: 36px; font-size: 12px; align-self: flex-start }
 .duo-crm .btn { background: var(--primary); color: #fff; border-color: transparent }
 .trust .btn { margin-top: 12px }
+.pick { padding: 8px 0 4px }
+.pick .sec-head { margin-bottom: 16px }
 
 .shop {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
