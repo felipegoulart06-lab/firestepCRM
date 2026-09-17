@@ -23,6 +23,10 @@ if (preg_match('/\.fx-filter-panel\{[^}]*max-height:calc\(100vh/', $css)) {
     echo "FAIL painel de filtro ainda prende a altura e compete com o overlay\n";
     $fail++;
 }
+if (!str_contains($css, '.fx-filter-grid') || !str_contains($css, 'min(1120px')) {
+    echo "FAIL filtros de relatório não usam o painel largo em colunas\n";
+    $fail++;
+}
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");

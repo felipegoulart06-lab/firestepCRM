@@ -96,103 +96,116 @@ foreach ($fxFolders as $folder) {
     </div>
     <form id="fx-form" class="fx-form">
       <input type="hidden" name="contract_id" id="fx-contract-id" value="">
-      <div class="fx-fields">
-        <div class="fx-block-title">Período</div>
-        <div class="grid g2">
-          <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
-          <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+      <div class="fx-filter-grid">
+        <div class="fx-filter-col">
+          <div class="fx-fields">
+            <div class="fx-block-title">Período</div>
+            <div class="fx-dates">
+              <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
+              <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+            </div>
+          </div>
+          <div class="fx-fields">
+            <div class="fx-block-head">
+              <div class="fx-block-title">Tipos de relatório</div>
+              <label class="fx-check-mini"><input type="checkbox" id="fx-types-all"> Marcar todos</label>
+            </div>
+            <div class="fx-checks fx-checks-cols" id="fx-types">
+              <label><input type="checkbox" name="types[]" value="atendimentos"> Resumo de atendimentos</label>
+              <label><input type="checkbox" name="types[]" value="clientes"> Resumo de <?= e($clientWord) ?></label>
+              <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
+              <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
+              <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
+              <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
+              <label><input type="checkbox" name="types[]" value="abrangencia"> Abrangência</label>
+              <label><input type="checkbox" name="types[]" value="fornecedores"> Fornecedores</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="fx-filter-col">
+          <div class="fx-fields">
+            <div class="fx-block-title">Status</div>
+            <div class="fx-status-grid">
+              <div>
+                <label class="label">Atendimento</label>
+                <select class="select" name="appt_status">
+                  <option value="ALL">Todos</option>
+                  <?php foreach (APPT_STATUS as $k => $v): ?>
+                    <option value="<?= e($k) ?>"><?= e($v[0]) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div>
+                <label class="label">Cadastro</label>
+                <select class="select" name="client_status">
+                  <option value="ALL">Todos</option>
+                  <option value="ACTIVE">Ativos</option>
+                  <option value="INACTIVE">Inativos</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Financeiro</label>
+                <select class="select" name="finance_status">
+                  <option value="all">Todos</option>
+                  <option value="open">Em aberto</option>
+                  <option value="billed">Faturado</option>
+                  <option value="paid">Pago</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="fx-fields">
+            <div class="fx-block-title">Administradores</div>
+            <label class="fx-check"><input type="checkbox" name="admins" value="1"> Somente lançamentos de admin</label>
+            <p class="fx-note">Usa o usuário que criou o cadastro ou o agendamento.</p>
+          </div>
+          <div class="fx-fields">
+            <label class="fx-check"><input type="checkbox" name="totals" value="1" checked> Incluir totais no rodapé</label>
+            <label class="fx-check"><input type="checkbox" name="client_summary" value="1"> Incluir resumo de cliente no atendimento</label>
+          </div>
+        </div>
+
+        <div class="fx-filter-col">
+          <div class="fx-fields">
+            <div class="fx-block-head">
+              <div class="fx-block-title">Usuários</div>
+              <label class="fx-check-mini"><input type="checkbox" id="fx-users-all" checked> Todos</label>
+            </div>
+            <div class="fx-checks fx-checks-scroll" id="fx-users">
+              <?php if (!$reportUsers): ?>
+                <p class="fx-note">Nenhum usuário ativo neste painel.</p>
+              <?php endif; ?>
+              <?php foreach ($reportUsers as $u): ?>
+                <label>
+                  <input type="checkbox" name="users[]" value="<?= e($u['id']) ?>">
+                  <?= e($u['name']) ?>
+                  <i><?= is_user_crm($u) ? 'admin' : (is_user_agent($u) ? 'agente' : 'usuário') ?></i>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <div class="fx-fields">
+            <div class="fx-block-head">
+              <div class="fx-block-title">Serviços</div>
+              <label class="fx-check-mini"><input type="checkbox" id="fx-services-all" checked> Todos</label>
+            </div>
+            <div class="fx-checks fx-checks-scroll" id="fx-services">
+              <?php if (!$reportServices): ?>
+                <p class="fx-note">Nenhum serviço ativo.</p>
+              <?php endif; ?>
+              <?php foreach ($reportServices as $s): ?>
+                <label><input type="checkbox" name="services[]" value="<?= e($s['id']) ?>"> <?= e($s['name']) ?></label>
+              <?php endforeach; ?>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="fx-fields">
-        <div class="fx-block-head">
-          <div class="fx-block-title">Tipos de relatório</div>
-          <label class="fx-check-mini"><input type="checkbox" id="fx-types-all"> Marcar todos</label>
-        </div>
-        <div class="fx-checks" id="fx-types">
-          <label><input type="checkbox" name="types[]" value="atendimentos"> Resumo de atendimentos</label>
-          <label><input type="checkbox" name="types[]" value="clientes"> Resumo de <?= e($clientWord) ?></label>
-          <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
-          <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
-          <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
-          <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
-          <label><input type="checkbox" name="types[]" value="abrangencia"> Abrangência</label>
-          <label><input type="checkbox" name="types[]" value="fornecedores"> Fornecedores</label>
-        </div>
+      <div class="fx-filter-actions">
+        <p class="fx-err" id="fx-err" hidden>Marque pelo menos um tipo de relatório.</p>
+        <button type="submit" class="btn btn-primary"><?= icon('file') ?> Visualizar</button>
       </div>
-
-      <div class="grid g2">
-        <div class="fx-fields">
-          <div class="fx-block-title">Status</div>
-          <label class="label">Atendimento</label>
-          <select class="select" name="appt_status">
-            <option value="ALL">Todos</option>
-            <?php foreach (APPT_STATUS as $k => $v): ?>
-              <option value="<?= e($k) ?>"><?= e($v[0]) ?></option>
-            <?php endforeach; ?>
-          </select>
-          <label class="label" style="margin-top:10px">Cadastro</label>
-          <select class="select" name="client_status">
-            <option value="ALL">Todos</option>
-            <option value="ACTIVE">Ativos</option>
-            <option value="INACTIVE">Inativos</option>
-          </select>
-          <label class="label" style="margin-top:10px">Financeiro</label>
-          <select class="select" name="finance_status">
-            <option value="all">Todos</option>
-            <option value="open">Em aberto</option>
-            <option value="billed">Faturado</option>
-            <option value="paid">Pago</option>
-          </select>
-        </div>
-        <div class="fx-fields">
-          <div class="fx-block-title">Administradores</div>
-          <label class="fx-check"><input type="checkbox" name="admins" value="1"> Somente lançamentos de admin</label>
-          <p class="fx-note">Usa o usuário que criou o cadastro ou o agendamento.</p>
-        </div>
-      </div>
-
-      <div class="fx-fields">
-        <div class="fx-block-head">
-          <div class="fx-block-title">Usuários</div>
-          <label class="fx-check-mini"><input type="checkbox" id="fx-users-all" checked> Todos</label>
-        </div>
-        <div class="fx-checks fx-checks-scroll" id="fx-users">
-          <?php if (!$reportUsers): ?>
-            <p class="fx-note">Nenhum usuário ativo neste painel.</p>
-          <?php endif; ?>
-          <?php foreach ($reportUsers as $u): ?>
-            <label>
-              <input type="checkbox" name="users[]" value="<?= e($u['id']) ?>">
-              <?= e($u['name']) ?>
-              <i><?= is_user_crm($u) ? 'admin' : (is_user_agent($u) ? 'agente' : 'usuário') ?></i>
-            </label>
-          <?php endforeach; ?>
-        </div>
-      </div>
-
-      <div class="fx-fields">
-        <div class="fx-block-head">
-          <div class="fx-block-title">Serviços</div>
-          <label class="fx-check-mini"><input type="checkbox" id="fx-services-all" checked> Todos</label>
-        </div>
-        <div class="fx-checks fx-checks-scroll" id="fx-services">
-          <?php if (!$reportServices): ?>
-            <p class="fx-note">Nenhum serviço ativo.</p>
-          <?php endif; ?>
-          <?php foreach ($reportServices as $s): ?>
-            <label><input type="checkbox" name="services[]" value="<?= e($s['id']) ?>"> <?= e($s['name']) ?></label>
-          <?php endforeach; ?>
-        </div>
-      </div>
-
-      <div class="fx-fields">
-        <label class="fx-check"><input type="checkbox" name="totals" value="1" checked> Incluir totais no rodapé</label>
-        <label class="fx-check"><input type="checkbox" name="client_summary" value="1"> Incluir resumo de cliente no atendimento</label>
-      </div>
-
-      <p class="fx-err" id="fx-err" hidden>Marque pelo menos um tipo de relatório.</p>
-      <button type="submit" class="btn btn-primary"><?= icon('file') ?> Visualizar</button>
     </form>
   </div>
 </div>
