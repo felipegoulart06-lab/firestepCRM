@@ -6,12 +6,16 @@ $reportUsers = all('SELECT id, name, role FROM users WHERE tenant_id=? AND '.sql
 $reportServices = all("SELECT id, name FROM services WHERE tenant_id=? AND status='ACTIVE' ORDER BY name", [$tenant['id']]);
 $clientWord = lower($terms['clients']);
 $fxRoot = $fxRoot ?? 'Relatórios';
+$requestWord = lower($terms['requests'] ?? 'solicitações');
 $fxFolders = $fxFolders ?? [
     ['name' => 'Atendimento', 'files' => [
-        ['kind' => 'atendimentos', 'file' => 'Resumo de atendimentos', 'hint' => 'Horários, clientes, serviços e status.'],
+        ['kind' => 'agendamentos', 'file' => 'Relatório de agendamentos', 'hint' => 'Horários, clientes, serviços e status no período.'],
+        ['kind' => 'solicitacoes', 'file' => 'Relatório de '.$requestWord, 'hint' => 'Pedidos recebidos pelo site, WhatsApp e integrações.'],
     ]],
     ['name' => 'Relacionamento', 'files' => [
-        ['kind' => 'clientes', 'file' => 'Resumo de '.$clientWord, 'hint' => 'Cadastros, contatos, origem e atendimentos.'],
+        ['kind' => 'clientes', 'file' => 'Relatório de '.$clientWord, 'hint' => 'Cadastros, contatos, origem e atendimentos no período.'],
+        ['kind' => 'agentes', 'file' => 'Relatório de agentes', 'hint' => 'Equipe de atendimento, situação e volume de agendamentos/cadastros.'],
+        ['kind' => 'servicos', 'file' => 'Relatório de serviços', 'hint' => 'Catálogo, preço, duração e quantidade de agendamentos.'],
         ['kind' => 'origens', 'file' => 'Resumo de origens', 'hint' => 'Canais que geraram cadastros e solicitações.'],
     ]],
     ['name' => 'Financeiro', 'files' => [
@@ -111,8 +115,12 @@ foreach ($fxFolders as $folder) {
               <label class="fx-check-mini"><input type="checkbox" id="fx-types-all"> Marcar todos</label>
             </div>
             <div class="fx-checks fx-checks-cols" id="fx-types">
+              <label><input type="checkbox" name="types[]" value="agendamentos"> Relatório de agendamentos</label>
+              <label><input type="checkbox" name="types[]" value="solicitacoes"> Relatório de <?= e($requestWord) ?></label>
+              <label><input type="checkbox" name="types[]" value="clientes"> Relatório de <?= e($clientWord) ?></label>
+              <label><input type="checkbox" name="types[]" value="agentes"> Relatório de agentes</label>
+              <label><input type="checkbox" name="types[]" value="servicos"> Relatório de serviços</label>
               <label><input type="checkbox" name="types[]" value="atendimentos"> Resumo de atendimentos</label>
-              <label><input type="checkbox" name="types[]" value="clientes"> Resumo de <?= e($clientWord) ?></label>
               <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
               <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
               <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>

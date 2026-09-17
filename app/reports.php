@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 
-const REPORT_KINDS = ['atendimentos', 'clientes', 'origens', 'financeiro', 'cliente_resumo', 'contratos', 'abrangencia', 'fornecedores'];
+const REPORT_KINDS = [
+    'atendimentos', 'agendamentos', 'solicitacoes', 'clientes', 'agentes', 'servicos',
+    'origens', 'financeiro', 'cliente_resumo', 'contratos', 'abrangencia', 'fornecedores',
+];
 
 function report_date(?string $value, string $fallback): string
 {
@@ -47,7 +50,11 @@ function report_kinds_from_request(): array
     $path = rtrim((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
     return match ($path) {
         '/app/relatorios/atendimentos.pdf' => ['atendimentos'],
+        '/app/relatorios/agendamentos.pdf' => ['agendamentos'],
+        '/app/relatorios/solicitacoes.pdf' => ['solicitacoes'],
         '/app/relatorios/clientes.pdf' => ['clientes'],
+        '/app/relatorios/agentes.pdf' => ['agentes'],
+        '/app/relatorios/servicos.pdf' => ['servicos'],
         '/app/relatorios/origens.pdf' => ['origens'],
         '/app/relatorios/contrato.pdf' => ['contratos'],
         '/app/financeiro/relatorio.pdf' => ['financeiro'],
@@ -176,8 +183,9 @@ function report_atendimentos(array $tenant, array $filters): array
         $name = (string)$r['client_name'];
         $byClient[$name] = ($byClient[$name] ?? 0) + 1;
     }
-    $foot = $filters['include_totals'] ? ['Total de atendimentos: '.count($table)] : [];
-    $sections = [report_section('Atendimentos', $headers, $table, $foot)];
+    $secTitle = trim((string)($filters['section_title'] ?? '')) ?: 'Atendimentos';
+    $foot = $filters['include_totals'] ? ['Total: '.count($table)] : [];
+    $sections = [report_section($secTitle, $headers, $table, $foot)];
     if (!empty($filters['_client_summary_only']) || ($filters['include_client_summary'] && !in_array('cliente_resumo', $filters['kinds'], true))) {
         ksort($byClient, SORT_NATURAL | SORT_FLAG_CASE);
         $sumRows = [];
@@ -224,7 +232,121 @@ function report_clientes(array $tenant, array $filters): array
         ];
     }
     $foot = $filters['include_totals'] ? ['Cadastros: '.count($table)] : [];
-    return [report_section('Cadastros', ['Nome', 'Contato', 'Origem', 'Atend.', 'Status'], $table, $foot)];
+    return [report_section('Clientes', ['Nome', 'Contato', 'Origem', 'Atend.', 'Status'], $table, $foot)];
+}
+
+function report_agendamentos(array $tenant, array $filters): array
+{
+    $copy = $filters;
+    $copy['section_title'] = 'Agendamentos';
+    return report_atendimentos($tenant, $copy);
+}
+
+function report_solicitacoes(array $tenant, array $filters): array
+{
+    $tid = $tenant['id'];
+    $from = $filters['from'].' 00:00:00';
+    $to = $filters['to'].' 23:59:59';
+    $sql = "SELECT r.*, s.name service_name FROM requests r
+        LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id
+        WHERE r.tenant_id=? AND r.created_at>=? AND r.created_at<=?";
+    $params = [$tid, $from, $to];
+    if ($filters['service_ids']) {
+        $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
+        $sql .= " AND r.service_id IN ($ph)";
+        $params = array_merge($params, $filters['service_ids']);
+    }
+    $sql .= ' ORDER BY r.created_at';
+    $rows = all($sql, $params);
+    $table = [];
+    foreach ($rows as $r) {
+        $desired = trim((string)($r['desired_date'] ?? ''));
+        if ($desired !== '' && !empty($r['desired_time'])) {
+            $desired .= ' '.$r['desired_time'];
+        }
+        $source = (string)($r['utm_source'] ?: $r['source'] ?: 'Não informado');
+        $table[] = [
+            date('d/m/Y H:i', strtotime((string)$r['created_at'])),
+            (string)$r['name'],
+            phone_fmt($r['phone'] ?? '') ?: '—',
+            (string)($r['service_name'] ?: 'Sem serviço'),
+            $desired !== '' ? $desired : '—',
+            $source,
+            (string)(REQ_STATUS[$r['status']] ?? $r['status']),
+        ];
+    }
+    $foot = $filters['include_totals'] ? ['Solicitações: '.count($table)] : [];
+    return [report_section('Solicitações', ['Recebida em', 'Nome', 'Telefone', 'Serviço', 'Desejada', 'Origem', 'Status'], $table, $foot)];
+}
+
+function report_agentes(array $tenant, array $filters): array
+{
+    $tid = $tenant['id'];
+    $from = $filters['from'].' 00:00:00';
+    $to = $filters['to'].' 23:59:59';
+    $sql = "SELECT u.id, u.name, u.email, u.phone, u.active,
+        (SELECT COUNT(*) FROM audit_logs al
+         INNER JOIN appointments a ON a.id=al.entity_id AND a.tenant_id=al.tenant_id
+         WHERE al.tenant_id=u.tenant_id AND al.user_id=u.id AND al.action='appointment.created'
+           AND a.starts_at>=? AND a.starts_at<=?) appt_count,
+        (SELECT COUNT(*) FROM audit_logs al
+         INNER JOIN clients c ON c.id=al.entity_id AND c.tenant_id=al.tenant_id
+         WHERE al.tenant_id=u.tenant_id AND al.user_id=u.id AND al.action='client.created'
+           AND c.created_at>=? AND c.created_at<=?) client_count
+        FROM users u
+        WHERE u.tenant_id=? AND u.role='user_agent'";
+    $params = [$from, $to, $from, $to, $tid];
+    if ($filters['user_ids']) {
+        $ph = implode(',', array_fill(0, count($filters['user_ids']), '?'));
+        $sql .= " AND u.id IN ($ph)";
+        $params = array_merge($params, $filters['user_ids']);
+    }
+    $sql .= ' ORDER BY u.name';
+    $table = [];
+    foreach (all($sql, $params) as $r) {
+        $table[] = [
+            (string)$r['name'],
+            (string)($r['email'] ?: '—'),
+            phone_fmt($r['phone'] ?? '') ?: '—',
+            !empty($r['active']) ? 'Ativo' : 'Inativo',
+            (string)(int)$r['appt_count'],
+            (string)(int)$r['client_count'],
+        ];
+    }
+    $foot = $filters['include_totals'] ? ['Agentes: '.count($table)] : [];
+    return [report_section('Agentes', ['Nome', 'E-mail', 'Telefone', 'Situação', 'Agend.', 'Cadastros'], $table, $foot)];
+}
+
+function report_servicos(array $tenant, array $filters): array
+{
+    $tid = $tenant['id'];
+    $from = $filters['from'].' 00:00:00';
+    $to = $filters['to'].' 23:59:59';
+    $sql = "SELECT s.*, COUNT(a.id) appt_total
+        FROM services s
+        LEFT JOIN appointments a ON a.service_id=s.id AND a.tenant_id=s.tenant_id
+          AND a.starts_at>=? AND a.starts_at<=? AND a.status!='CANCELLED'
+        WHERE s.tenant_id=?";
+    $params = [$from, $to, $tid];
+    if ($filters['service_ids']) {
+        $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
+        $sql .= " AND s.id IN ($ph)";
+        $params = array_merge($params, $filters['service_ids']);
+    }
+    $sql .= ' GROUP BY s.id ORDER BY s.name';
+    $table = [];
+    foreach (all($sql, $params) as $r) {
+        $st = ($r['status'] ?? '') === 'INACTIVE' ? 'Inativo' : 'Ativo';
+        $table[] = [
+            (string)$r['name'],
+            (string)((int)($r['duration_minutes'] ?? 0)).' min',
+            number_format((float)($r['price'] ?? 0), 2, ',', '.'),
+            (string)(int)$r['appt_total'],
+            $st,
+        ];
+    }
+    $foot = $filters['include_totals'] ? ['Serviços: '.count($table)] : [];
+    return [report_section('Serviços', ['Nome', 'Duração', 'Preço', 'Agend.', 'Status'], $table, $foot)];
 }
 
 function report_origens(array $tenant, array $filters): array
@@ -402,7 +524,11 @@ function report_build(array $tenant, array $filters): array
     $kinds = $filters['kinds'] ?: ['atendimentos'];
     $labels = [
         'atendimentos' => 'Resumo de atendimentos',
-        'clientes' => 'Resumo de clientes',
+        'agendamentos' => 'Relatório de agendamentos',
+        'solicitacoes' => 'Relatório de solicitações',
+        'clientes' => 'Relatório de clientes',
+        'agentes' => 'Relatório de agentes',
+        'servicos' => 'Relatório de serviços',
         'origens' => 'Resumo de origens',
         'financeiro' => 'Resumo do caixa',
         'cliente_resumo' => 'Resumo por cliente',
@@ -419,7 +545,11 @@ function report_build(array $tenant, array $filters): array
         }
         $part = match ($kind) {
             'atendimentos' => report_atendimentos($tenant, $filters),
+            'agendamentos' => report_agendamentos($tenant, $filters),
+            'solicitacoes' => report_solicitacoes($tenant, $filters),
             'clientes' => report_clientes($tenant, $filters),
+            'agentes' => report_agentes($tenant, $filters),
+            'servicos' => report_servicos($tenant, $filters),
             'origens' => report_origens($tenant, $filters),
             'financeiro' => report_financeiro($tenant, $filters),
             'cliente_resumo' => report_cliente_resumo_only($tenant, $filters),

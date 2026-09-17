@@ -59,8 +59,17 @@ q('INSERT INTO appointments(id,tenant_id,client_id,service_id,starts_at,ends_at,
 q('INSERT INTO appointments(id,tenant_id,client_id,service_id,starts_at,ends_at,status,source,created_at) VALUES(?,?,?,?,?,?,?,?,?)', [
     'ap-b', 'ten-b', 'cli-b', 'svc-a', $day.' 10:00:00', $day.' 11:00:00', 'SCHEDULED', 'Manual', $now,
 ]);
+q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,must_change_password,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
+    'ag-a', 'ten-a', 'Agente Ana', 'ag@ex.com', 'ag', 'x', 'user_agent', 0, 1, $now,
+]);
+q('INSERT INTO requests(id,tenant_id,service_id,name,phone,email,source,status,created_at) VALUES(?,?,?,?,?,?,?,?,?)', [
+    'req-a', 'ten-a', 'svc-a', 'Carlos', '11988887777', 'c@ex.com', 'site', 'NEW', $now,
+]);
 q('INSERT INTO audit_logs(id,tenant_id,user_id,action,entity,entity_id,created_at) VALUES(?,?,?,?,?,?,?)', [
     'lg-a', 'ten-a', 'ua', 'appointment.created', 'appointment', 'ap-a', $now,
+]);
+q('INSERT INTO audit_logs(id,tenant_id,user_id,action,entity,entity_id,created_at) VALUES(?,?,?,?,?,?,?)', [
+    'lg-ag', 'ten-a', 'ag-a', 'appointment.created', 'appointment', 'ap-x', $now,
 ]);
 
 $tenantA = ['id' => 'ten-a', 'display_name' => 'A', 'business_name' => 'Empresa A'];
@@ -113,8 +122,23 @@ $abr = report_build($tenantA, array_merge($base, ['kinds' => ['abrangencia']]));
 expect(count($abr['sections']) === 3, 'abrangência com três blocos');
 expect($abr['sections'][0]['rows'][0][0] === 'Atacado Ltda', 'só CNPJ no bloco de mapa de fornecedores');
 
+$agenda = report_build($tenantA, array_merge($base, ['kinds' => ['agendamentos']]));
+expect($agenda['sections'][0]['title'] === 'Agendamentos', 'tipo agendamentos');
+
+$req = report_build($tenantA, array_merge($base, ['kinds' => ['solicitacoes']]));
+expect($req['sections'][0]['title'] === 'Solicitações', 'tipo solicitações');
+expect(count($req['sections'][0]['rows']) === 1, 'uma solicitação no período');
+
+$agents = report_build($tenantA, array_merge($base, ['kinds' => ['agentes']]));
+expect($agents['sections'][0]['rows'][0][0] === 'Agente Ana', 'relatório de agentes');
+expect((int)$agents['sections'][0]['rows'][0][4] === 1, 'agente com 1 agendamento no período');
+
+$svcRep = report_build($tenantA, array_merge($base, ['kinds' => ['servicos']]));
+expect(count($svcRep['sections'][0]['rows']) === 2, 'dois serviços no catálogo');
+
 $tree = file_get_contents(dirname(__DIR__).'/views/app/relatorios_fx.php');
 expect(str_contains($tree, "'name' => 'Abrangência'") && str_contains($tree, "'name' => 'Fornecedores'"), 'pastas Abrangência e Fornecedores');
+expect(str_contains($tree, "'kind' => 'agendamentos'") && str_contains($tree, "'kind' => 'agentes'"), 'árvore com agendamentos e agentes');
 expect(!str_contains($tree, "icon('pdf'"), 'lista de relatórios sem ícone de PDF');
 
 $_GET = ['from' => $base['from'], 'to' => $base['to'], 'types' => ['clientes', 'origens']];
