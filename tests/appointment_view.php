@@ -37,6 +37,10 @@ if (!str_contains($index, "post('allow_edit') !== '1'")) {
     echo "FAIL Salvamento não exige allow_edit\n";
     $fail++;
 }
+if (!str_contains($index, 'appointment_commission_ensure_schema')) {
+    echo "FAIL painel não garante colunas de comissão antes de abrir detalhes\n";
+    $fail++;
+}
 if (!str_contains($index, "/app/agendamentos?ver=")) {
     echo "FAIL Criar/converter não abre detalhes em modo ver\n";
     $fail++;
@@ -45,8 +49,8 @@ if (!str_contains($agendamentos, '$allowEditFromDetails = $viewOnly')) {
     echo "FAIL Lista Agendamentos não oferece Editar a partir de Ver\n";
     $fail++;
 }
-if (!str_contains($agendamentos, 'Ver detalhes')) {
-    echo "FAIL Lista Agendamentos sem botão Ver detalhes\n";
+if (!str_contains($agendamentos, '?ver=') || !str_contains($agendamentos, '?edit=')) {
+    echo "FAIL Lista Agendamentos com links de Ver/Editar quebrados\n";
     $fail++;
 }
 if (str_contains($agendamentos, 'reserva.pdf')) {

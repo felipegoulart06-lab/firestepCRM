@@ -1088,6 +1088,12 @@ function all(string $sql, array $p = []): array
 
 function appointment_detail(string $tenantId, string $id): ?array
 {
+    if (function_exists('appointment_commission_ensure_schema')) {
+        appointment_commission_ensure_schema();
+    }
+    if (function_exists('coverage_ensure_schema')) {
+        coverage_ensure_schema();
+    }
     $row = one("SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name, s.duration_minutes, s.price service_price, r.message request_message, r.utm_source, r.utm_medium, r.utm_campaign, ag.name commission_agent_name
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
@@ -1096,8 +1102,11 @@ function appointment_detail(string $tenantId, string $id): ?array
         LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
         WHERE a.id=? AND a.tenant_id=?", [$id, $tenantId]);
     if ($row) {
-        coverage_ensure_schema();
-        $row['stops'] = all('SELECT address, lat, lng FROM appointment_stops WHERE tenant_id=? AND appointment_id=? ORDER BY sort_order, created_at', [$tenantId, $id]);
+        try {
+            $row['stops'] = all('SELECT address, lat, lng FROM appointment_stops WHERE tenant_id=? AND appointment_id=? ORDER BY sort_order, created_at', [$tenantId, $id]);
+        } catch (Throwable $e) {
+            $row['stops'] = [];
+        }
     }
     return $row;
 }

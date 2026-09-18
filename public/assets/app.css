@@ -74,7 +74,9 @@ button{color:inherit}
 .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line-soft)}
 .section-head h2{font-size:15px;margin:0;letter-spacing:-.01em}
 .badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;white-space:nowrap}
-.table-wrap{overflow:auto;width:100%}
+.table-wrap{overflow:auto;width:100%;position:relative;z-index:1}
+.table-wrap .row-actions{position:relative;z-index:2}
+.table-wrap .row-actions .btn{position:relative;z-index:2;pointer-events:auto}
 table.data{width:100%;min-width:880px;border-collapse:separate;border-spacing:0;font-size:13px}
 table.data th{text-align:left;color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.035em;padding:9px 12px;background:#fcfcfd;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap}
 table.data td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
@@ -103,7 +105,6 @@ table.data tbody tr:hover td{background:#fcfcfd}
 .overlay{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:400;overflow:hidden;overscroll-behavior:none;isolation:isolate;pointer-events:auto}
 .overlay-panel{width:100%;max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain;pointer-events:auto;-webkit-overflow-scrolling:touch}
 html.is-modal-open,body.is-modal-open{overflow:hidden!important;overscroll-behavior:none}
-body.is-modal-open .wrap{pointer-events:none}
 body.is-modal-open .overlay,body.is-modal-open .token-modal,body.is-modal-open .fx-overlay,body.is-modal-open .overlay *,body.is-modal-open .token-modal *,body.is-modal-open .fx-overlay *{pointer-events:auto}
 body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-open .sidebar,body.is-modal-open .table-wrap{overflow:hidden!important}
 .calendar-shell{overflow:auto;border-color:#667085;background:#182230}

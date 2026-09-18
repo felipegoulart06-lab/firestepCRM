@@ -64,10 +64,10 @@ $total = count($items);
       <td><?= e($a['service_name'] ?: '—') ?></td>
       <td><?= e($a['source'] ?: '—') ?></td>
       <td><?= badge_appt($a['status']) ?></td>
-      <td>
+      <td class="row-actions-cell">
         <div class="row-actions">
-          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'ver'=>$a['id']]))) ?>">Ver detalhes</a>
-          <a class="btn btn-ghost" href="/app/agendamentos?<?= e(http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$a['id']]))) ?>">Editar</a>
+          <a class="btn btn-ghost" href="/app/agendamentos?ver=<?= e($a['id']) ?>">Ver detalhes</a>
+          <a class="btn btn-ghost" href="/app/agendamentos?edit=<?= e($a['id']) ?>">Editar</a>
         </div>
       </td>
     </tr>

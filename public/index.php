@@ -131,6 +131,9 @@ function require_tenant(): array
     if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
     app_home_ensure_schema();
     services_ensure_schema();
+    if (function_exists('appointment_commission_ensure_schema')) {
+        appointment_commission_ensure_schema();
+    }
     $t = one('SELECT * FROM tenants WHERE id=?', [$u['tenant_id']]);
     if (!$t || $t['status'] === 'CANCELLED') {
         $_SESSION = [];
