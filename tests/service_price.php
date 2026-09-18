@@ -42,6 +42,8 @@ $js = file_get_contents(dirname(__DIR__).'/public/assets/app.js');
 expect(str_contains($view, 'name="has_price"') && str_contains($view, 'no_price_kind'), 'formulário tem possui/não possui preço');
 expect(str_contains($view, 'Reunião') && str_contains($view, 'Convênio') && str_contains($view, 'Cortesia'), 'opções sem preço no cadastro');
 expect(str_contains($view, 'service_price_label($s)'), 'cards e tabela usam o rótulo de preço');
+expect(str_contains($view, "\$_GET['view'] ?? 'cards'") && str_contains($view, 'service-grid'), 'lista abre em cards');
+expect(str_contains($view, 'Ver detalhes') && str_contains($view, 'Detalhes do serviço'), 'serviço tem visualização só leitura');
 expect(str_contains($js, 'bindServicePrice') && str_contains($js, 'maskReais'), 'máscara força reais x,xx');
 
 if ($fail) {

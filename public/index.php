@@ -932,7 +932,7 @@ if (str_starts_with($path, '/app')) {
                 sync_appointment_finance($tid, $ap['id']);
             }
             flash('Serviço salvo.');
-            redirect('/app/servicos');
+            redirect('/app/servicos?ver='.urlencode((string)$id));
         }
         if ($path === '/app/servicos/excluir') {
             $delId = (string)post('id', '');

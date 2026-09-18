@@ -1,5 +1,5 @@
 <?php
-$display = ($_GET['view'] ?? 'table') === 'cards' ? 'cards' : 'table';
+$display = ($_GET['view'] ?? 'cards') === 'table' ? 'table' : 'cards';
 $statusFilter = $_GET['status'] ?? 'ALL';
 $search = trim($_GET['q'] ?? '');
 $visible = array_values(array_filter($services, function ($s) use ($statusFilter, $search) {
@@ -7,10 +7,17 @@ $visible = array_values(array_filter($services, function ($s) use ($statusFilter
     return $search === '' || stripos($s['name'].' '.($s['category'] ?? '').' '.($s['description'] ?? ''), $search) !== false;
 }));
 $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'));
+$listQs = http_build_query(array_filter([
+    'view' => $display === 'table' ? 'table' : null,
+    'q' => $search !== '' ? $search : null,
+    'status' => $statusFilter !== 'ALL' ? $statusFilter : null,
+]));
+$listHref = '/app/servicos'.($listQs !== '' ? '?'.$listQs : '');
+$flagOn = static fn($v) => !empty($v) && $v !== '0' && $v !== 'f' && $v !== 'false';
 ?>
 <div class="page-head">
   <div><h1>Serviços</h1><p>Organize preços e durações usados automaticamente na agenda.</p></div>
-  <a class="btn btn-primary" href="/app/servicos?novo=1"><?= icon('plus') ?> Novo serviço</a>
+  <a class="btn btn-primary" href="/app/servicos?novo=1<?= $listQs !== '' ? '&'.$listQs : '' ?>"><?= icon('plus') ?> Novo serviço</a>
 </div>
 
 <div class="service-summary">
@@ -29,8 +36,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
   </select>
   <button class="btn btn-ghost">Filtrar</button>
   <div class="view-switch" aria-label="Modo de visualização">
-    <a class="<?= $display==='table'?'active':'' ?>" href="/app/servicos?view=table&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Tabela</a>
     <a class="<?= $display==='cards'?'active':'' ?>" href="/app/servicos?view=cards&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Cartões</a>
+    <a class="<?= $display==='table'?'active':'' ?>" href="/app/servicos?view=table&q=<?= urlencode($search) ?>&status=<?= e($statusFilter) ?>">Tabela</a>
   </div>
 </form>
 
@@ -54,7 +61,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
           <td><?= $s['status']==='ACTIVE' ? '<span class="badge" style="background:#dcfce7;color:#166534">Ativo</span>' : '<span class="badge" style="background:#e2e8f0;color:#475467">Inativo</span>' ?></td>
           <td>
             <div class="row-actions">
-              <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?>&view=table">Editar</a>
+              <a class="btn btn-ghost" href="/app/servicos?ver=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Ver detalhes</a>
+              <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Editar</a>
               <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço? Os agendamentos continuam na agenda, mas ficam sem serviço atribuído.')">
                 <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
                 <input type="hidden" name="id" value="<?= e($s['id']) ?>">
@@ -80,7 +88,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
         <p><?= e($s['description'] ?: 'Nenhuma descrição cadastrada.') ?></p>
         <div class="service-data"><span><?= (int)$s['duration_minutes'] ?> min · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(service_price_label($s)) ?></strong></div>
         <div class="row-actions" style="justify-content:flex-start;margin-top:8px">
-          <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?>">Editar</a>
+          <a class="btn btn-ghost" href="/app/servicos?ver=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Ver detalhes</a>
+          <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Editar</a>
           <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço? Os agendamentos continuam na agenda, mas ficam sem serviço atribuído.')">
             <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
             <input type="hidden" name="id" value="<?= e($s['id']) ?>">
@@ -91,6 +100,53 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
+
+<?php
+$viewing = null;
+if (!empty($_GET['ver']) && empty($_GET['edit']) && empty($_GET['novo'])) {
+    $viewing = one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$_GET['ver'], $tenant['id']]);
+}
+if ($viewing):
+  $vk = service_price_kind($viewing);
+?>
+<div class="overlay" role="presentation">
+  <div class="card overlay-panel service-form" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 style="margin:0;font-size:17px">Detalhes do serviço</h2>
+      <a class="btn btn-ghost" href="<?= e($listHref) ?>">Fechar</a>
+    </div>
+    <div class="detail-grid" style="margin-top:14px">
+      <div class="detail-item"><small>Nome</small><strong><?= e($viewing['name']) ?></strong></div>
+      <div class="detail-item"><small>Status</small><strong><?= ($viewing['status'] ?? '')==='INACTIVE' ? 'Inativo' : 'Ativo' ?></strong></div>
+      <div class="detail-item"><small>Categoria</small><strong><?= e($viewing['category'] ?: '—') ?></strong></div>
+      <div class="detail-item"><small>Preço</small><strong><?= e(service_price_label($viewing)) ?><?= $vk==='priced' && !empty($viewing['deposit']) ? ' · sinal '.e(money((float)$viewing['deposit'])) : '' ?></strong></div>
+      <div class="detail-item"><small>Duração</small><strong><?= (int)$viewing['duration_minutes'] ?> min<?= !empty($viewing['buffer_minutes']) ? ' + '.(int)$viewing['buffer_minutes'].' int.' : '' ?></strong></div>
+      <div class="detail-item"><small>Local</small><strong><?= e(service_location_label($viewing['location_type'] ?? null)) ?></strong></div>
+      <div class="detail-item"><small>Capacidade</small><strong><?= (int)($viewing['capacity'] ?? 1) ?></strong></div>
+      <div class="detail-item"><small>Antecedência / agenda</small><strong><?= (int)($viewing['min_notice_hours'] ?? 0) ?> h mín. · até <?= (int)($viewing['max_advance_days'] ?? 60) ?> dias</strong></div>
+      <div class="detail-item"><small>Site / webhook</small><strong><?= $flagOn($viewing['bookable_online'] ?? 1) ? 'Disponível' : 'Indisponível' ?></strong></div>
+      <div class="detail-item"><small>Confirmação</small><strong><?= $flagOn($viewing['requires_confirmation'] ?? 0) ? 'Exige confirmação manual' : 'Não exige' ?></strong></div>
+      <?php if (!empty($viewing['location_note'])): ?>
+        <div class="detail-item detail-wide"><small>Endereço, sala ou link</small><strong><?= e($viewing['location_note']) ?></strong></div>
+      <?php endif; ?>
+      <?php if (!empty($viewing['description'])): ?>
+        <div class="detail-item detail-wide"><small>Descrição</small><strong><?= nl2br(e($viewing['description'])) ?></strong></div>
+      <?php endif; ?>
+      <?php if (!empty($viewing['client_instructions'])): ?>
+        <div class="detail-item detail-wide"><small>Orientações para o cliente</small><strong><?= nl2br(e($viewing['client_instructions'])) ?></strong></div>
+      <?php endif; ?>
+      <?php if (!empty($viewing['internal_notes'])): ?>
+        <div class="detail-item detail-wide"><small>Observações internas</small><strong><?= nl2br(e($viewing['internal_notes'])) ?></strong></div>
+      <?php endif; ?>
+    </div>
+    <p style="margin-top:14px">
+      <a class="btn btn-primary" href="/app/servicos?edit=<?= e($viewing['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Editar</a>
+      <a class="btn btn-ghost" href="<?= e($listHref) ?>">Voltar</a>
+    </p>
+  </div>
+</div>
+<?php endif; ?>
+
 <?php if (!empty($_GET['novo']) || !empty($_GET['edit'])):
   $oldSvc = take_old_form();
   $s = !empty($_GET['edit']) ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$_GET['edit'], $tenant['id']]) : [];
@@ -105,7 +161,7 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
   <form method="post" action="/app/servicos/salvar" class="card service-form overlay-panel" data-service-price onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:17px"><?= $s ? 'Editar serviço' : 'Novo serviço' ?></h2>
-      <a class="btn btn-ghost" href="/app/servicos">Fechar</a>
+      <a class="btn btn-ghost" href="<?= $s ? '/app/servicos?ver='.e($s['id']).($listQs !== '' ? '&'.$listQs : '') : e($listHref) ?>">Fechar</a>
     </div>
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
     <?php if ($s): ?><input type="hidden" name="id" value="<?= e($s['id']) ?>"><?php endif; ?>
@@ -190,7 +246,7 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
     <label class="label">Observações internas</label>
     <textarea class="textarea" name="internal_notes" rows="3" placeholder="Visível só para a equipe."><?= e($s['internal_notes'] ?? '') ?></textarea>
 
-    <p style="margin-top:12px"><button class="btn btn-primary">Salvar serviço</button> <a class="btn btn-ghost" href="/app/servicos">Cancelar</a></p>
+    <p style="margin-top:12px"><button class="btn btn-primary">Salvar serviço</button> <a class="btn btn-ghost" href="<?= $s ? '/app/servicos?ver='.e($s['id']).($listQs !== '' ? '&'.$listQs : '') : e($listHref) ?>">Cancelar</a></p>
   </form>
 </div>
 <?php endif; ?>
