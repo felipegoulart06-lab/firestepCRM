@@ -16,6 +16,8 @@ function expect($ok, string $msg): void
 
 putenv('FIRESTEP_NO_GEO=1');
 $_ENV['FIRESTEP_NO_GEO'] = '1';
+putenv('MAPBOX_ACCESS_TOKEN=pk.test-local');
+$_ENV['MAPBOX_ACCESS_TOKEN'] = 'pk.test-local';
 require $root . '/app/helpers.php';
 
 $hit = geocode_parse_nominatim([
@@ -33,7 +35,9 @@ expect(is_array($hit) && abs($hit['lat'] + 23.5614) < 0.001, 'parse Nominatim no
 expect(($hit['city'] ?? '') === 'São Paulo' && ($hit['state'] ?? '') === 'SP', 'cidade e UF extraídas');
 expect(geo_posted_point('-23.56', '-46.65') !== null, 'ponto POST válido');
 expect(geo_posted_point('51.5', '-0.1') === null, 'ponto fora do Brasil rejeitado');
-expect(geocode_search('Paulista') === [], 'sem chamada remota quando FIRESTEP_NO_GEO');
+$helpers = file_get_contents($root . '/app/helpers.php');
+expect(str_contains($helpers, 'https://api.mapbox.com') && str_contains($helpers, "style-src 'self' 'unsafe-inline' https://api.mapbox.com"), 'CSP libera CSS e JS do Mapbox');
+expect(geocoder_provider() === 'mapbox', 'geocoder padrão é Mapbox');
 
 $index = file_get_contents($root . '/public/index.php');
 $geojs = file_get_contents($root . '/public/assets/geo.js');
@@ -48,8 +52,9 @@ expect(str_contains($geojs, '/app/geo/search') && str_contains($geojs, 'bindGeoL
 expect(str_contains($cliente, 'data-geo-box') && str_contains($forn, 'data-geo-box'), 'cliente e fornecedor usam o mapa');
 expect(str_contains($modal, 'visit_lats[]') && str_contains($modal, 'data-geo-line'), 'paradas do atendimento externo');
 expect(str_contains($layout, 'geo.js'), 'geo.js no layout');
-expect(str_contains($layout, 'leaflet@1.9.4/dist/leaflet.js'), 'Leaflet no layout do CRM');
-expect(str_contains($cov, 'nominatim.openstreetmap.org'), 'busca de endereço via Nominatim');
+expect(str_contains($layout, 'MAPBOX_TOKEN') && !str_contains($layout, 'leaflet'), 'Mapbox no layout do CRM, sem Leaflet');
+expect(str_contains($geojs, 'api.mapbox.com/mapbox-gl-js') && str_contains($geojs, 'loadMapbox'), 'Mapbox GL carregado sob demanda');
+expect(str_contains($cov, 'api.mapbox.com/geocoding') && str_contains($cov, "'mapbox'"), 'busca de endereço via Mapbox');
 
 $cipher = platform_encrypt_secret('leaflet-test-token-xyz');
 expect(str_starts_with($cipher, 'enc1:') && !str_contains($cipher, 'leaflet-test-token-xyz'), 'token cifrado, sem plaintext');
@@ -64,4 +69,4 @@ if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");
     exit(1);
 }
-echo "Geocoder Leaflet/Nominatim ligado aos formulários de Abrangência.\n";
+echo "Geocoder Mapbox ligado aos formulários de Abrangência.\n";

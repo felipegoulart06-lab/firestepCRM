@@ -1,22 +1,42 @@
 (function () {
-  let leafletReady = null;
+  const MAPBOX_GL_CSS = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css';
+  const MAPBOX_GL_JS = 'https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js';
+  let mapboxReady = null;
 
-  function loadLeaflet() {
-    if (window.L) return Promise.resolve(window.L);
-    if (leafletReady) return leafletReady;
-    leafletReady = new Promise(function (resolve, reject) {
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(css);
+  function mapboxToken() {
+    return String(window.MAPBOX_TOKEN || '').trim();
+  }
+
+  function loadMapbox() {
+    if (window.mapboxgl) {
+      window.mapboxgl.accessToken = mapboxToken();
+      return Promise.resolve(window.mapboxgl);
+    }
+    if (mapboxReady) return mapboxReady;
+    mapboxReady = new Promise(function (resolve, reject) {
+      if (!document.querySelector('link[data-mapbox-gl]')) {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = MAPBOX_GL_CSS;
+        css.setAttribute('data-mapbox-gl', '1');
+        document.head.appendChild(css);
+      }
       const s = document.createElement('script');
-      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      s.onload = function () { resolve(window.L); };
+      s.src = MAPBOX_GL_JS;
+      s.onload = function () {
+        if (!window.mapboxgl) {
+          reject(new Error('Mapbox GL não carregou'));
+          return;
+        }
+        window.mapboxgl.accessToken = mapboxToken();
+        resolve(window.mapboxgl);
+      };
       s.onerror = reject;
       document.head.appendChild(s);
     });
-    return leafletReady;
+    return mapboxReady;
   }
+  window.loadMapbox = loadMapbox;
 
   function debounce(fn, ms) {
     let t;
@@ -82,23 +102,30 @@
       lng = parseFloat(lng);
       if (isNaN(lat) || isNaN(lng)) return;
       mapEl.hidden = false;
-      loadLeaflet().then(function (L) {
+      loadMapbox().then(function (mapboxgl) {
         if (!map) {
-          map = L.map(mapEl).setView([lat, lng], 16);
-          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-          }).addTo(map);
-          marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+          map = new mapboxgl.Map({
+            container: mapEl,
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [lng, lat],
+            zoom: 16,
+            attributionControl: true
+          });
+          marker = new mapboxgl.Marker({ draggable: true })
+            .setLngLat([lng, lat])
+            .addTo(map);
           marker.on('dragend', function () {
-            const p = marker.getLatLng();
+            const p = marker.getLngLat();
             if (latEl) latEl.value = p.lat.toFixed(6);
             if (lngEl) lngEl.value = p.lng.toFixed(6);
           });
+          map.on('load', function () { map.resize(); });
         } else {
-          map.setView([lat, lng], 16);
-          marker.setLatLng([lat, lng]);
+          map.setCenter([lng, lat]);
+          map.setZoom(16);
+          marker.setLngLat([lng, lat]);
         }
-        setTimeout(function () { map.invalidateSize(); }, 80);
+        setTimeout(function () { map.resize(); }, 80);
       }).catch(function () {});
     }
     box._geoShowMap = show;

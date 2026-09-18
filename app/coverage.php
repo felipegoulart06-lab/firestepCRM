@@ -112,11 +112,7 @@ function coverage_skip_remote_geo(): bool
 
 function geocoder_token(): string
 {
-    $fromEnv = geocoder_env_token();
-    if ($fromEnv !== '') {
-        return $fromEnv;
-    }
-    return platform_leaflet_token();
+    return mapbox_public_token();
 }
 
 function geocoder_provider(): string
@@ -125,7 +121,7 @@ function geocoder_provider(): string
     if (in_array($set, ['maptiler', 'mapbox', 'locationiq', 'nominatim'], true)) {
         return $set;
     }
-    return geocoder_token() !== '' ? 'maptiler' : 'nominatim';
+    return geocoder_token() !== '' ? 'mapbox' : 'nominatim';
 }
 
 function geo_point_ok(float $lat, float $lng): bool

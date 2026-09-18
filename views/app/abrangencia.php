@@ -50,37 +50,43 @@ foreach ($pins as $p) {
 <script type="application/json" id="coverage-pins"><?= json_encode($mapPins, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  if (!window.L || !document.getElementById('map')) return;
-  const map = L.map('map').setView([-15.7801, -47.9292], 4);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-  let pins = [];
-  try { pins = JSON.parse(document.getElementById('coverage-pins').textContent || '[]'); } catch (e) { pins = []; }
-  const bounds = [];
-    pins.forEach(function (p) {
-    if (!p || isNaN(p.lat) || isNaN(p.lng)) return;
-    const icon = L.divIcon({
-      className: 'cv-pin cv-' + p.kind,
-      html: '<i></i>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 18],
-      popupAnchor: [0, -16]
+  const el = document.getElementById('map');
+  if (!el || typeof window.loadMapbox !== 'function') return;
+  window.loadMapbox().then(function (mapboxgl) {
+    const map = new mapboxgl.Map({
+      container: el,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-47.9292, -15.7801],
+      zoom: 4
     });
-    const name = p.name || 'Local';
-    const phone = p.phone && p.phone !== '—' ? p.phone : 'Telefone não informado';
-    const info = p.info || '';
-    const html = '<strong>' + name.replace(/</g,'') + '</strong><br>' +
-      (p.kindLabel ? p.kindLabel.replace(/</g,'') + '<br>' : '') +
-      'Tel.: ' + phone.replace(/</g,'') +
-      (info ? '<br>' + info.replace(/</g,'') : '');
-    L.marker([p.lat, p.lng], { icon: icon, title: name })
-      .addTo(map)
-      .bindPopup(html);
-    bounds.push([p.lat, p.lng]);
-  });
-  if (bounds.length === 1) map.setView(bounds[0], 13);
-  else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
-  setTimeout(function () { map.invalidateSize(); }, 80);
+    let pins = [];
+    try { pins = JSON.parse(document.getElementById('coverage-pins').textContent || '[]'); } catch (e) { pins = []; }
+    const bounds = [];
+    pins.forEach(function (p) {
+      if (!p || isNaN(p.lat) || isNaN(p.lng)) return;
+      const name = p.name || 'Local';
+      const phone = p.phone && p.phone !== '—' ? p.phone : 'Telefone não informado';
+      const info = p.info || '';
+      const html = '<strong>' + name.replace(/</g,'') + '</strong><br>' +
+        (p.kindLabel ? p.kindLabel.replace(/</g,'') + '<br>' : '') +
+        'Tel.: ' + phone.replace(/</g,'') +
+        (info ? '<br>' + info.replace(/</g,'') : '');
+      const pin = document.createElement('div');
+      pin.className = 'cv-pin cv-' + p.kind;
+      pin.innerHTML = '<i></i>';
+      new mapboxgl.Marker({ element: pin, anchor: 'bottom' })
+        .setLngLat([p.lng, p.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 16 }).setHTML(html))
+        .addTo(map);
+      bounds.push([p.lng, p.lat]);
+    });
+    if (bounds.length === 1) map.setCenter(bounds[0]).setZoom(13);
+    else if (bounds.length > 1) {
+      const box = bounds.reduce(function (b, ll) { return b.extend(ll); }, new mapboxgl.LngLatBounds(bounds[0], bounds[0]));
+      map.fitBounds(box, { padding: 40, maxZoom: 13 });
+    }
+    map.on('load', function () { map.resize(); });
+    setTimeout(function () { map.resize(); }, 80);
+  }).catch(function () {});
 });
 </script>

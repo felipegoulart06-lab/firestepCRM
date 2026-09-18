@@ -423,7 +423,7 @@ function security_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https://api.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; script-src 'self' 'unsafe-inline' https://api.mapbox.com blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob:; child-src blob:; font-src 'self' data: https://api.mapbox.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || (function_exists('is_vercel') && is_vercel());
@@ -1330,9 +1330,18 @@ function platform_leaflet_save(?string $plain, bool $clear = false): void
     q("INSERT OR REPLACE INTO platform_settings(key,value,updated_at) VALUES('leaflet',?,?)", [$encoded, $now]);
 }
 
+function mapbox_public_token(): string
+{
+    $fromEnv = geocoder_env_token();
+    if ($fromEnv !== '') {
+        return $fromEnv;
+    }
+    return platform_leaflet_token();
+}
+
 function geocoder_env_token(): string
 {
-    foreach (['LEAFLET_TOKEN', 'GEOCODER_TOKEN', 'MAPTILER_KEY', 'MAPBOX_TOKEN'] as $key) {
+    foreach (['MAPBOX_ACCESS_TOKEN', 'MAPBOX_TOKEN', 'LEAFLET_TOKEN', 'GEOCODER_TOKEN', 'MAPTILER_KEY'] as $key) {
         $v = env_str($key);
         if ($v) {
             return $v;
