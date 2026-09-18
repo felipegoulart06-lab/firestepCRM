@@ -154,17 +154,25 @@ document.addEventListener('DOMContentLoaded', bindExternalVisit);
 document.addEventListener('DOMContentLoaded', bindHoursGuard);
 document.addEventListener('DOMContentLoaded', bindCommissionBox);
 function bindHoursGuard(){
-  document.querySelectorAll('form[data-hours]').forEach(function(form){
+  document.querySelectorAll('form[data-hours-guard], form[data-hours]').forEach(function(form){
     if (form.dataset.hoursBound) return;
     form.dataset.hoursBound = '1';
     let hours = {};
-    try { hours = JSON.parse(form.getAttribute('data-hours') || '{}'); } catch (err) { hours = {}; }
+    const blob = form.querySelector('.js-hours-json');
+    try {
+      hours = JSON.parse((blob && blob.textContent) || form.getAttribute('data-hours') || '{}');
+    } catch (err) { hours = {}; }
     const hint = form.querySelector('[data-hours-hint]');
     const dateEl = form.querySelector('[name="date"]');
     const startEl = form.querySelector('[name="start"]');
     const svcEl = form.querySelector('[name="service_id"]');
+    const dayClosed = function(cfg){
+      if (!cfg) return true;
+      const c = cfg.closed;
+      return c === true || c === 1 || c === '1' || c === 'true';
+    };
     const toMin = function(hm, closing){
-      hm = String(hm || '');
+      hm = String(hm || '').trim();
       if (hm === '24:00' || (closing && (hm === '' || hm === '00:00'))) return 1440;
       const p = hm.split(':');
       const n = (Number(p[0])||0)*60 + (Number(p[1])||0);
@@ -177,12 +185,13 @@ function bindHoursGuard(){
       if (!date || !start) { hint.hidden = true; return; }
       const day = new Date(date + 'T12:00:00').getDay();
       const cfg = hours[day] || hours[String(day)] || null;
+      const svcVal = svcEl && svcEl.value ? String(svcEl.value) : '';
       const opt = svcEl && svcEl.options[svcEl.selectedIndex];
-      const dur = opt ? Number(opt.getAttribute('data-duration') || 60) : 60;
+      const dur = svcVal && opt ? Number(opt.getAttribute('data-duration') || 0) : 0;
       const [sh, sm] = start.split(':').map(Number);
       const s = (sh||0)*60 + (sm||0);
-      const e = s + (dur > 0 ? dur : 60);
-      if (!cfg || cfg.closed) {
+      const e = s + (dur > 0 ? dur : 0);
+      if (dayClosed(cfg)) {
         hint.hidden = false;
         hint.textContent = 'Fora do horário de funcionamento (fechado neste dia).';
         return;
@@ -190,7 +199,16 @@ function bindHoursGuard(){
       let open = toMin(cfg.start, false);
       let close = toMin(cfg.end, true);
       if (close <= open) close += 1440;
-      const out = s < open || e > close;
+      let out = s < open || (dur > 0 ? e > close : s >= close);
+      (cfg.breaks || []).forEach(function(b){
+        const bsRaw = String((b && b.start) || '').trim();
+        const beRaw = String((b && b.end) || '').trim();
+        if (!bsRaw || !beRaw) return;
+        const bs = toMin(bsRaw, false);
+        const be = toMin(beRaw, true);
+        if (be <= bs) return;
+        if (s < be && (dur > 0 ? e : s + 1) > bs) out = true;
+      });
       hint.hidden = !out;
       if (out) {
         const endLabel = (cfg.end === '00:00' || cfg.end === '24:00') ? '24:00' : cfg.end;

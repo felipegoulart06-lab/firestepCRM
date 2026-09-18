@@ -189,25 +189,52 @@ function hm_to_minutes(?string $hm, bool $closing = false): int
     return $total;
 }
 
+function hours_day_closed(?array $cfg): bool
+{
+    if (!$cfg) {
+        return true;
+    }
+    $c = $cfg['closed'] ?? false;
+    return $c === true || $c === 1 || $c === '1' || $c === 'true';
+}
+
+function tenant_hours_map(array $tenant): array
+{
+    $raw = json_arr($tenant['business_hours'] ?? '', default_hours());
+    if (!is_array($raw) || $raw === []) {
+        $raw = default_hours();
+    }
+    $out = [];
+    $fallback = default_hours();
+    for ($d = 0; $d <= 6; $d++) {
+        $cfg = $raw[$d] ?? $raw[(string)$d] ?? $fallback[$d];
+        $out[$d] = is_array($cfg) ? $cfg : $fallback[$d];
+    }
+    return $out;
+}
+
+function agenda_hour_range(array $tenant, array $events = []): array
+{
+    $minH = 0;
+    $maxH = 23;
+    return range($minH, $maxH);
+}
+
 function business_day_config(array $tenant, string $date): ?array
 {
-    $hours = json_arr($tenant['business_hours'] ?? '', default_hours());
-    if ($hours === []) {
-        $hours = default_hours();
-    }
     $ts = strtotime($date.' 12:00:00');
     if ($ts === false) {
         return null;
     }
     $day = (int)date('w', $ts);
-    $cfg = $hours[$day] ?? $hours[(string)$day] ?? null;
+    $cfg = tenant_hours_map($tenant)[$day] ?? null;
     return is_array($cfg) ? $cfg : null;
 }
 
 function business_hours_label(array $tenant, string $date): string
 {
     $cfg = business_day_config($tenant, $date);
-    if (!$cfg || !empty($cfg['closed'])) {
+    if (hours_day_closed($cfg)) {
         $days = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
         $ts = strtotime($date.' 12:00:00');
         $name = $days[(int)date('w', $ts ?: time())] ?? 'este dia';
@@ -223,7 +250,7 @@ function business_hours_label(array $tenant, string $date): string
 function outside_hours(array $tenant, string $start, string $end): bool
 {
     $cfg = business_day_config($tenant, substr($start, 0, 10));
-    if (!$cfg || !empty($cfg['closed'])) {
+    if (hours_day_closed($cfg)) {
         return true;
     }
     $ts = strtotime($start);
@@ -245,8 +272,13 @@ function outside_hours(array $tenant, string $start, string $end): bool
         return true;
     }
     foreach ($cfg['breaks'] ?? [] as $b) {
-        $bs = hm_to_minutes($b['start'] ?? '', false);
-        $be = hm_to_minutes($b['end'] ?? '', true);
+        $bsRaw = trim((string)($b['start'] ?? ''));
+        $beRaw = trim((string)($b['end'] ?? ''));
+        if ($bsRaw === '' || $beRaw === '') {
+            continue;
+        }
+        $bs = hm_to_minutes($bsRaw, false);
+        $be = hm_to_minutes($beRaw, true);
         if ($be <= $bs) {
             continue;
         }

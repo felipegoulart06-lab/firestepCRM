@@ -7,7 +7,7 @@ $label = date('d/m/Y', $ts);
 $dow = (int)date('N', $ts); // 1-7
 $weekStart = strtotime('-'.($dow-1).' days', $ts);
 $days = $view === 'day' ? [$ts] : array_map(fn($i) => strtotime("+$i days", $weekStart), range(0,6));
-$hours = range(7,20);
+$hours = function_exists('agenda_hour_range') ? agenda_hour_range($tenant, $events ?? []) : range(0, 23);
 if (!function_exists('ev_color')) {
 function ev_color($kind, $st) {
     if ($kind === 'block') return ['#f3e8ff','#7c3aed','#6b21a8'];
@@ -66,7 +66,7 @@ foreach ($days ?? [] as $d) {
 </div>
 <?php if ($view !== 'month'): ?>
 <div class="card calendar-shell">
-  <div class="cal cal-busy-<?= (int)$busyWeek ?>" style="grid-template-columns:72px repeat(<?= count($days) ?>,minmax(130px,1fr))">
+  <div class="cal cal-full-day cal-busy-<?= (int)$busyWeek ?>" style="grid-template-columns:72px repeat(<?= count($days) ?>,minmax(130px,1fr))">
     <div class="cal-head"></div>
     <?php foreach ($days as $d): ?>
       <div class="cal-head <?= date('Y-m-d',$d)===date('Y-m-d')?'today':'' ?>"><?= ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][(int)date('N',$d)-1] ?> <?= date('d',$d) ?></div>

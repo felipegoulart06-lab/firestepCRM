@@ -10,7 +10,7 @@ $services = $services ?? [];
 $viewOnly = !empty($viewOnly);
 $showEditForm = $edit && !$viewOnly;
 $allowEditFromDetails = !empty($allowEditFromDetails);
-$formHours = json_arr($tenant['business_hours'] ?? '', default_hours());
+$formHours = function_exists('tenant_hours_map') ? tenant_hours_map($tenant) : json_arr($tenant['business_hours'] ?? '', default_hours());
 if ($formHours === []) {
     $formHours = default_hours();
 }
@@ -99,7 +99,8 @@ $formFlashKind = (string)($GLOBALS['_last_flash_kind'] ?? '');
         <button class="btn btn-primary">Bloquear</button>
       </form>
     <?php elseif (!$viewOnly): ?>
-      <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px" data-hours="<?= e(json_encode($formHours, JSON_UNESCAPED_UNICODE)) ?>">
+      <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px" data-hours-guard="1">
+        <script type="application/json" class="js-hours-json"><?= json_encode($formHours, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_FORCE_OBJECT | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <input type="hidden" name="return_to" value="<?= e($modalClose) ?>">
         <?php if ($edit): ?>

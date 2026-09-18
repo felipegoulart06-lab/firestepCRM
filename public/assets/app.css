@@ -112,6 +112,9 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .cal-head.today{background:#1849a9;color:#fff}
 .cal-time{padding:5px 8px;font-size:11px;color:#e4e7ec;font-weight:600;background:#1d2939;border-top:1px solid #667085}
 .slot{min-height:66px;border-top:1px solid #667085;border-left:1px solid #667085;background:#182230}
+.cal-full-day .slot{min-height:44px}
+.cal-full-day .slot-add{min-height:36px}
+.cal-full-day .cal-time{padding:4px 6px}
 .slot:hover{background:#243247}
 .calendar-month{background:#182230;color:#f2f4f7;border-color:#667085}
 .calendar-month>a,.calendar-month>div{border-color:#667085!important}
