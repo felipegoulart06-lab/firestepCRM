@@ -37,10 +37,7 @@ function toggleSide(){
 }
 document.addEventListener('keydown', function(e){
   if (e.key !== 'Escape') return;
-  if (document.querySelector('.overlay, .token-modal:not([hidden])')) {
-    closeModal();
-    return;
-  }
+  if (visibleLayer('.overlay') || visibleLayer('.token-modal') || visibleLayer('.fx-overlay')) return;
   closeSide();
 });
 document.addEventListener('click', function(e){
@@ -87,7 +84,10 @@ document.addEventListener('click', function(e){
     closeModal();
     return;
   }
-  if (t.classList.contains('token-modal')) closeModal();
+  if (t.matches('.overlay, .fx-overlay, .token-modal')) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 }, true);
 document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
@@ -877,9 +877,6 @@ function bindFinanceReceive(){
   document.querySelectorAll('.js-fin-close').forEach(btn=>{
     btn.addEventListener('click', ()=> close(document.getElementById(btn.dataset.close || '')));
   });
-  [receive, charge].forEach(el=>{
-    el?.addEventListener('click', (e)=>{ if (e.target === el) close(el); });
-  });
   syncExtra();
 }
 document.addEventListener('DOMContentLoaded', bindFinanceReceive);
@@ -925,6 +922,5 @@ function bindKanbanStatus(){
     pending = null;
     form.submit();
   });
-  overlay.addEventListener('click', (e)=>{ if (e.target === overlay) close(); });
 }
 document.addEventListener('DOMContentLoaded', bindKanbanStatus);

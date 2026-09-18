@@ -84,7 +84,6 @@ $seg = trim(($segment['category'] ?? '').' · '.($segment['name'] ?? ''), ' ·')
   if (!modal || !open) return;
   open.addEventListener('click', ()=> { modal.hidden = false; document.body.classList.add('is-modal-open'); document.documentElement.classList.add('is-modal-open'); });
   close?.addEventListener('click', ()=> { modal.hidden = true; document.body.classList.remove('is-modal-open'); document.documentElement.classList.remove('is-modal-open'); });
-  modal.addEventListener('click', (e)=> { if (e.target === modal) { modal.hidden = true; document.body.classList.remove('is-modal-open'); document.documentElement.classList.remove('is-modal-open'); } });
 })();
 </script>
 <?php endif; ?>

@@ -35,6 +35,21 @@ if (!str_contains($css, 'body.is-modal-open .overlay *') || !str_contains($css, 
     echo "FAIL CSS do overlay continua bloqueando clique\n";
     $fail++;
 }
+if (!str_contains($js, "t.matches('.overlay, .fx-overlay, .token-modal')")) {
+    echo "FAIL clique no fundo do overlay não é ignorado\n";
+    $fail++;
+}
+if (str_contains($js, "t.classList.contains('token-modal')) closeModal")
+    || str_contains($js, 'e.target === el) close')
+    || str_contains($js, 'e.target === overlay) close')) {
+    echo "FAIL clique fora do formulário ainda fecha o overlay\n";
+    $fail++;
+}
+$ficha = file_get_contents($root . '/views/master/ficha.php');
+if (str_contains($ficha, 'e.target === modal')) {
+    echo "FAIL token master fecha ao clicar fora\n";
+    $fail++;
+}
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");
