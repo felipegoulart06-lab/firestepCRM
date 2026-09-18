@@ -797,3 +797,80 @@ function bindFinancePay(){
     sync();
   });
 }
+
+function bindFinanceReceive(){
+  const receive = document.getElementById('fin-receive');
+  const charge = document.getElementById('fin-charge');
+  if (!receive && !charge) return;
+  const extra = document.getElementById('fin-receive-extra');
+  const method = document.getElementById('fin-receive-method');
+  const doc = document.getElementById('fin-receive-doc');
+  const amount = document.getElementById('fin-receive-amount');
+  const inst = document.getElementById('fin-receive-inst');
+  const needs = { pix:1, cartao:1, transferencia:1 };
+  const open = (el)=>{
+    if (!el) return;
+    el.hidden = false;
+    document.documentElement.classList.add('is-modal-open');
+    document.body.classList.add('is-modal-open');
+  };
+  const close = (el)=>{
+    if (el) el.hidden = true;
+    if ((!receive || receive.hidden) && (!charge || charge.hidden)) {
+      document.documentElement.classList.remove('is-modal-open');
+      document.body.classList.remove('is-modal-open');
+    }
+  };
+  const syncExtra = ()=>{
+    const on = !!(method && needs[method.value]);
+    if (extra) extra.hidden = !on;
+    extra?.querySelectorAll('input').forEach(i=>{ i.disabled = !on; });
+    if (doc) doc.required = on;
+  };
+  method?.addEventListener('change', syncExtra);
+  document.querySelectorAll('.js-fin-receive').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = document.getElementById('fin-receive-id');
+      if (id) id.value = btn.dataset.id || '';
+      if (amount) amount.value = btn.dataset.amount || '';
+      if (method) method.value = btn.dataset.method || '';
+      if (inst) inst.value = '1';
+      syncExtra();
+      open(receive);
+    });
+  });
+  let cards = {};
+  try { cards = JSON.parse(document.getElementById('fin-charge-data')?.textContent || '{}'); } catch (e) { cards = {}; }
+  document.querySelectorAll('.js-fin-charge').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const card = cards[btn.dataset.id] || {};
+      const id = document.getElementById('fin-charge-id');
+      if (id) id.value = btn.dataset.id || '';
+      const who = document.getElementById('fin-charge-who');
+      if (who) who.textContent = (card.name || btn.dataset.name || 'Cliente') + ' · ' + (card.phone || btn.dataset.phone || '') + ' · ' + (card.amount || btn.dataset.amount || '');
+      const title = document.getElementById('fin-charge-title');
+      if (title) title.textContent = card.title || 'Cobrança';
+      const desc = document.getElementById('fin-charge-desc');
+      if (desc) desc.textContent = card.description || '';
+      const imgWrap = document.getElementById('fin-charge-img');
+      if (imgWrap) {
+        const src = card.image || '';
+        imgWrap.hidden = !src;
+        imgWrap.innerHTML = src && /^(https?:|data:image\/)/i.test(src) ? '<img alt="" src="'+String(src).replace(/"/g,'')+'">' : '';
+      }
+      const btns = document.getElementById('fin-charge-btns');
+      if (btns) {
+        btns.innerHTML = (card.buttons || []).map(b=> '<span>'+String(b.label||'').replace(/[<>]/g,'')+'</span>').join('');
+      }
+      open(charge);
+    });
+  });
+  document.querySelectorAll('.js-fin-close').forEach(btn=>{
+    btn.addEventListener('click', ()=> close(document.getElementById(btn.dataset.close || '')));
+  });
+  [receive, charge].forEach(el=>{
+    el?.addEventListener('click', (e)=>{ if (e.target === el) close(el); });
+  });
+  syncExtra();
+}
+document.addEventListener('DOMContentLoaded', bindFinanceReceive);

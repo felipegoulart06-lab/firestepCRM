@@ -122,9 +122,28 @@ q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,
     'fin-pix','ten-a','receivable','in','open','Avulso PIX',50,null,'cli-a','manual','pix',$now,$now,
 ]);
 $pix = finance_set_status('ten-a', 'fin-pix', 'paid');
-expect(!empty($pix['ok']), 'PIX continua com Receber');
+expect(empty($pix['ok']), 'PIX em aberto exige DOC ou NSU');
+$pixOk = finance_set_status('ten-a', 'fin-pix', 'paid', ['payment_method' => 'pix', 'pay_doc' => 'NSU-9988', 'amount_paid' => 50]);
+expect(!empty($pixOk['ok']), 'PIX continua com Receber depois do comprovante');
+$pixRow = one("SELECT pay_doc,amount_paid,payment_method FROM finance_entries WHERE id='fin-pix'");
+expect($pixRow['pay_doc'] === 'NSU-9988' && (float)$pixRow['amount_paid'] === 50.0, 'grava NSU e valor recebido');
+$cashNeed = finance_set_status('ten-a', 'fin-pix', 'paid', ['payment_method' => 'dinheiro']);
+expect(empty($cashNeed['ok']), 'já baixado não aceita segunda baixa');
+q('INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,client_id,source_type,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)', [
+    'fin-open','ten-a','receivable','in','open','Avulso',20,null,'cli-a','manual',$now,$now,
+]);
+$needMethod = finance_set_status('ten-a', 'fin-open', 'paid');
+expect(empty($needMethod['ok']), 'receber exige forma de pagamento');
+$cash = finance_set_status('ten-a', 'fin-open', 'paid', ['payment_method' => 'dinheiro']);
+expect(!empty($cash['ok']), 'dinheiro não pede DOC');
 $src = file_get_contents(dirname(__DIR__).'/views/app/financeiro_lista.php');
 expect(str_contains($src, 'name="payment_method"') && str_contains($src, 'Faturar'), 'formulário pede forma de pagamento e Faturar');
+expect(str_contains($src, 'js-fin-charge') && str_contains($src, 'Enviar cobrança'), 'Cobrar abre card para WhatsApp');
+expect(uazapi_wa_number('(11) 99999-9991') === '5511999999991', 'telefone vira número WhatsApp');
+$card = finance_charge_card(['id'=>'ten-a','display_name'=>'Empresa A','business_name'=>'Empresa A','phone'=>'11911112222','whatsapp'=>'','website'=>'','uazapi_config'=>'{}'], [
+    'client_name' => 'Ana', 'client_phone' => '11999999991', 'client_whatsapp' => '', 'amount' => 50, 'description' => 'Avulso PIX', 'due_date' => $now,
+]);
+expect($card['can_send'] && str_contains($card['description'], 'Ana') && str_contains($card['description'], '50'), 'card de cobrança com nome e valor');
 
 @unlink($tmp);
 if ($fail) {

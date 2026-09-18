@@ -1518,3 +1518,4 @@ require_once __DIR__ . '/letterhead.php';
 require_once __DIR__ . '/clauses.php';
 require_once __DIR__ . '/contract.php';
 require_once __DIR__ . '/coverage.php';
+require_once __DIR__ . '/uazapi.php';

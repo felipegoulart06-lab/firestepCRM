@@ -73,7 +73,20 @@ $listPath = finance_pages()[$page][1];
             <form method="post" action="/app/financeiro/status"><input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($row['id']) ?>"><input type="hidden" name="status" value="billed"><input type="hidden" name="back" value="<?= e($listPath) ?>"><button class="btn btn-ghost">Faturar</button></form>
           <?php endif; ?>
           <?php if ($row['kind']==='receivable' && $row['status']==='open' && $pay !== 'fatura'): ?>
-            <form method="post" action="/app/financeiro/status"><input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($row['id']) ?>"><input type="hidden" name="status" value="paid"><input type="hidden" name="back" value="<?= e($listPath) ?>"><button class="btn btn-ghost">Receber</button></form>
+            <button type="button" class="btn btn-ghost js-fin-receive"
+              data-id="<?= e($row['id']) ?>"
+              data-amount="<?= e((string)$row['amount']) ?>"
+              data-method="<?= e($pay) ?>">Receber</button>
+            <?php
+              $chargePhone = (string)($row['client_whatsapp'] ?? '') ?: (string)($row['client_phone'] ?? '');
+            ?>
+            <?php if ($chargePhone !== '' && !empty($row['client_id'])): ?>
+              <button type="button" class="btn btn-ghost js-fin-charge"
+                data-id="<?= e($row['id']) ?>"
+                data-name="<?= e((string)($row['client_name'] ?? '')) ?>"
+                data-phone="<?= e(phone_fmt($chargePhone)) ?>"
+                data-amount="<?= e(money((float)$row['amount'])) ?>">Cobrar</button>
+            <?php endif; ?>
           <?php endif; ?>
           <?php if ($row['kind']==='payable' && $row['status']==='open'): ?>
             <form method="post" action="/app/financeiro/status"><input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($row['id']) ?>"><input type="hidden" name="status" value="paid"><input type="hidden" name="back" value="<?= e($listPath) ?>"><button class="btn btn-ghost">Pagar</button></form>
@@ -141,4 +154,75 @@ $listPath = finance_pages()[$page][1];
     <p style="margin:16px 0 0"><button class="btn btn-primary" style="width:100%">Salvar</button></p>
   </form>
 </div>
+<?php endif; ?>
+
+<?php if ($page === 'receber'): ?>
+<div class="overlay" id="fin-receive" hidden>
+  <form method="post" action="/app/financeiro/status" class="card overlay-panel" style="max-width:440px;padding:18px" onclick="event.stopPropagation()" data-fin-receive>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 style="margin:0;font-size:17px">Registrar recebimento</h2>
+      <button type="button" class="btn btn-ghost js-fin-close" data-close="fin-receive">Fechar</button>
+    </div>
+    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+    <input type="hidden" name="id" id="fin-receive-id" value="">
+    <input type="hidden" name="status" value="paid">
+    <input type="hidden" name="back" value="<?= e($listPath) ?>">
+    <label class="label">Como foi o pagamento</label>
+    <select class="select" name="payment_method" id="fin-receive-method" required>
+      <option value="">Selecionar</option>
+      <?php foreach (finance_pay_methods() as $k => $lab): ?>
+        <?php if ($k === 'fatura') continue; ?>
+        <option value="<?= e($k) ?>"><?= e($lab) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <div id="fin-receive-extra" hidden>
+      <label class="label">DOC ou NSU</label>
+      <input class="input" name="pay_doc" id="fin-receive-doc" maxlength="80" placeholder="Comprovante, DOC ou NSU">
+      <div class="grid g2" style="margin-top:10px">
+        <div>
+          <label class="label">Valor recebido</label>
+          <input class="input" name="amount_paid" id="fin-receive-amount" type="number" min="0.01" step="0.01">
+        </div>
+        <div>
+          <label class="label">Parcelas</label>
+          <input class="input" name="pay_installments" id="fin-receive-inst" type="number" min="1" max="24" value="1">
+        </div>
+      </div>
+      <label class="label">Valor da parcela (se parcelado)</label>
+      <input class="input" name="pay_installment_amount" id="fin-receive-inst-amt" type="number" min="0" step="0.01" placeholder="Automático se vazio">
+    </div>
+    <p style="margin:16px 0 0"><button class="btn btn-primary" style="width:100%">Confirmar recebimento</button></p>
+  </form>
+</div>
+<div class="overlay" id="fin-charge" hidden>
+  <div class="card overlay-panel" style="max-width:420px;padding:18px" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <h2 style="margin:0;font-size:17px">Cobrar no WhatsApp</h2>
+      <button type="button" class="btn btn-ghost js-fin-close" data-close="fin-charge">Fechar</button>
+    </div>
+    <p class="muted" id="fin-charge-who" style="margin:8px 0 12px"></p>
+    <article class="wa-card" id="fin-charge-card">
+      <div class="wa-card-img" id="fin-charge-img" hidden></div>
+      <b id="fin-charge-title">Cobrança</b>
+      <p id="fin-charge-desc"></p>
+      <div class="wa-card-btns" id="fin-charge-btns"></div>
+    </article>
+    <form method="post" action="/app/financeiro/cobrar" style="margin-top:14px">
+      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+      <input type="hidden" name="id" id="fin-charge-id" value="">
+      <input type="hidden" name="back" value="<?= e($listPath) ?>">
+      <button class="btn btn-primary" style="width:100%">Enviar cobrança</button>
+    </form>
+  </div>
+</div>
+<script type="application/json" id="fin-charge-data"><?php
+  $chargeMap = [];
+  foreach ($items as $row) {
+      if (($row['kind'] ?? '') !== 'receivable' || ($row['status'] ?? '') !== 'open') {
+          continue;
+      }
+      $chargeMap[$row['id']] = finance_charge_card($tenant, $row);
+  }
+  echo json_encode($chargeMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+?></script>
 <?php endif; ?>

@@ -39,6 +39,11 @@ function finance_normalize_method(?string $method): string
     return isset(FINANCE_PAY_METHODS[$method]) ? $method : '';
 }
 
+function finance_method_needs_receipt(?string $method): bool
+{
+    return in_array(finance_normalize_method($method), ['pix', 'cartao', 'transferencia'], true);
+}
+
 function finance_invoice_due_date(?string $from = null): string
 {
     $base = $from ? strtotime($from) : time();
@@ -144,6 +149,9 @@ function ensure_finance_schema(): void
     finance_try('ALTER TABLE finance_entries ADD COLUMN amount_paid DECIMAL(12,2) DEFAULT 0');
     finance_try('ALTER TABLE finance_entries ADD COLUMN payment_method VARCHAR(40)');
     finance_try('ALTER TABLE finance_entries ADD COLUMN agent_id VARCHAR(64)');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN pay_doc VARCHAR(80)');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN pay_installments INTEGER DEFAULT 1');
+    finance_try('ALTER TABLE finance_entries ADD COLUMN pay_installment_amount DECIMAL(12,2) DEFAULT 0');
     finance_try('CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries (tenant_id, kind, status)');
     finance_try('CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries (tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL');
     appointment_commission_ensure_schema();
@@ -432,7 +440,7 @@ function finance_backfill_appointments(string $tenantId): void
 
 function finance_query(string $tenantId, string $page, string $search = ''): array
 {
-    $sql = "SELECT f.*, c.name client_name, c.cpf client_cpf, u.name agent_name FROM finance_entries f
+    $sql = "SELECT f.*, c.name client_name, c.cpf client_cpf, c.phone client_phone, c.whatsapp client_whatsapp, u.name agent_name FROM finance_entries f
             LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
             LEFT JOIN users u ON u.id=f.agent_id AND u.tenant_id=f.tenant_id
             WHERE f.tenant_id=?";
@@ -463,7 +471,7 @@ function finance_query(string $tenantId, string $page, string $search = ''): arr
     return all($sql, $p);
 }
 
-function finance_set_status(string $tenantId, string $id, string $st): array
+function finance_set_status(string $tenantId, string $id, string $st, array $extra = []): array
 {
     $row = one('SELECT * FROM finance_entries WHERE id=? AND tenant_id=?', [$id, $tenantId]);
     if (!$row || !in_array($st, ['paid', 'billed', 'cancelled'], true)) {
@@ -472,7 +480,8 @@ function finance_set_status(string $tenantId, string $id, string $st): array
     if (in_array($row['status'], ['paid', 'cancelled'], true)) {
         return ['ok' => false, 'message' => 'Este registro já foi encerrado.'];
     }
-    $method = finance_normalize_method($row['payment_method'] ?? '');
+    $posted = finance_normalize_method($extra['payment_method'] ?? '');
+    $method = $posted !== '' ? $posted : finance_normalize_method($row['payment_method'] ?? '');
     if ($st === 'paid') {
         if ($row['kind'] !== 'receivable' && $row['kind'] !== 'payable') {
             return ['ok' => false, 'message' => 'Este tipo não recebe baixa por aqui.'];
@@ -483,8 +492,36 @@ function finance_set_status(string $tenantId, string $id, string $st): array
         if ($row['status'] !== 'open') {
             return ['ok' => false, 'message' => 'Só é possível baixar contas em aberto.'];
         }
-        q('UPDATE finance_entries SET status=?, paid_at=?, amount_paid=?, updated_at=? WHERE id=? AND tenant_id=?', [
-            'paid', now(), (float)$row['amount'], now(), $row['id'], $tenantId,
+        $paidAmt = isset($extra['amount_paid']) && is_numeric($extra['amount_paid'])
+            ? round((float)$extra['amount_paid'], 2)
+            : (float)$row['amount'];
+        if ($paidAmt <= 0) {
+            $paidAmt = (float)$row['amount'];
+        }
+        $doc = trim((string)($extra['pay_doc'] ?? ''));
+        $installments = max(1, min(24, (int)($extra['pay_installments'] ?? 1)));
+        $instAmt = isset($extra['pay_installment_amount']) && is_numeric($extra['pay_installment_amount'])
+            ? round((float)$extra['pay_installment_amount'], 2)
+            : ($installments > 1 ? round($paidAmt / $installments, 2) : 0.0);
+        if ($row['kind'] === 'receivable') {
+            if ($method === '') {
+                return ['ok' => false, 'message' => 'Selecione como o pagamento foi feito.'];
+            }
+            if (finance_method_needs_receipt($method)) {
+                if ($doc === '' || strlen($doc) > 80) {
+                    return ['ok' => false, 'message' => 'Informe o DOC ou NSU do PIX, cartão ou transferência.'];
+                }
+                if ($installments > 1 && $instAmt <= 0) {
+                    return ['ok' => false, 'message' => 'Informe o valor da parcela.'];
+                }
+            } else {
+                $doc = '';
+                $installments = 1;
+                $instAmt = 0.0;
+            }
+        }
+        q('UPDATE finance_entries SET status=?, payment_method=?, paid_at=?, amount_paid=?, pay_doc=?, pay_installments=?, pay_installment_amount=?, updated_at=? WHERE id=? AND tenant_id=?', [
+            'paid', $method !== '' ? $method : ($row['payment_method'] ?? null), now(), $paidAmt, $doc !== '' ? $doc : null, $installments, $instAmt, now(), $row['id'], $tenantId,
         ]);
         return ['ok' => true, 'message' => $row['kind'] === 'payable' ? 'Pagamento registrado.' : 'Recebimento registrado.'];
     }
@@ -506,3 +543,51 @@ function finance_set_status(string $tenantId, string $id, string $st): array
     q("UPDATE finance_entries SET status='cancelled', updated_at=? WHERE id=? AND tenant_id=?", [now(), $row['id'], $tenantId]);
     return ['ok' => true, 'message' => 'Registro cancelado.'];
 }
+
+function finance_charge_card(array $tenant, array $entry): array
+{
+    $cfg = uazapi_config($tenant);
+    $lh = letterhead_config($tenant);
+    $name = trim((string)($entry['client_name'] ?? ''));
+    $phoneRaw = (string)($entry['client_whatsapp'] ?? '') ?: (string)($entry['client_phone'] ?? '');
+    $amount = money((float)($entry['amount'] ?? 0));
+    $due = !empty($entry['due_date']) ? date('d/m/Y', strtotime((string)$entry['due_date'])) : 'sem vencimento';
+    $company = (string)($tenant['display_name'] ?: $tenant['business_name'] ?: 'FirestepCRM');
+    $title = 'Cobrança · '.$company;
+    $desc = ($name !== '' ? $name : 'Cliente').' está com '.$amount.' em aberto referente a '.(string)($entry['description'] ?? 'serviço').'. Vencimento: '.$due.'.';
+    $image = trim((string)($cfg['image'] ?? ''));
+    if ($image === '') {
+        $image = trim((string)($lh['logo'] ?? ''));
+    }
+    $buttons = [];
+    $buttonsApi = [];
+    if ($cfg['pix_key'] !== '') {
+        $buttons[] = ['label' => 'Copiar PIX', 'hint' => 'copy'];
+        $buttonsApi[] = ['id' => $cfg['pix_key'], 'text' => 'Copiar PIX', 'type' => 'COPY'];
+    }
+    $call = uazapi_wa_number((string)($tenant['whatsapp'] ?: $tenant['phone'] ?: ($lh['phone'] ?? '')));
+    if ($call !== '') {
+        $buttons[] = ['label' => 'Ligar', 'hint' => 'call'];
+        $buttonsApi[] = ['id' => '+'.$call, 'text' => 'Ligar', 'type' => 'CALL'];
+    }
+    $site = trim((string)($tenant['website'] ?? ''));
+    if ($site !== '' && preg_match('#^https?://#i', $site)) {
+        $buttons[] = ['label' => 'Site', 'hint' => 'url'];
+        $buttonsApi[] = ['id' => $site, 'text' => 'Site', 'type' => 'URL'];
+    }
+    $buttons[] = ['label' => 'Já paguei', 'hint' => 'reply'];
+    $buttonsApi[] = ['id' => 'ja_paguei', 'text' => 'Já paguei', 'type' => 'REPLY'];
+    return [
+        'title' => $title,
+        'description' => $desc,
+        'image' => $image,
+        'name' => $name !== '' ? $name : '—',
+        'phone' => phone_fmt($phoneRaw),
+        'phone_raw' => $phoneRaw,
+        'amount' => $amount,
+        'buttons' => $buttons,
+        'buttons_api' => $buttonsApi,
+        'can_send' => uazapi_wa_number($phoneRaw) !== '',
+    ];
+}
+

@@ -1321,9 +1321,55 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/financeiro/status') {
             ensure_finance_schema();
-            $res = finance_set_status($tid, (string)post('id'), (string)post('status', ''));
+            $res = finance_set_status($tid, (string)post('id'), (string)post('status', ''), [
+                'payment_method' => post('payment_method'),
+                'pay_doc' => post('pay_doc'),
+                'amount_paid' => post('amount_paid'),
+                'pay_installments' => post('pay_installments'),
+                'pay_installment_amount' => post('pay_installment_amount'),
+            ]);
             flash($res['message'], empty($res['ok']) ? 'error' : 'ok');
             redirect(finance_back(post('back')));
+        }
+        if ($path === '/app/financeiro/cobrar') {
+            ensure_finance_schema();
+            $entry = one(
+                "SELECT f.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp
+                 FROM finance_entries f
+                 LEFT JOIN clients c ON c.id=f.client_id AND c.tenant_id=f.tenant_id
+                 WHERE f.id=? AND f.tenant_id=?",
+                [(string)post('id'), $tid]
+            );
+            if (!$entry || ($entry['kind'] ?? '') !== 'receivable' || ($entry['status'] ?? '') !== 'open') {
+                flash('Conta a receber não encontrada ou já baixada.', 'error');
+                redirect(finance_back(post('back')));
+            }
+            $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]) ?: $tenant;
+            $card = finance_charge_card($fresh, $entry);
+            $sent = uazapi_send_charge($fresh, $card);
+            flash($sent['message'], empty($sent['ok']) ? 'error' : 'ok');
+            redirect(finance_back(post('back')));
+        }
+        if ($path === '/app/configuracoes/uazapi') {
+            uazapi_ensure_schema();
+            $cur = uazapi_config($tenant);
+            $url = rtrim(trim((string)post('uazapi_url', '')), '/');
+            $token = trim((string)post('uazapi_token', ''));
+            if ($token === '') {
+                $token = $cur['token'];
+            }
+            if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+                flash('A URL da UAZAPI deve começar com http:// ou https://.', 'error');
+                redirect('/app/configuracoes?tab=integracoes');
+            }
+            uazapi_save($tid, [
+                'url' => $url,
+                'token' => $token,
+                'pix_key' => trim((string)post('uazapi_pix', '')),
+                'image' => trim((string)post('uazapi_image', '')),
+            ]);
+            flash('Integração UAZAPI atualizada.');
+            redirect('/app/configuracoes?tab=integracoes');
         }
         if ($path === '/app/onboarding') {
             $step = (int)($_POST['step'] ?? 1);
