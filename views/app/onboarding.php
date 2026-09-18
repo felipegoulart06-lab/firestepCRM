@@ -68,7 +68,7 @@ $old = $old ?? [];
           <?php foreach ($services as $s): ?>
             <li>
               <strong><?= e($s['name']) ?></strong>
-              <span><?= (int)($s['duration_minutes'] ?? 60) ?> min · <?= e(money((float)($s['price'] ?? 0))) ?></span>
+              <span><?= (int)($s['duration_minutes'] ?? 60) ?> min · <?= e(service_price_label($s)) ?></span>
             </li>
           <?php endforeach; ?>
         </ul>

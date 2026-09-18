@@ -47,8 +47,8 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
           <td><?= e($s['category'] ?: '—') ?></td>
           <td><?= (int)$s['duration_minutes'] ?> min<?= !empty($s['buffer_minutes']) ? ' + '.(int)$s['buffer_minutes'].' int.' : '' ?></td>
           <td>
-            <strong><?= e(money((float)$s['price'])) ?></strong>
-            <?php if (!empty($s['deposit'])): ?><small style="display:block;color:#667085">Sinal <?= e(money((float)$s['deposit'])) ?></small><?php endif; ?>
+            <strong><?= e(service_price_label($s)) ?></strong>
+            <?php if (service_price_kind($s)==='priced' && !empty($s['deposit'])): ?><small style="display:block;color:#667085">Sinal <?= e(money((float)$s['deposit'])) ?></small><?php endif; ?>
           </td>
           <td><?= e(service_location_label($s['location_type'] ?? null)) ?></td>
           <td><?= $s['status']==='ACTIVE' ? '<span class="badge" style="background:#dcfce7;color:#166534">Ativo</span>' : '<span class="badge" style="background:#e2e8f0;color:#475467">Inativo</span>' ?></td>
@@ -78,7 +78,7 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
         <h2><?= e($s['name']) ?></h2>
         <div class="service-category"><?= e($s['category'] ?: 'Sem categoria') ?></div>
         <p><?= e($s['description'] ?: 'Nenhuma descrição cadastrada.') ?></p>
-        <div class="service-data"><span><?= (int)$s['duration_minutes'] ?> min · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(money((float)$s['price'])) ?></strong></div>
+        <div class="service-data"><span><?= (int)$s['duration_minutes'] ?> min · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(service_price_label($s)) ?></strong></div>
         <div class="row-actions" style="justify-content:flex-start;margin-top:8px">
           <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?>">Editar</a>
           <form method="post" action="/app/servicos/excluir" onsubmit="return confirm('Excluir este serviço? Os agendamentos continuam na agenda, mas ficam sem serviço atribuído.')">
@@ -92,10 +92,17 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
   </div>
 <?php endif; ?>
 <?php if (!empty($_GET['novo']) || !empty($_GET['edit'])):
+  $oldSvc = take_old_form();
   $s = !empty($_GET['edit']) ? one('SELECT * FROM services WHERE id=? AND tenant_id=?', [$_GET['edit'], $tenant['id']]) : [];
+  $s = is_array($s) ? $s : [];
+  $kindNow = service_price_kind($s);
+  $hasPrice = old_fill($oldSvc, 'has_price', ($s && $kindNow !== 'priced') ? '0' : '1');
+  $freeKind = old_fill($oldSvc, 'no_price_kind', in_array($kindNow, ['convenio','cortesia','reuniao'], true) ? $kindNow : '');
+  $priceShow = old_fill($oldSvc, 'price', ($kindNow === 'priced' && isset($s['price'])) ? number_format((float)$s['price'], 2, ',', '.') : '');
+  $depositShow = old_fill($oldSvc, 'deposit', isset($s['deposit']) ? number_format((float)$s['deposit'], 2, ',', '.') : '0,00');
 ?>
 <div class="overlay" role="presentation">
-  <form method="post" action="/app/servicos/salvar" class="card service-form overlay-panel" onclick="event.stopPropagation()">
+  <form method="post" action="/app/servicos/salvar" class="card service-form overlay-panel" data-service-price onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:17px"><?= $s ? 'Editar serviço' : 'Novo serviço' ?></h2>
       <a class="btn btn-ghost" href="/app/servicos">Fechar</a>
@@ -105,29 +112,44 @@ $activeCount = count(array_filter($services, fn($s) => $s['status'] === 'ACTIVE'
 
     <h3 class="form-section">Identificação</h3>
     <label class="label">Nome</label>
-    <input class="input" name="name" value="<?= e($s['name'] ?? '') ?>" required>
+    <input class="input" name="name" value="<?= e(old_fill($oldSvc, 'name', $s['name'] ?? '')) ?>" required>
     <div class="grid g2">
       <div>
         <label class="label">Categoria</label>
-        <input class="input" name="category" value="<?= e($s['category'] ?? '') ?>" placeholder="Avaliação, corte, sessão...">
+        <input class="input" name="category" value="<?= e(old_fill($oldSvc, 'category', $s['category'] ?? '')) ?>" placeholder="Avaliação, corte, sessão...">
       </div>
       <div>
         <label class="label">Status</label>
         <select class="select" name="status">
           <option value="ACTIVE">Ativo</option>
-          <option value="INACTIVE" <?= (($s['status']??'')==='INACTIVE')?'selected':'' ?>>Inativo</option>
+          <option value="INACTIVE" <?= old_fill($oldSvc, 'status', $s['status'] ?? '')==='INACTIVE'?'selected':'' ?>>Inativo</option>
         </select>
       </div>
     </div>
     <label class="label">Descrição</label>
-    <textarea class="textarea" name="description" rows="3"><?= e($s['description'] ?? '') ?></textarea>
+    <textarea class="textarea" name="description" rows="3"><?= e(old_fill($oldSvc, 'description', $s['description'] ?? '')) ?></textarea>
 
     <h3 class="form-section">Agenda e valor</h3>
-    <div class="grid g4">
-      <div><label class="label">Duração (min)</label><input class="input" type="number" min="5" name="duration_minutes" value="<?= e((string)($s['duration_minutes'] ?? 60)) ?>"></div>
-      <div><label class="label">Intervalo (min)</label><input class="input" type="number" min="0" name="buffer_minutes" value="<?= e((string)($s['buffer_minutes'] ?? 0)) ?>"></div>
-      <div><label class="label">Preço</label><input class="input" type="number" step="0.01" min="0" name="price" value="<?= e((string)($s['price'] ?? 0)) ?>"></div>
-      <div><label class="label">Sinal / depósito</label><input class="input" type="number" step="0.01" min="0" name="deposit" value="<?= e((string)($s['deposit'] ?? 0)) ?>"></div>
+    <div class="grid g2">
+      <div><label class="label">Duração (min)</label><input class="input" type="number" min="5" name="duration_minutes" value="<?= e(old_fill($oldSvc, 'duration_minutes', (string)($s['duration_minutes'] ?? 60))) ?>"></div>
+      <div><label class="label">Intervalo (min)</label><input class="input" type="number" min="0" name="buffer_minutes" value="<?= e(old_fill($oldSvc, 'buffer_minutes', (string)($s['buffer_minutes'] ?? 0))) ?>"></div>
+    </div>
+    <p class="label" style="margin-top:10px">Este serviço possui preço?</p>
+    <div class="price-kind-picks">
+      <label class="check-row" style="margin:0"><input type="radio" name="has_price" value="1" <?= $hasPrice!=='0'?'checked':'' ?>> Possui preço</label>
+      <label class="check-row" style="margin:0"><input type="radio" name="has_price" value="0" <?= $hasPrice==='0'?'checked':'' ?>> Não possui preço</label>
+    </div>
+    <div class="grid g2" data-price-paid <?= $hasPrice==='0'?'hidden':'' ?> style="margin-top:10px">
+      <div><label class="label">Preço (R$)</label><input class="input" name="price" inputmode="decimal" autocomplete="off" placeholder="0,01" value="<?= e($priceShow) ?>" <?= $hasPrice!=='0'?'required':'' ?>></div>
+      <div><label class="label">Sinal / depósito</label><input class="input" name="deposit" inputmode="decimal" autocomplete="off" placeholder="0,00" value="<?= e($depositShow) ?>"></div>
+    </div>
+    <div data-price-free <?= $hasPrice==='0'?'':'hidden' ?> style="margin-top:10px">
+      <p class="label">Tipo sem preço</p>
+      <div class="price-kind-picks">
+        <label class="check-row" style="margin:0"><input type="radio" name="no_price_kind" value="convenio" <?= $freeKind==='convenio'?'checked':'' ?>> Convênio</label>
+        <label class="check-row" style="margin:0"><input type="radio" name="no_price_kind" value="cortesia" <?= $freeKind==='cortesia'?'checked':'' ?>> Cortesia</label>
+        <label class="check-row" style="margin:0"><input type="radio" name="no_price_kind" value="reuniao" <?= $freeKind==='reuniao'?'checked':'' ?>> Reunião</label>
+      </div>
     </div>
     <div class="grid g2">
       <div>

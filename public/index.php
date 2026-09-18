@@ -130,6 +130,7 @@ function require_tenant(): array
     $u = require_login();
     if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
     app_home_ensure_schema();
+    services_ensure_schema();
     $t = one('SELECT * FROM tenants WHERE id=?', [$u['tenant_id']]);
     if (!$t || $t['status'] === 'CANCELLED') {
         $_SESSION = [];
@@ -935,11 +936,16 @@ if (str_starts_with($path, '/app')) {
             redirect('/app/fornecedores');
         }
         if ($path === '/app/servicos/salvar') {
+            services_ensure_schema();
             $id = post('id');
+            $pricing = parse_service_pricing();
+            if (empty($pricing['ok'])) {
+                bounce_form($id ? '/app/servicos?edit='.urlencode((string)$id) : '/app/servicos?novo=1', (string)$pricing['message']);
+            }
             $fields = [
                 post('name'), post('category'), post('description'),
                 max(5, (int)post('duration_minutes','60')), max(0, (int)post('buffer_minutes','0')),
-                (float)post('price','0'), (float)post('deposit','0'), post('color','#2563eb'),
+                (float)$pricing['price'], (float)$pricing['deposit'], (string)$pricing['price_kind'], post('color','#2563eb'),
                 post('location_type','presencial'), post('location_note'),
                 isset($_POST['bookable_online']) ? db_bool(true) : db_bool(false), isset($_POST['requires_confirmation']) ? db_bool(true) : db_bool(false),
                 max(1, (int)post('capacity','1')), max(0, (int)post('min_notice_hours','0')),
@@ -947,11 +953,11 @@ if (str_starts_with($path, '/app')) {
                 post('status','ACTIVE'),
             ];
             if ($id) {
-                q('UPDATE services SET name=?,category=?,description=?,duration_minutes=?,buffer_minutes=?,price=?,deposit=?,color=?,location_type=?,location_note=?,bookable_online=?,requires_confirmation=?,capacity=?,min_notice_hours=?,max_advance_days=?,client_instructions=?,internal_notes=?,status=? WHERE id=? AND tenant_id=?',
+                q('UPDATE services SET name=?,category=?,description=?,duration_minutes=?,buffer_minutes=?,price=?,deposit=?,price_kind=?,color=?,location_type=?,location_note=?,bookable_online=?,requires_confirmation=?,capacity=?,min_notice_hours=?,max_advance_days=?,client_instructions=?,internal_notes=?,status=? WHERE id=? AND tenant_id=?',
                     array_merge($fields, [$id, $tid]));
             } else {
                 $id = uid();
-                q('INSERT INTO services(id,tenant_id,name,category,description,duration_minutes,buffer_minutes,price,deposit,color,location_type,location_note,bookable_online,requires_confirmation,capacity,min_notice_hours,max_advance_days,client_instructions,internal_notes,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                q('INSERT INTO services(id,tenant_id,name,category,description,duration_minutes,buffer_minutes,price,deposit,price_kind,color,location_type,location_note,bookable_online,requires_confirmation,capacity,min_notice_hours,max_advance_days,client_instructions,internal_notes,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     array_merge([$id, $tid], $fields, [now()]));
             }
             push_google_sheets($tid, 'service', 'upsert', $id);

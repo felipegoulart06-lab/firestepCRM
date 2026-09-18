@@ -7,7 +7,7 @@ function contract_items(array $tenant, array $filters): array
     $listId = (string)($filters['contract_id'] ?? '');
     $list = $listId !== '' ? clauses_list($tenant, $listId) : null;
     $sql = "SELECT a.starts_at, a.status, c.name client_name,
-            s.name service_name, s.price, s.deposit, s.duration_minutes
+            s.name service_name, s.price, s.deposit, s.duration_minutes, s.price_kind
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
@@ -48,6 +48,7 @@ function contract_items(array $tenant, array $filters): array
             'service' => (string)($r['service_name'] ?: 'Serviço'),
             'duration' => (int)($r['duration_minutes'] ?? 0),
             'price' => $price,
+            'price_kind' => (string)($r['price_kind'] ?? 'priced'),
             'deposit' => $deposit,
             'status' => APPT_STATUS[$r['status']][0] ?? $r['status'],
         ];
@@ -176,7 +177,7 @@ function contract_pdf_pages(array $doc, ?array $lh, ?array $jpeg, ?array $sigJpe
         foreach ($ct['items'] as $it) {
             $line = $it['when'].' · '.$it['client'].' · '.$it['service'];
             if ($it['duration']) $line .= ' · '.$it['duration'].' min';
-            $line .= ' · '.money($it['price']);
+            $line .= ' · '.service_price_label($it);
             if ($it['deposit'] > 0) $line .= ' · taxa/sinal '.money($it['deposit']);
             $blocks[] = ['type' => 'p', 'text' => $line];
         }

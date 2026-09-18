@@ -343,7 +343,7 @@ function report_servicos(array $tenant, array $filters): array
         $table[] = [
             (string)$r['name'],
             (string)((int)($r['duration_minutes'] ?? 0)).' min',
-            number_format((float)($r['price'] ?? 0), 2, ',', '.'),
+            service_price_label($r),
             (string)(int)$r['appt_total'],
             $st,
         ];

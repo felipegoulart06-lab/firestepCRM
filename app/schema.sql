@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS services (
   duration_minutes INTEGER DEFAULT 60,
   buffer_minutes INTEGER DEFAULT 0,
   price REAL DEFAULT 0,
+  price_kind TEXT DEFAULT 'priced',
   deposit REAL DEFAULT 0,
   color TEXT DEFAULT '#2563eb',
   location_type TEXT DEFAULT 'presencial',

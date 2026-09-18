@@ -140,6 +140,7 @@ function db(): PDO
         users_ensure_roles($pdo);
         require_once __DIR__ . '/coverage.php';
         coverage_ensure_schema();
+        services_ensure_schema();
         return $pdo;
     }
 
@@ -363,6 +364,7 @@ function migrate_database(PDO $pdo): void
         'services' => [
             'buffer_minutes' => 'INTEGER DEFAULT 0',
             'deposit' => 'REAL DEFAULT 0',
+            'price_kind' => "TEXT DEFAULT 'priced'",
             'location_type' => "TEXT DEFAULT 'presencial'",
             'location_note' => 'TEXT',
             'bookable_online' => 'INTEGER DEFAULT 1',
@@ -843,6 +845,69 @@ function post(string $k, ?string $d = null): ?string
 function money(float $n): string
 {
     return 'R$ ' . number_format($n, 2, ',', '.');
+}
+
+function services_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (is_pgsql()) {
+            db()->exec("ALTER TABLE services ADD COLUMN IF NOT EXISTS price_kind text NOT NULL DEFAULT 'priced'");
+            return;
+        }
+        $cols = array_column(db()->query('PRAGMA table_info(services)')->fetchAll(), 'name');
+        if (!in_array('price_kind', $cols, true)) {
+            db()->exec("ALTER TABLE services ADD COLUMN price_kind TEXT DEFAULT 'priced'");
+        }
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function service_price_kind(?array $s): string
+{
+    $k = strtolower(trim((string)($s['price_kind'] ?? '')));
+    return in_array($k, ['priced', 'convenio', 'cortesia', 'reuniao'], true) ? $k : 'priced';
+}
+
+function service_price_label(?array $s): string
+{
+    $k = service_price_kind($s);
+    if ($k === 'reuniao') {
+        return 'Reunião';
+    }
+    if ($k === 'convenio') {
+        return 'Convênio';
+    }
+    if ($k === 'cortesia') {
+        return money(0);
+    }
+    return money((float)($s['price'] ?? 0));
+}
+
+function parse_service_pricing(): array
+{
+    $has = (string)post('has_price', '1');
+    if ($has === '0') {
+        $kind = (string)post('no_price_kind', '');
+        if (!in_array($kind, ['convenio', 'cortesia', 'reuniao'], true)) {
+            return ['ok' => false, 'message' => 'Escolha Convênio, Cortesia ou Reunião.'];
+        }
+        return ['ok' => true, 'price_kind' => $kind, 'price' => 0.0, 'deposit' => 0.0];
+    }
+    $price = parse_money_input(post('price'));
+    if ($price < 0.01) {
+        return ['ok' => false, 'message' => 'Informe o preço em reais, a partir de R$ 0,01.'];
+    }
+    $deposit = parse_money_input(post('deposit'));
+    if ($deposit < 0) {
+        $deposit = 0.0;
+    }
+    return ['ok' => true, 'price_kind' => 'priced', 'price' => $price, 'deposit' => $deposit];
 }
 
 function parse_money_input(?string $raw): float

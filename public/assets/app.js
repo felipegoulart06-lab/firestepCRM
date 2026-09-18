@@ -153,6 +153,64 @@ document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
 document.addEventListener('DOMContentLoaded', bindExternalVisit);
 document.addEventListener('DOMContentLoaded', bindHoursGuard);
 document.addEventListener('DOMContentLoaded', bindCommissionBox);
+document.addEventListener('DOMContentLoaded', bindServicePrice);
+function maskReais(el){
+  let d = String(el.value || '').replace(/\D/g,'');
+  if (!d) { el.value = ''; return; }
+  d = d.replace(/^0+(?=\d)/, '');
+  while (d.length < 3) d = '0' + d;
+  const cents = d.slice(-2);
+  let reais = d.slice(0, -2);
+  reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  el.value = reais + ',' + cents;
+}
+function bindServicePrice(){
+  document.querySelectorAll('form[data-service-price]').forEach(function(form){
+    if (form.dataset.priceBound) return;
+    form.dataset.priceBound = '1';
+    const paid = form.querySelector('[data-price-paid]');
+    const free = form.querySelector('[data-price-free]');
+    const price = form.querySelector('[name="price"]');
+    const deposit = form.querySelector('[name="deposit"]');
+    const kinds = form.querySelectorAll('[name="no_price_kind"]');
+    const has = function(){
+      const el = form.querySelector('[name="has_price"]:checked');
+      return el ? el.value !== '0' : true;
+    };
+    const sync = function(){
+      const on = has();
+      if (paid) paid.hidden = !on;
+      if (free) free.hidden = on;
+      if (price) price.required = on;
+      kinds.forEach(function(r){ r.required = !on; });
+    };
+    form.querySelectorAll('[name="has_price"]').forEach(function(r){
+      r.addEventListener('change', sync);
+    });
+    [price, deposit].forEach(function(el){
+      if (!el) return;
+      el.addEventListener('input', function(){ maskReais(el); });
+      if (el.value) maskReais(el);
+    });
+    form.addEventListener('submit', function(e){
+      if (has()) {
+        const n = String(price && price.value || '').replace(/\D/g,'');
+        if (!n || Number(n) < 1) {
+          e.preventDefault();
+          alert('Informe o preço em reais, a partir de R$ 0,01.');
+          price && price.focus();
+        }
+        return;
+      }
+      const picked = form.querySelector('[name="no_price_kind"]:checked');
+      if (!picked) {
+        e.preventDefault();
+        alert('Escolha Convênio, Cortesia ou Reunião.');
+      }
+    });
+    sync();
+  });
+}
 function bindHoursGuard(){
   document.querySelectorAll('form[data-hours-guard], form[data-hours]').forEach(function(form){
     if (form.dataset.hoursBound) return;
