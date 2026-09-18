@@ -25,6 +25,7 @@ expect(!is_user_admin(['role' => 'user_crm']), 'user_crm não é Master');
 expect(agent_route_forbidden('/app/financeiro/lancamentos'), 'agente bloqueia financeiro');
 expect(agent_route_forbidden('/app/agentes'), 'agente não gerencia agentes');
 expect(!agent_route_forbidden('/app/agenda'), 'agente acessa agenda');
+expect(!agent_route_forbidden('/app/anotacoes'), 'agente acessa anotações');
 expect(!agent_route_forbidden('/app/clientes'), 'agente acessa clientes');
 
 if ($fail) {

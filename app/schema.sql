@@ -134,6 +134,17 @@ CREATE TABLE IF NOT EXISTS calendar_blocks (
   all_day INTEGER DEFAULT 0,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS user_notes (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT,
+  note_date TEXT NOT NULL,
+  show_on_agenda INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS custom_fields (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,

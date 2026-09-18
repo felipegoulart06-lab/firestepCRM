@@ -131,6 +131,7 @@ function require_tenant(): array
     if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
     app_home_ensure_schema();
     services_ensure_schema();
+    notes_ensure_schema();
     if (function_exists('appointment_commission_ensure_schema')) {
         appointment_commission_ensure_schema();
     }
@@ -952,6 +953,51 @@ if (str_starts_with($path, '/app')) {
             flash('Serviço excluído.');
             redirect('/app/servicos');
         }
+        if ($path === '/app/anotacoes/salvar') {
+            notes_ensure_schema();
+            $id = (string)post('id', '');
+            $title = trim((string)post('title', ''));
+            $body = trim((string)post('body', ''));
+            $date = (string)post('note_date', date('Y-m-d'));
+            if ($title === '' || $body === '') {
+                bounce_form($id !== '' ? '/app/anotacoes?edit='.urlencode($id) : '/app/anotacoes?novo=1', 'Preencha o título e o texto da anotação.');
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                bounce_form($id !== '' ? '/app/anotacoes?edit='.urlencode($id) : '/app/anotacoes?novo=1', 'Informe a data da ocorrência.');
+            }
+            $title = substr($title, 0, 140);
+            $body = substr($body, 0, 8000);
+            $onAgenda = isset($_POST['show_on_agenda']) ? db_bool(true) : db_bool(false);
+            if ($id !== '') {
+                $ex = one('SELECT * FROM user_notes WHERE id=? AND tenant_id=?', [$id, $tid]);
+                if (!$ex || !note_can_manage($user, $ex)) {
+                    flash('Anotação não encontrada.', 'error');
+                    redirect('/app/anotacoes');
+                }
+                q('UPDATE user_notes SET title=?, body=?, note_date=?, show_on_agenda=?, updated_at=? WHERE id=? AND tenant_id=?', [
+                    $title, $body, $date, $onAgenda, now(), $id, $tid,
+                ]);
+            } else {
+                $id = uid();
+                q('INSERT INTO user_notes(id,tenant_id,user_id,title,body,note_date,show_on_agenda,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)', [
+                    $id, $tid, $user['id'], $title, $body, $date, $onAgenda, now(), now(),
+                ]);
+            }
+            flash('Anotação salva.');
+            redirect('/app/anotacoes');
+        }
+        if ($path === '/app/anotacoes/excluir') {
+            notes_ensure_schema();
+            $delId = (string)post('id', '');
+            $note = one('SELECT * FROM user_notes WHERE id=? AND tenant_id=?', [$delId, $tid]);
+            if (!$note || !note_can_manage($user, $note)) {
+                flash('Anotação não encontrada.', 'error');
+                redirect('/app/anotacoes');
+            }
+            q('DELETE FROM user_notes WHERE id=? AND tenant_id=?', [$delId, $tid]);
+            flash('Anotação excluída.');
+            redirect('/app/anotacoes');
+        }
         if ($path === '/app/solicitacoes/converter') {
             $req = one('SELECT * FROM requests WHERE id=? AND tenant_id=?', [post('id'), $tid]);
             if (!$req) { flash('Solicitação não encontrada.'); redirect('/app/solicitacoes'); }
@@ -1456,12 +1502,49 @@ if (str_starts_with($path, '/app')) {
             $end = date('Y-m-d H:i:s', strtotime($start) + max(30, (int)($r['duration_minutes'] ?? 60)) * 60);
             $events[] = ['id'=>$r['id'],'kind'=>'request','title'=>$r['name'],'subtitle'=>$r['service_name'] ?: 'Solicitação','status'=>'REQUEST','source'=>$r['source'],'start'=>$start,'end'=>$end];
         }
+        foreach (notes_agenda_events($tenant['id'], $from, $to) as $noteEv) {
+            $events[] = $noteEv;
+        }
         layout_start('app', compact('user','tenant','path'));
         view('app/agenda', [
             'tenant'=>$tenant,'events'=>$events,
             'clients'=>all('SELECT id,name,phone FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
             'services'=>all('SELECT * FROM services WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'],'ACTIVE']),
             'agents'=>all("SELECT id, name FROM users WHERE tenant_id=? AND role='user_agent' AND ".sql_true('active')." ORDER BY name", [$tenant['id']]),
+        ]);
+        layout_end('app');
+        exit;
+    }
+
+    if ($path === '/app/anotacoes') {
+        notes_ensure_schema();
+        $items = all(
+            'SELECT n.*, u.name author_name FROM user_notes n LEFT JOIN users u ON u.id=n.user_id WHERE n.tenant_id=? ORDER BY n.note_date DESC, n.created_at DESC',
+            [$tenant['id']]
+        );
+        $edit = null;
+        $viewing = null;
+        if (!empty($_GET['edit'])) {
+            $edit = one('SELECT n.*, u.name author_name FROM user_notes n LEFT JOIN users u ON u.id=n.user_id WHERE n.id=? AND n.tenant_id=?', [$_GET['edit'], $tenant['id']]);
+            if (!$edit || !note_can_manage($user, $edit)) {
+                flash('Anotação não encontrada.', 'error');
+                $edit = null;
+            }
+        }
+        if (!$edit && !empty($_GET['ver'])) {
+            $viewing = one('SELECT n.*, u.name author_name FROM user_notes n LEFT JOIN users u ON u.id=n.user_id WHERE n.id=? AND n.tenant_id=?', [$_GET['ver'], $tenant['id']]);
+            if (!$viewing) {
+                flash('Anotação não encontrada.', 'error');
+            }
+        }
+        layout_start('app', compact('user','tenant','path'));
+        view('app/anotacoes', [
+            'user' => $user,
+            'items' => $items,
+            'edit' => $edit,
+            'viewing' => $viewing,
+            'creating' => !$edit && !$viewing && !empty($_GET['novo']),
+            'old' => take_old_form(),
         ]);
         layout_end('app');
         exit;

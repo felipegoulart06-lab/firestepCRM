@@ -12,6 +12,7 @@ if (!function_exists('ev_color')) {
 function ev_color($kind, $st) {
     if ($kind === 'block') return ['#f3e8ff','#7c3aed','#6b21a8'];
     if ($kind === 'request') return ['#dbeafe','#60a5fa','#1d4ed8'];
+    if ($kind === 'note') return ['#fff7ed','#ea580c','#9a3412'];
     return match($st) {
         'WAITING' => ['#fef9c3','#ca8a04','#854d0e'],
         'CONFIRMED' => ['#dcfce7','#16a34a','#166534'],
@@ -51,7 +52,7 @@ foreach ($days ?? [] as $d) {
 }
 ?>
 <div class="page-head" style="margin-bottom:12px">
-  <div><h1>Agenda</h1><p>Visualize, crie e gerencie todos os horários.</p></div>
+  <div><h1>Agenda</h1><p>Horários, solicitações e anotações salvas no calendário.</p></div>
   <a class="btn btn-primary" href="/app/agenda?new=1&date=<?= e($cursor) ?>&start=09:00"><?= icon('plus') ?> Novo agendamento</a>
 </div>
 <div class="agenda-toolbar">
@@ -84,9 +85,9 @@ foreach ($days ?? [] as $d) {
         <div class="slot" data-density="<?= (int)$level ?>" data-n="<?= (int)$slotN ?>">
           <?php foreach ($cell as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
             <a class="ev <?= $ev['kind']==='request'?'ev-request':'' ?>" style="background:<?= $c[0] ?>;border-left:3px solid <?= $c[1] ?>;color:<?= $c[2] ?>"
-               href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id']) ?>">
+               href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : ($ev['kind']==='note' ? '/app/anotacoes?ver='.$ev['id'] : '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id'])) ?>">
               <b><?= e(substr($ev['start'],11,5)) ?> · <?= e($ev['title']) ?></b>
-              <div><?= $ev['kind']==='request'?'Solicitação · ':'' ?><?= e($ev['subtitle'] ?? ($ev['kind']==='block'?'Bloqueio':'')) ?><?= !empty($ev['source'])?' · '.e($ev['source']):'' ?></div>
+              <div><?= $ev['kind']==='request'?'Solicitação · ':($ev['kind']==='note'?'Anotação · ':'') ?><?= e($ev['subtitle'] ?? ($ev['kind']==='block'?'Bloqueio':'')) ?><?= !empty($ev['source']) && $ev['kind']!=='note'?' · '.e($ev['source']):'' ?></div>
             </a>
           <?php endforeach; ?>
           <?php if (!$cell): ?>
@@ -116,7 +117,7 @@ foreach ($days ?? [] as $d) {
     <div class="month-cell" data-density="<?= (int)$level ?>" data-n="<?= (int)$dayN ?>">
       <a href="/app/agenda?new=1&date=<?= $ymd ?>" style="display:block"><b style="font-size:12px"><?= $day ?></b></a>
       <?php foreach (array_slice($dayEv, 0, $show) as $ev): $c = ev_color($ev['kind'], $ev['status']??'');
-        $chipHref = $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : '/app/agenda?view=month&date='.$ymd.'&ver='.$ev['id']);
+        $chipHref = $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : ($ev['kind']==='note' ? '/app/anotacoes?ver='.$ev['id'] : '/app/agenda?view=month&date='.$ymd.'&ver='.$ev['id']));
       ?>
         <a class="ev ev-month" href="<?= e($chipHref) ?>" style="background:<?= $c[0] ?>;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
       <?php endforeach; ?>
