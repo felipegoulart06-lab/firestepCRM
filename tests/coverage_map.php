@@ -67,6 +67,7 @@ $kinds = array_column($pins, 'kind');
 expect(in_array('supplier', $kinds, true), 'pin de fornecedor da empresa A');
 expect(in_array('client', $kinds, true), 'pin de cliente CNPJ');
 expect(in_array('visit', $kinds, true), 'pin de atendimento externo');
+expect(isset($pins[0]['lat'], $pins[0]['lng']), 'pins têm latitude e longitude');
 expect(count(array_filter($pins, fn($p) => $p['kind']==='visit')) === 2, 'dois endereços viram dois pins');
 expect(!in_array('Fornecedor B', array_column($pins, 'label'), true), 'fornecedor de outro tenant não aparece');
 
@@ -83,7 +84,8 @@ expect(count(array_filter($pins2, fn($p) => $p['kind']==='visit')) === 2, 'agend
 
 expect(agent_route_forbidden('/app/abrangencia'), 'agente não acessa Abrangência');
 $view = file_get_contents(dirname(__DIR__).'/views/app/abrangencia.php');
-expect(str_contains($view, 'Legenda do mapa') && str_contains($view, 'cv-map-box'), 'página tem mapa e legenda');
+expect(str_contains($view, 'Legenda do mapa') && str_contains($view, 'id="map"'), 'página tem mapa e legenda');
+expect(str_contains($view, 'coverage-pins') && str_contains($view, 'L.map') && str_contains($view, 'tile.openstreetmap.org'), 'pins reais no Leaflet/OSM');
 $modal = file_get_contents(dirname(__DIR__).'/views/app/modal_appointment.php');
 expect(str_contains($modal, 'external_visit') && str_contains($modal, 'visit_addresses[]'), 'formulário de agendamento tem atendimento externo');
 

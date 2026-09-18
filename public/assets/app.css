@@ -462,9 +462,13 @@ body.nav-open .sidebar-scrim{display:block}
 @media(max-width:560px){.g4{grid-template-columns:1fr 1fr}.stat{padding:14px}.stat b,.stat-value{font-size:24px}.stat-icon{display:none}.top{gap:7px}.avatar{display:none}.page-head h1,h1{font-size:22px}.btn{padding:6px 8px}.content{padding-left:10px;padding-right:10px}.detail-grid{grid-template-columns:1fr}.detail-item{border-right:0!important}.agenda-date{order:4;width:100%;text-align:left;padding:3px 0}.service-toolbar{grid-template-columns:1fr}.service-toolbar .btn{width:100%}.view-switch{grid-column:auto}.service-summary{gap:10px;justify-content:space-between}.service-summary span{display:flex;flex-direction:column}.service-grid{grid-template-columns:1fr}.settings-kv{grid-template-columns:1fr}.settings-kv>div:nth-child(odd){border-right:0}.hours-head{display:none}.hours-row{grid-template-columns:1fr 1fr;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line-soft)}.hours-row b{grid-column:1/-1}.onboard-steps{grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}.onboard-steps li{font-size:10px}.onboard-hours-head{display:none}.onboard-hours-row{grid-template-columns:1fr 1fr;padding-bottom:10px;border-bottom:1px solid var(--line-soft)}.onboard-hours-row b,.onboard-closed{grid-column:1/-1}.onboard-card{padding:20px 16px}.onboard-foot{flex-wrap:wrap}.onboard-foot .btn-primary,.onboard-foot .btn-ghost{width:100%;flex:1 1 100%}.cv-map-box,.cv-land{min-height:420px;height:420px}.cv-pin em{display:none}}
 
 .cv-shell{display:grid;gap:14px}
-.cv-map-box{position:relative;min-height:min(72vh,760px);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#dbeafe;box-shadow:0 10px 28px rgba(16,24,40,.08)}
+.cv-map-box{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#dbeafe;box-shadow:0 10px 28px rgba(16,24,40,.08)}
+#map{width:100%;height:min(72vh,640px);min-height:450px;border-radius:12px;overflow:hidden}
+.cv-map-box .leaflet-container{width:100%;height:100%;font:inherit}
+.leaflet-marker-icon.cv-pin{background:transparent;border:0}
 .cv-land{display:block;width:100%;height:min(72vh,760px)}
-.cv-pin{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:default;text-align:center}
+.cv-pin{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer;text-align:center}
+.leaflet-marker-icon.cv-pin{position:relative;transform:none}
 .cv-pin i{display:block;width:16px;height:16px;margin:0 auto;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 4px 10px rgba(16,24,40,.28)}
 .cv-pin.cv-supplier i{background:#d97706}
 .cv-pin.cv-client i{background:#2563eb}

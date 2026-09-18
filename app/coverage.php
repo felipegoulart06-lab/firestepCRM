@@ -370,32 +370,40 @@ function coverage_pins(string $tenantId): array
 {
     coverage_ensure_schema();
     $pins = [];
-    foreach (all('SELECT id,name,cnpj,document_kind,address,city,state,lat,lng FROM suppliers WHERE tenant_id=?', [$tenantId]) as $row) {
+    foreach (all('SELECT id,name,cnpj,document_kind,address,city,state,lat,lng,phone FROM suppliers WHERE tenant_id=?', [$tenantId]) as $row) {
         $kind = strtolower((string)($row['document_kind'] ?? '')) ?: br_doc_kind_from_value($row['cnpj'] ?? '');
         if ($kind !== 'cnpj' || $row['lat'] === null || $row['lng'] === null) {
             continue;
         }
-        $xy = br_map_xy((float)$row['lat'], (float)$row['lng']);
+        $addr = trim($row['address'].' '.$row['city'].' '.$row['state']);
         $pins[] = [
             'kind' => 'supplier',
+            'name' => (string)$row['name'],
             'label' => $row['name'],
-            'detail' => format_br_document($row['cnpj'], 'cnpj').' · '.trim($row['address'].' '.$row['city'].' '.$row['state']),
-            'x' => $xy[0], 'y' => $xy[1],
+            'phone' => phone_fmt($row['phone'] ?? null),
+            'info' => trim(format_br_document($row['cnpj'], 'cnpj').($addr !== '' ? ' · '.$addr : '')),
+            'detail' => format_br_document($row['cnpj'], 'cnpj').' · '.$addr,
+            'lat' => (float)$row['lat'],
+            'lng' => (float)$row['lng'],
         ];
     }
-    foreach (all('SELECT id,name,cpf,address,city,state,lat,lng FROM clients WHERE tenant_id=?', [$tenantId]) as $row) {
+    foreach (all('SELECT id,name,cpf,address,city,state,lat,lng,phone,whatsapp FROM clients WHERE tenant_id=?', [$tenantId]) as $row) {
         if (br_doc_kind_from_value($row['cpf'] ?? '') !== 'cnpj' || $row['lat'] === null || $row['lng'] === null) {
             continue;
         }
-        $xy = br_map_xy((float)$row['lat'], (float)$row['lng']);
+        $addr = trim($row['address'].' '.$row['city'].' '.$row['state']);
         $pins[] = [
             'kind' => 'client',
+            'name' => (string)$row['name'],
             'label' => $row['name'],
-            'detail' => format_br_document($row['cpf'], 'cnpj').' · '.trim($row['address'].' '.$row['city'].' '.$row['state']),
-            'x' => $xy[0], 'y' => $xy[1],
+            'phone' => phone_fmt($row['phone'] ?: $row['whatsapp']),
+            'info' => trim(format_br_document($row['cpf'], 'cnpj').($addr !== '' ? ' · '.$addr : '')),
+            'detail' => format_br_document($row['cpf'], 'cnpj').' · '.$addr,
+            'lat' => (float)$row['lat'],
+            'lng' => (float)$row['lng'],
         ];
     }
-    foreach (all("SELECT s.id,s.address,s.lat,s.lng,c.name client_name,a.starts_at
+    foreach (all("SELECT s.id,s.address,s.lat,s.lng,c.name client_name,c.phone client_phone,c.whatsapp client_whatsapp,a.starts_at
         FROM appointment_stops s
         JOIN appointments a ON a.id=s.appointment_id AND a.tenant_id=s.tenant_id
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
@@ -403,12 +411,16 @@ function coverage_pins(string $tenantId): array
         if ($row['lat'] === null || $row['lng'] === null) {
             continue;
         }
-        $xy = br_map_xy((float)$row['lat'], (float)$row['lng']);
+        $when = date('d/m/Y H:i', strtotime($row['starts_at']));
         $pins[] = [
             'kind' => 'visit',
+            'name' => 'Agendamento · '.$row['client_name'],
             'label' => 'Agendamento · '.$row['client_name'],
-            'detail' => date('d/m/Y H:i', strtotime($row['starts_at'])).' · '.$row['address'],
-            'x' => $xy[0], 'y' => $xy[1],
+            'phone' => phone_fmt($row['client_phone'] ?: $row['client_whatsapp']),
+            'info' => $when.' · '.$row['address'],
+            'detail' => $when.' · '.$row['address'],
+            'lat' => (float)$row['lat'],
+            'lng' => (float)$row['lng'],
         ];
     }
     return $pins;

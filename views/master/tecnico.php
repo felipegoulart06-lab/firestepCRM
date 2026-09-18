@@ -2,13 +2,9 @@
 $platform = platform_settings();
 $ready = google_oauth_ready();
 $editGoogle = ($_GET['edit'] ?? '') === 'google';
-$editLeaflet = ($_GET['edit'] ?? '') === 'leaflet';
 $clientId = (string)($platform['google_client_id'] ?? '');
 $hasSecret = trim((string)($platform['google_client_secret'] ?? '')) !== '';
 $fromEnvGoogle = (bool)(env_str('GOOGLE_CLIENT_ID') || env_str('GOOGLE_CLIENT_SECRET'));
-$hasLeaflet = platform_leaflet_has_token();
-$fromEnvLeaflet = geocoder_env_token() !== '';
-$leafletReady = geocoder_token() !== '';
 $maskId = static function (string $id): string {
     $id = trim($id);
     if ($id === '') {
@@ -102,92 +98,6 @@ $maskId = static function (string $id): string {
         }
         document.getElementById('google-creds-form')?.addEventListener('submit', (e)=>{
           if (!confirm('Salvar só o que você confirmou nesta tela. O secret atual não muda se a substituição não estiver marcada. Continuar?')) {
-            e.preventDefault();
-          }
-        });
-      })();
-    </script>
-  <?php endif; ?>
-</div>
-
-<div class="card settings-panel" style="max-width:680px;margin-top:16px">
-  <div class="settings-panel-head">
-    <div>
-      <h2>Token do geocoder (Leaflet / MapTiler)</h2>
-      <p>Usado só no servidor para buscar endereços da Abrangência. O navegador nunca recebe esta chave.</p>
-    </div>
-    <?php if ($leafletReady): ?>
-      <span class="badge" style="background:#dcfce7;color:#166534">Geocoder ativo</span>
-    <?php else: ?>
-      <span class="badge" style="background:#fffaeb;color:#b54708">Nominatim (sem chave)</span>
-    <?php endif; ?>
-  </div>
-
-  <?php if (!$editLeaflet): ?>
-    <dl class="settings-kv">
-      <div><dt>Token</dt><dd><?= $hasLeaflet ? 'Cadastrado · cifrado e oculto' : 'Não cadastrado' ?></dd></div>
-    </dl>
-    <?php if ($fromEnvLeaflet): ?>
-      <p class="settings-hint">Há <code>LEAFLET_TOKEN</code> (ou equivalente) no servidor. Essa variável prevalece sobre o token salvo aqui.</p>
-    <?php endif; ?>
-    <p class="settings-hint">O valor nunca é mostrado de novo. Cole apenas no campo senha ao cadastrar ou substituir.</p>
-    <div class="settings-actions">
-      <a class="btn btn-primary" href="/master/configuracoes/tecnico?edit=leaflet"><?= $hasLeaflet ? 'Substituir token' : 'Cadastrar token' ?></a>
-    </div>
-  <?php else: ?>
-    <form method="post" action="/master/configuracoes/leaflet" id="leaflet-token-form" autocomplete="off">
-      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-      <label class="label">Token</label>
-      <?php if ($hasLeaflet): ?>
-        <p class="settings-hint" style="margin-bottom:8px">Já existe um token cifrado. Ele <b>não</b> será alterado a menos que você marque a substituição e cole o valor novo. O campo abaixo fica vazio de propósito.</p>
-        <label class="check-row">
-          <input type="checkbox" name="replace_token" value="1" id="replace-leaflet">
-          Quero substituir o token atual
-        </label>
-        <input class="input" type="password" name="leaflet_token" id="leaflet-token" autocomplete="new-password" placeholder="Cole o novo token" disabled style="margin-top:8px" spellcheck="false">
-        <label class="check-row" style="margin-top:12px">
-          <input type="checkbox" name="clear_token" value="1" id="clear-leaflet">
-          Remover o token salvo
-        </label>
-        <label class="check-row" id="confirm-clear-wrap" style="display:none;margin-top:8px">
-          <input type="checkbox" name="confirm_clear" value="1">
-          Confirmo a remoção. Os mapas voltam ao Nominatim.
-        </label>
-      <?php else: ?>
-        <input class="input" type="password" name="leaflet_token" autocomplete="new-password" placeholder="Cole o token do MapTiler / geocoder" spellcheck="false">
-      <?php endif; ?>
-      <ol class="muted" style="padding-left:18px">
-        <li>O mapa Leaflet/OSM não exige chave; o token vale para o geocoder (MapTiler, Mapbox ou LocationIQ).</li>
-        <li>Guarde o valor só no provedor. Depois de salvar, a Firestep não mostra o token de novo.</li>
-        <li>A busca de endereços passa pelo servidor (<code>/app/geo/search</code>) — a chave não vai para o painel do cliente.</li>
-      </ol>
-      <div class="settings-actions">
-        <a class="btn btn-ghost" href="/master/configuracoes/tecnico">Cancelar</a>
-        <button class="btn btn-primary">Salvar token</button>
-      </div>
-    </form>
-    <script>
-      (function(){
-        const box = document.getElementById('replace-leaflet');
-        const field = document.getElementById('leaflet-token');
-        const clear = document.getElementById('clear-leaflet');
-        const confirmWrap = document.getElementById('confirm-clear-wrap');
-        if (box && field) {
-          box.addEventListener('change', ()=>{
-            field.disabled = !box.checked;
-            if (!box.checked) field.value = '';
-          });
-        }
-        if (clear && confirmWrap) {
-          clear.addEventListener('change', ()=>{
-            confirmWrap.style.display = clear.checked ? 'flex' : 'none';
-            if (box) box.disabled = clear.checked;
-            if (field && clear.checked) { field.disabled = true; field.value = ''; }
-            else if (field && box) field.disabled = !box.checked;
-          });
-        }
-        document.getElementById('leaflet-token-form')?.addEventListener('submit', (e)=>{
-          if (!confirm('O token fica cifrado no banco e não será exibido outra vez. Continuar?')) {
             e.preventDefault();
           }
         });

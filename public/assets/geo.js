@@ -85,8 +85,8 @@
       loadLeaflet().then(function (L) {
         if (!map) {
           map = L.map(mapEl).setView([lat, lng], 16);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
           }).addTo(map);
           marker = L.marker([lat, lng], { draggable: true }).addTo(map);
           marker.on('dragend', function () {
