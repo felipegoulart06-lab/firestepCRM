@@ -1582,6 +1582,11 @@ if (str_starts_with($path, '/app')) {
         $sources = all("SELECT DISTINCT source FROM appointments WHERE tenant_id=? AND COALESCE(source,'')!='' ORDER BY source", [$tenant['id']]);
         $edit = !empty($_GET['edit']) ? appointment_detail($tenant['id'], (string)$_GET['edit']) : null;
         $viewing = !$edit && !empty($_GET['ver']) ? appointment_detail($tenant['id'], (string)$_GET['ver']) : null;
+        if (!empty($_GET['edit']) && !$edit) {
+            flash('Agendamento não encontrado.', 'error');
+        } elseif (!empty($_GET['ver']) && !$viewing) {
+            flash('Agendamento não encontrado.', 'error');
+        }
         $creating = !$edit && !$viewing && !empty($_GET['new']);
         $forcedClient = null;
         if ($creating && !empty($_GET['client_id'])) {
@@ -1589,6 +1594,8 @@ if (str_starts_with($path, '/app')) {
         }
         layout_start('app', compact('user','tenant','path'));
         view('app/agendamentos', [
+            'user'=>$user,
+            'tenant'=>$tenant,
             'items'=>$items, 'sources'=>$sources, 'statusFilter'=>$st, 'sourceFilter'=>$src, 'search'=>trim($_GET['q'] ?? ''),
             'edit'=>$edit,
             'viewing'=>$viewing,

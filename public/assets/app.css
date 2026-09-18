@@ -77,6 +77,8 @@ button{color:inherit}
 .table-wrap{overflow:auto;width:100%;position:relative;z-index:1}
 .table-wrap .row-actions{position:relative;z-index:2}
 .table-wrap .row-actions .btn{position:relative;z-index:2;pointer-events:auto}
+table.data td.row-actions-cell{position:sticky;right:0;background:#fff;z-index:3;box-shadow:-8px 0 10px -8px rgba(16,24,40,.12)}
+.appointment-panel{position:relative;z-index:4;pointer-events:auto}
 table.data{width:100%;min-width:880px;border-collapse:separate;border-spacing:0;font-size:13px}
 table.data th{text-align:left;color:#667085;font-size:11px;text-transform:uppercase;letter-spacing:.035em;padding:9px 12px;background:#fcfcfd;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap}
 table.data td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}

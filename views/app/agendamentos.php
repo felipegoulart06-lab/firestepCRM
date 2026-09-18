@@ -12,6 +12,23 @@ $total = count($items);
   </div>
   <a class="btn btn-primary" href="/app/agendamentos?new=1"><?= icon('plus') ?> Novo agendamento</a>
 </div>
+<?php if (!empty($edit) || !empty($viewing) || !empty($creating)):
+  $listQs = http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null]));
+  $modalClose = '/app/agendamentos'.($listQs !== '' ? '?'.$listQs : '');
+  $forcedClient = $forcedClient ?? null;
+  if ($forcedClient && ($_GET['from'] ?? '') === 'clientes') {
+      $modalClose = '/app/clientes/ver?id='.$forcedClient['id'];
+  }
+  $hideCalendarSwitch = true;
+  $modalInline = true;
+  $viewOnly = !empty($viewing);
+  $allowEditFromDetails = $viewOnly;
+  if ($viewOnly) {
+      $edit = $viewing;
+      $editHref = '/app/agendamentos?'.http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$viewing['id']]));
+  }
+  include VIEWS . '/app/modal_appointment.php';
+endif; ?>
 
 <form method="get" action="/app/agendamentos" class="card service-toolbar">
   <input class="input" name="q" value="<?= e($search) ?>" placeholder="Buscar cliente, telefone, e-mail, serviço ou origem...">
@@ -76,19 +93,3 @@ $total = count($items);
 </table>
 <?php endif; ?>
 </div>
-<?php if (!empty($edit) || !empty($viewing) || !empty($creating)):
-  $listQs = http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null]));
-  $modalClose = '/app/agendamentos'.($listQs !== '' ? '?'.$listQs : '');
-  $forcedClient = $forcedClient ?? null;
-  if ($forcedClient && ($_GET['from'] ?? '') === 'clientes') {
-      $modalClose = '/app/clientes/ver?id='.$forcedClient['id'];
-  }
-  $hideCalendarSwitch = true;
-  $viewOnly = !empty($viewing);
-  $allowEditFromDetails = $viewOnly;
-  if ($viewOnly) {
-      $edit = $viewing;
-      $editHref = '/app/agendamentos?'.http_build_query(array_filter(['q'=>$search ?: null, 's'=>$statusFilter !== 'ALL' ? $statusFilter : null, 'origem'=>$sourceFilter !== 'ALL' ? $sourceFilter : null, 'edit'=>$viewing['id']]));
-  }
-  include VIEWS . '/app/modal_appointment.php';
-endif; ?>

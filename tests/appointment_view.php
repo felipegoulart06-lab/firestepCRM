@@ -29,6 +29,10 @@ if (!str_contains($modal, '$allowEditFromDetails')) {
     echo "FAIL Modal não respeita permissão de Editar no overlay\n";
     $fail++;
 }
+if (!str_contains($modal, '$modalInline')) {
+    echo "FAIL Modal não pode abrir na lista sem overlay\n";
+    $fail++;
+}
 if (!str_contains($modal, 'name="allow_edit"')) {
     echo "FAIL Formulário de edição sem allow_edit\n";
     $fail++;
@@ -49,7 +53,11 @@ if (!str_contains($agendamentos, '$allowEditFromDetails = $viewOnly')) {
     echo "FAIL Lista Agendamentos não oferece Editar a partir de Ver\n";
     $fail++;
 }
-if (!str_contains($agendamentos, '?ver=') || !str_contains($agendamentos, '?edit=')) {
+if (!str_contains($index, "'tenant'=>\$tenant") || !str_contains($index, "view('app/agendamentos'")) {
+    echo "FAIL Lista Agendamentos não passa o tenant ao abrir detalhes\n";
+    $fail++;
+}
+if (!str_contains($agendamentos, '$modalInline = true') || !str_contains($agendamentos, '?ver=') || !str_contains($agendamentos, '?edit=')) {
     echo "FAIL Lista Agendamentos com links de Ver/Editar quebrados\n";
     $fail++;
 }

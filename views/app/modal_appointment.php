@@ -10,15 +10,20 @@ $services = $services ?? [];
 $viewOnly = !empty($viewOnly);
 $showEditForm = $edit && !$viewOnly;
 $allowEditFromDetails = !empty($allowEditFromDetails);
+$tenant = is_array($tenant ?? null) ? $tenant : [];
+$modalInline = !empty($modalInline);
 $formHours = function_exists('tenant_hours_map') ? tenant_hours_map($tenant) : json_arr($tenant['business_hours'] ?? '', default_hours());
 if ($formHours === []) {
     $formHours = default_hours();
 }
 $formFlash = (string)($GLOBALS['_last_flash'] ?? '');
 $formFlashKind = (string)($GLOBALS['_last_flash_kind'] ?? '');
+$panelMax = $modalInline ? '100%' : ($edit ? '720' : '500').'px';
 ?>
+<?php if (!$modalInline): ?>
         <div class="overlay" role="presentation">
-  <div class="card overlay-panel" style="max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
+<?php endif; ?>
+  <div class="card <?= $modalInline ? 'appointment-panel' : 'overlay-panel' ?>" id="appointment-panel" style="max-width:<?= e($panelMax) ?>;padding:18px<?= $modalInline ? ';margin-bottom:16px' : '' ?>" <?= $modalInline ? '' : 'onclick="event.stopPropagation()"' ?>>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:17px"><?php
         if ($viewOnly) echo 'Detalhes da reserva';
@@ -278,7 +283,9 @@ $formFlashKind = (string)($GLOBALS['_last_flash_kind'] ?? '');
       </form>
     <?php endif; ?>
   </div>
+<?php if (!$modalInline): ?>
 </div>
+<?php endif; ?>
 <?php if (!$edit && empty($forcedClient) && empty($mode)): ?>
 <script>
 function syncClientMode(form){
