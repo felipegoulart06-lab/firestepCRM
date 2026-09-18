@@ -49,6 +49,13 @@ expect($cross === null, 'empresa A não vê agente de B');
 $admin = tenant_admin('ten-a');
 expect($admin && $admin['id'] === 'crm-a', 'tenant_admin aponta para user_crm');
 
+$view = file_get_contents(dirname(__DIR__) . '/views/app/agentes.php');
+$index = file_get_contents(dirname(__DIR__) . '/public/index.php');
+expect(str_contains($view, 'Ver detalhes') && str_contains($view, 'Detalhes do agente'), 'Agentes tem Ver detalhes só leitura');
+expect(str_contains($view, 'Senha de primeiro acesso') && !str_contains($view, 'Nova senha'), 'senha só no cadastro, não em Editar');
+expect(str_contains($index, "GET['ver']") && str_contains($index, "GET['edit']"), 'rotas ver/editar de agente');
+expect(!str_contains($index, "must_change_password='.sql_lit_bool(true).', active=? WHERE id=?"), 'editar agente não grava senha');
+
 $master = one('SELECT role FROM users WHERE '.sql_is_platform_admin().' LIMIT 1');
 expect($master && $master['role'] === 'user_admin', 'seed Master virou user_admin');
 

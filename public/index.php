@@ -780,7 +780,7 @@ if (str_starts_with($path, '/app')) {
             $username = strtolower(trim((string)post('username', '')));
             $phone = trim((string)post('phone', ''));
             $password = (string)post('password', '');
-            $back = $id ? '/app/agentes?id='.urlencode($id) : '/app/agentes?novo=1';
+            $back = $id ? '/app/agentes?edit='.urlencode($id) : '/app/agentes?novo=1';
             if ($name === '' || $email === '' || $username === '') {
                 bounce_form($back, 'Informe nome, e-mail e usuário do agente.');
             }
@@ -804,20 +804,15 @@ if (str_starts_with($path, '/app')) {
                 }
             }
             if (!$existing && $password === '') {
-                bounce_form($back, 'Defina a senha inicial do agente.');
+                bounce_form($back, 'Defina a senha de primeiro acesso do agente.');
             }
-            if ($password !== '' && !password_is_strong($password)) {
+            if (!$existing && $password !== '' && !password_is_strong($password)) {
                 bounce_form($back, 'A senha precisa ter pelo menos 10 caracteres, com letra e número.');
             }
             $active = isset($_POST['active']) ? db_bool(true) : db_bool(false);
             if ($existing) {
-                if ($password !== '') {
-                    q('UPDATE users SET name=?, email=?, username=?, phone=?, password_hash=?, document_kind=?, cpf=?, must_change_password='.sql_lit_bool(true).', active=? WHERE id=? AND tenant_id=? AND role=?',
-                        [$name, $email, $username, $phone !== '' ? $phone : null, password_hash($password, PASSWORD_DEFAULT), $kind !== '' ? $kind : null, $document, $active, $id, $tid, 'user_agent']);
-                } else {
-                    q('UPDATE users SET name=?, email=?, username=?, phone=?, document_kind=?, cpf=?, active=? WHERE id=? AND tenant_id=? AND role=?',
-                        [$name, $email, $username, $phone !== '' ? $phone : null, $kind !== '' ? $kind : null, $document, $active, $id, $tid, 'user_agent']);
-                }
+                q('UPDATE users SET name=?, email=?, username=?, phone=?, document_kind=?, cpf=?, active=? WHERE id=? AND tenant_id=? AND role=?',
+                    [$name, $email, $username, $phone !== '' ? $phone : null, $kind !== '' ? $kind : null, $document, $active, $id, $tid, 'user_agent']);
                 audit($tid, $user['id'], 'agent.updated', 'user', $id);
                 flash('Agente atualizado.');
             } else {
@@ -828,10 +823,10 @@ if (str_starts_with($path, '/app')) {
                     $phone !== '' ? $phone : null, $kind !== '' ? $kind : null, $document, $active, now(),
                 ]);
                 audit($tid, $user['id'], 'agent.created', 'user', $id);
-                flash('Agente criado. Ele entra no mesmo login do CRM, com o usuário informado.');
+                flash('Agente criado. Ele entra no mesmo login do CRM, com o usuário e a senha de primeiro acesso.');
             }
             unset($_SESSION['form_old']);
-            redirect('/app/agentes');
+            redirect('/app/agentes?ver='.urlencode((string)$id));
         }
         if ($path === '/app/agentes/excluir') {
             if (!is_user_crm($user)) {
@@ -852,7 +847,7 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/fornecedores/salvar') {
             coverage_ensure_schema();
             $id = trim((string)post('id', ''));
-            $back = $id !== '' ? '/app/fornecedores?id='.urlencode($id) : '/app/fornecedores?novo=1';
+            $back = $id !== '' ? '/app/fornecedores?edit='.urlencode($id) : '/app/fornecedores?novo=1';
             [$docOk, $document, $docErr] = parse_br_document(post('document_kind'), post('cnpj'), true);
             $name = trim((string)post('name', ''));
             $address = trim((string)post('address', ''));
@@ -899,7 +894,7 @@ if (str_starts_with($path, '/app')) {
                 ]);
                 flash('Fornecedor cadastrado.');
             }
-            redirect('/app/fornecedores');
+            redirect('/app/fornecedores?ver='.urlencode((string)$id));
         }
         if ($path === '/app/fornecedores/excluir') {
             coverage_ensure_schema();
@@ -1688,8 +1683,13 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/fornecedores') {
         coverage_ensure_schema();
         $edit = null;
-        $editId = trim((string)($_GET['id'] ?? ''));
-        if ($editId !== '') {
+        $viewing = null;
+        $editId = trim((string)($_GET['edit'] ?? $_GET['id'] ?? ''));
+        $verId = trim((string)($_GET['ver'] ?? ''));
+        if ($verId !== '') {
+            $viewing = one('SELECT * FROM suppliers WHERE id=? AND tenant_id=?', [$verId, $tenant['id']]);
+        }
+        if (!$viewing && $editId !== '' && empty($_GET['ver'])) {
             $edit = one('SELECT * FROM suppliers WHERE id=? AND tenant_id=?', [$editId, $tenant['id']]);
         }
         $search = trim((string)($_GET['q'] ?? ''));
@@ -1705,7 +1705,8 @@ if (str_starts_with($path, '/app')) {
         view('app/fornecedores', [
             'items' => all($sql, $p),
             'edit' => $edit,
-            'novo' => isset($_GET['novo']) || $edit,
+            'viewing' => $viewing,
+            'novo' => isset($_GET['novo']) && !$edit && !$viewing,
             'old' => take_old_form(),
             'search' => $search,
         ]);
@@ -1724,8 +1725,13 @@ if (str_starts_with($path, '/app')) {
             redirect(app_home_path($tenant, $user));
         }
         $edit = null;
-        $editId = trim((string)($_GET['id'] ?? ''));
-        if ($editId !== '') {
+        $viewing = null;
+        $verId = trim((string)($_GET['ver'] ?? ''));
+        $editId = trim((string)($_GET['edit'] ?? ''));
+        if ($verId !== '') {
+            $viewing = one("SELECT * FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$verId, $tenant['id']]);
+        }
+        if (!$viewing && $editId !== '') {
             $edit = one("SELECT * FROM users WHERE id=? AND tenant_id=? AND role='user_agent'", [$editId, $tenant['id']]);
         }
         layout_start('app', compact('user','tenant','path'));
@@ -1733,7 +1739,8 @@ if (str_starts_with($path, '/app')) {
             'tenant'=>$tenant,
             'user'=>$user,
             'edit'=>$edit,
-            'novo'=>isset($_GET['novo']) || $edit,
+            'viewing'=>$viewing,
+            'novo'=>isset($_GET['novo']) && !$edit && !$viewing,
             'old'=>take_old_form(),
             'agents'=>all("SELECT * FROM users WHERE tenant_id=? AND role='user_agent' ORDER BY name", [$tenant['id']]),
         ]);

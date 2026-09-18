@@ -1,20 +1,49 @@
 <?php
 $old = $old ?? [];
-$showForm = !empty($novo);
+$edit = $edit ?? null;
+$viewing = $viewing ?? null;
+$showForm = !empty($novo) || $edit;
 $src = $edit ?: [];
 $search = $search ?? '';
 $items = $items ?? [];
 $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_kind'] ?? br_doc_kind_from_value($src['cnpj'] ?? ''))];
+$show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
 ?>
 <div class="page-head">
   <div>
     <h1>Fornecedores</h1>
     <p>Cadastro administrativo de quem abastece a empresa: documento, produto e contato. Não altera agenda nem financeiro.</p>
   </div>
-  <?php if (!$showForm): ?>
+  <?php if (!$showForm && !$viewing): ?>
     <a class="btn btn-primary" href="/app/fornecedores?novo=1"><?= icon('plus') ?> Novo fornecedor</a>
   <?php endif; ?>
 </div>
+
+<?php if ($viewing):
+  $kind = strtolower((string)($viewing['document_kind'] ?? '')) ?: br_doc_kind_from_value($viewing['cnpj'] ?? '');
+?>
+<div class="card" style="margin-bottom:16px;padding:18px;max-width:760px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <h2 style="margin:0">Detalhes do fornecedor</h2>
+    <div>
+      <a class="btn btn-primary" href="/app/fornecedores?edit=<?= e($viewing['id']) ?>">Editar</a>
+      <a class="btn btn-ghost" href="/app/fornecedores">Fechar</a>
+    </div>
+  </div>
+  <div class="detail-grid" style="margin-top:14px">
+    <div class="detail-item"><small>Nome / razão social</small><strong><?= e($show($viewing['name'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Documento</small><strong><?= e($kind === 'cpf' || $kind === 'cnpj' ? format_br_document($viewing['cnpj'] ?? '', $kind) : ($viewing['cnpj'] ?: '—')) ?> <?= $kind === 'cpf' || $kind === 'cnpj' ? '· '.strtoupper($kind) : '' ?></strong></div>
+    <div class="detail-item"><small>Tipo de produto</small><strong><?= e($show($viewing['product_type'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Contato responsável</small><strong><?= e($show($viewing['contact_name'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Telefone</small><strong><?= e(phone_fmt($viewing['phone'] ?? '') ?: '—') ?></strong></div>
+    <div class="detail-item"><small>E-mail</small><strong><?= e($show($viewing['email'] ?? '')) ?></strong></div>
+    <div class="detail-item detail-wide"><small>Endereço</small><strong><?= e(trim(implode(' · ', array_filter([$viewing['address'] ?? '', $viewing['city'] ?? '', $viewing['state'] ?? '', $viewing['cep'] ?? '']))) ?: '—') ?></strong></div>
+    <?php if (!empty($viewing['notes'])): ?>
+      <div class="detail-item detail-wide"><small>Observações</small><strong><?= nl2br(e($viewing['notes'])) ?></strong></div>
+    <?php endif; ?>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php if ($showForm): ?>
 <div class="card" style="margin-bottom:16px;padding:18px">
@@ -49,7 +78,7 @@ $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_k
     <p class="muted" style="grid-column:1/-1;margin:0">Fornecedor com CNPJ e endereço aparece no mapa de Abrangência. CPF fica só nesta lista.</p>
     <div style="grid-column:1/-1;display:flex;gap:8px">
       <button class="btn btn-primary"><?= $edit ? 'Salvar' : 'Cadastrar' ?></button>
-      <a class="btn btn-ghost" href="/app/fornecedores">Cancelar</a>
+      <a class="btn btn-ghost" href="<?= $edit ? '/app/fornecedores?ver='.e($edit['id']) : '/app/fornecedores' ?>">Cancelar</a>
     </div>
   </form>
 </div>
@@ -95,7 +124,8 @@ $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_k
       <td><?= e(trim(($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—') ?></td>
       <td>
         <div class="row-actions">
-          <a class="btn btn-ghost" href="/app/fornecedores?id=<?= e($r['id']) ?>">Editar</a>
+          <a class="btn btn-ghost" href="/app/fornecedores?ver=<?= e($r['id']) ?>">Ver detalhes</a>
+          <a class="btn btn-ghost" href="/app/fornecedores?edit=<?= e($r['id']) ?>">Editar</a>
           <form method="post" action="/app/fornecedores/excluir" onsubmit="return confirm('Remover este fornecedor?')">
             <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
             <input type="hidden" name="id" value="<?= e($r['id']) ?>">

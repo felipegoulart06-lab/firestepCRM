@@ -1,18 +1,45 @@
 <?php
 $old = $old ?? [];
-$showForm = !empty($novo);
+$viewing = $viewing ?? null;
+$edit = $edit ?? null;
+$showForm = !empty($novo) || $edit;
 $src = $edit ?: [];
 $activeOn = $edit ? !empty($src['active']) : true;
+$show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
 ?>
 <div class="page-head">
   <div>
     <h1>Agentes</h1>
     <p>Funcionários da empresa. Cada agente entra no CRM com login próprio (perfil <code>user_agent</code>).</p>
   </div>
-  <?php if (!$showForm): ?>
+  <?php if (!$showForm && !$viewing): ?>
     <a class="btn btn-primary" href="/app/agentes?novo=1"><?= icon('plus') ?> Novo agente</a>
   <?php endif; ?>
 </div>
+
+<?php if ($viewing):
+  $kind = strtolower((string)($viewing['document_kind'] ?? '')) ?: br_doc_kind_from_value($viewing['cpf'] ?? '');
+?>
+<div class="card" style="margin-bottom:16px;padding:18px;max-width:760px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <h2 style="margin:0">Detalhes do agente</h2>
+    <div>
+      <a class="btn btn-primary" href="/app/agentes?edit=<?= e($viewing['id']) ?>">Editar</a>
+      <a class="btn btn-ghost" href="/app/agentes">Fechar</a>
+    </div>
+  </div>
+  <div class="detail-grid" style="margin-top:14px">
+    <div class="detail-item"><small>Nome</small><strong><?= e($show($viewing['name'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Usuário</small><strong><?= e($show($viewing['username'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>E-mail</small><strong><?= e($show($viewing['email'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Telefone</small><strong><?= e(phone_fmt($viewing['phone'] ?? '') ?: '—') ?></strong></div>
+    <div class="detail-item"><small>Documento</small><strong><?= $kind ? e(strtoupper($kind).' '.format_br_document($viewing['cpf'] ?? '', $kind)) : '—' ?></strong></div>
+    <div class="detail-item"><small>Status</small><strong><?= !empty($viewing['active']) ? 'Conta ativa' : 'Conta inativa' ?></strong></div>
+    <div class="detail-item"><small>Último acesso</small><strong><?= e(!empty($viewing['last_login_at']) ? date('d/m/Y H:i', strtotime((string)$viewing['last_login_at'])) : 'Ainda não entrou') ?></strong></div>
+    <div class="detail-item"><small>Cadastro</small><strong><?= e(!empty($viewing['created_at']) ? date('d/m/Y H:i', strtotime((string)$viewing['created_at'])) : '—') ?></strong></div>
+  </div>
+</div>
+<?php endif; ?>
 
 <?php if ($showForm): ?>
 <div class="card" style="margin-bottom:16px;padding:18px">
@@ -31,17 +58,19 @@ $activeOn = $edit ? !empty($src['active']) : true;
       <?php br_document_fields('cpf', old_fill($old, 'cpf', $src['cpf'] ?? '') ?: null, false, 'document_kind', ['document_kind' => old_fill($old, 'document_kind', $src['document_kind'] ?? '')]); ?>
       <p style="color:#667085;font-size:12px;margin:6px 0 0">Usado no relatório de documentos. CPF ou CNPJ do agente.</p>
     </div>
+    <?php if (!$edit): ?>
     <div style="grid-column:1/-1">
-      <label class="label"><?= $edit ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial' ?></label>
-      <input class="input" type="password" name="password" <?= $edit ? '' : 'required' ?> minlength="10" autocomplete="new-password">
-      <p style="color:#667085;font-size:12px;margin:6px 0 0">Mínimo 10 caracteres, com letra e número. No primeiro acesso o agente redefine a senha.</p>
+      <label class="label">Senha de primeiro acesso</label>
+      <input class="input" type="password" name="password" required minlength="10" autocomplete="new-password">
+      <p style="color:#667085;font-size:12px;margin:6px 0 0">Mínimo 10 caracteres, com letra e número. Só no cadastro. Depois o agente redefine no primeiro login; alteração posterior só no banco.</p>
     </div>
+    <?php endif; ?>
     <label class="label" style="grid-column:1/-1;display:flex;gap:8px;align-items:center">
       <input type="checkbox" name="active" value="1" <?= $activeOn ? 'checked' : '' ?>> Conta ativa
     </label>
     <div style="grid-column:1/-1;display:flex;gap:8px">
       <button class="btn btn-primary"><?= $edit ? 'Salvar agente' : 'Criar agente' ?></button>
-      <a class="btn btn-ghost" href="/app/agentes">Cancelar</a>
+      <a class="btn btn-ghost" href="<?= $edit ? '/app/agentes?ver='.e($edit['id']) : '/app/agentes' ?>"><?= $edit ? 'Cancelar' : 'Cancelar' ?></a>
     </div>
   </form>
 </div>
@@ -67,7 +96,8 @@ $activeOn = $edit ? !empty($src['active']) : true;
   <td><?= !empty($r['active']) ? badge_appt('CONFIRMED') : badge_appt('DONE') ?></td>
   <td><?= e(!empty($r['last_login_at']) ? date('d/m/Y H:i', strtotime((string)$r['last_login_at'])) : 'Ainda não entrou') ?></td>
   <td style="white-space:nowrap">
-    <a class="btn btn-ghost" href="/app/agentes?id=<?= e($r['id']) ?>">Editar</a>
+    <a class="btn btn-ghost" href="/app/agentes?ver=<?= e($r['id']) ?>">Ver detalhes</a>
+    <a class="btn btn-ghost" href="/app/agentes?edit=<?= e($r['id']) ?>">Editar</a>
     <form method="post" action="/app/agentes/excluir" style="display:inline" onsubmit="return confirm('Remover este agente?')">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= e($r['id']) ?>">

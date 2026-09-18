@@ -48,6 +48,8 @@ expect(agent_route_forbidden('/app/fornecedores'), 'agente não acessa Fornecedo
 
 $view = file_get_contents(dirname(__DIR__) . '/views/app/fornecedores.php');
 expect(str_contains($view, '<table class="data">') && str_contains($view, 'product_type'), 'tela é tabela de gestão');
+expect(str_contains($view, 'Ver detalhes') && str_contains($view, 'Detalhes do fornecedor'), 'Fornecedores tem Ver detalhes só leitura');
+expect(str_contains($view, '?ver=') && str_contains($view, '?edit='), 'lista separa ver e editar');
 $nav = file_get_contents(dirname(__DIR__) . '/views/layout_app_start.php');
 expect(str_contains($nav, '/app/fornecedores') && str_contains($nav, 'Fornecedores'), 'menu Fornecedores no painel');
 
