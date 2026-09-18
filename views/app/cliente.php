@@ -1,11 +1,16 @@
 <?php
 $c = $client ?? [];
 $old = $old ?? [];
+$fields = $fields ?? [];
+$values = $values ?? [];
+$appts = $appts ?? [];
 $isNew = empty($c['id']);
+$viewOnly = !$isNew && !empty($viewOnly);
 $kind = old_fill($old, 'document_kind', br_doc_kind_from_value($c['cpf'] ?? '') ?: '');
 $fill = static fn(string $key, ?string $fallback = '') => old_fill($old, $key, $c[$key] ?? $fallback);
+$show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
 ?>
-<h1><?= $isNew ? 'Novo cadastro' : e($c['name']) ?></h1>
+<h1><?= $isNew ? 'Novo cadastro' : ($viewOnly ? e($c['name']) : 'Editar cadastro') ?></h1>
 <?php if (!$isNew): ?>
 <p style="color:#667085"><?= e(phone_fmt($c['phone'])) ?> · <?= e($c['email'] ?: 'sem e-mail') ?> · <?= e($c['source']) ?></p>
 <div class="grid g4" style="margin:12px 0">
@@ -15,7 +20,12 @@ $fill = static fn(string $key, ?string $fallback = '') => old_fill($old, $key, $
   <div class="card" style="padding:14px"><div style="font-size:12px;color:#667085">Solicitações</div><b><?= (int)$totalReq ?></b></div>
 </div>
 <p>
-  <a class="btn btn-primary" href="/app/agendamentos?new=1&amp;client_id=<?= e($c['id']) ?>&amp;from=clientes"><?= icon('plus') ?> Novo agendamento</a>
+  <?php if ($viewOnly): ?>
+    <a class="btn btn-primary" href="/app/clientes/editar?id=<?= e($c['id']) ?>">Editar</a>
+  <?php else: ?>
+    <a class="btn btn-ghost" href="/app/clientes/ver?id=<?= e($c['id']) ?>">Voltar à visualização</a>
+  <?php endif; ?>
+  <a class="btn btn-ghost" href="/app/agendamentos?new=1&amp;client_id=<?= e($c['id']) ?>&amp;from=clientes"><?= icon('plus') ?> Novo agendamento</a>
   <a class="btn btn-ghost" href="/app/clientes/resumo.pdf?id=<?= e($c['id']) ?>"><?= icon('download') ?> Baixar resumo em PDF</a>
 </p>
 <div class="card" style="padding:16px;margin-bottom:16px">
@@ -29,6 +39,42 @@ $fill = static fn(string $key, ?string $fallback = '') => old_fill($old, $key, $
   <?php if (!$appts): ?><p style="color:#667085">Nenhum atendimento ainda.</p><?php endif; ?>
 </div>
 <?php endif; ?>
+
+<?php if ($viewOnly):
+  $docLabel = $kind === 'cnpj' ? 'CNPJ' : ($kind === 'cpf' ? 'CPF' : 'Documento');
+  $nameLabel = $kind === 'cnpj' ? 'Razão social' : 'Nome';
+?>
+<div class="card" style="padding:20px;max-width:760px">
+  <h3 style="margin:0 0 12px">Dados do cadastro</h3>
+  <div class="detail-grid">
+    <div class="detail-item"><small>Tipo</small><strong><?= $kind==='cnpj' ? 'Cliente CNPJ' : ($kind==='cpf' ? 'Cliente CPF' : '—') ?></strong></div>
+    <div class="detail-item"><small><?= e($docLabel) ?></small><strong><?= e($show($c['cpf'] ? format_br_document($c['cpf'], $kind ?: null) : '')) ?></strong></div>
+    <div class="detail-item"><small><?= e($nameLabel) ?></small><strong><?= e($show($c['name'] ?? '')) ?></strong></div>
+    <?php if ($kind === 'cpf'): ?>
+      <div class="detail-item"><small>Nascimento</small><strong><?= e(!empty($c['birth_date']) ? date('d/m/Y', strtotime((string)$c['birth_date'])) : '—') ?></strong></div>
+    <?php endif; ?>
+    <?php if ($kind === 'cnpj'): ?>
+      <div class="detail-item"><small>Nome fantasia</small><strong><?= e($show($c['trade_name'] ?? '')) ?></strong></div>
+      <div class="detail-item"><small>Inscrição estadual</small><strong><?= e($show($c['state_registration'] ?? '')) ?></strong></div>
+      <div class="detail-item"><small>Responsável / contato</small><strong><?= e($show($c['contact_name'] ?? '')) ?></strong></div>
+    <?php endif; ?>
+    <div class="detail-item"><small>Telefone</small><strong><?= e(phone_fmt($c['phone'] ?? null) ?: '—') ?></strong></div>
+    <div class="detail-item"><small>WhatsApp</small><strong><?= e(phone_fmt($c['whatsapp'] ?? null) ?: '—') ?></strong></div>
+    <div class="detail-item"><small>E-mail</small><strong><?= e($show($c['email'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Origem</small><strong><?= e($show($c['source'] ?? '')) ?></strong></div>
+    <div class="detail-item"><small>Status</small><strong><?= ($c['status'] ?? '') === 'INACTIVE' ? 'Inativo' : 'Ativo' ?></strong></div>
+    <?php if ($kind === 'cnpj'): ?>
+      <div class="detail-item detail-wide"><small>Endereço</small><strong><?= e(trim(implode(' · ', array_filter([$c['address'] ?? '', $c['city'] ?? '', $c['state'] ?? '', $c['cep'] ?? '']))) ?: '—') ?></strong></div>
+    <?php endif; ?>
+    <?php foreach ($fields as $f): $val = $values[$f['key']] ?? ''; ?>
+      <div class="detail-item"><small><?= e($f['label']) ?></small><strong><?= e($show($val)) ?></strong></div>
+    <?php endforeach; ?>
+    <?php if (!empty($c['notes'])): ?>
+      <div class="detail-item detail-wide"><small>Observações</small><strong><?= nl2br(e($c['notes'])) ?></strong></div>
+    <?php endif; ?>
+  </div>
+</div>
+<?php else: ?>
 <form method="post" action="/app/clientes/salvar" class="card" style="padding:20px;max-width:760px" data-client-kind>
   <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
   <?php if (!$isNew): ?><input type="hidden" name="id" value="<?= e($c['id']) ?>"><?php endif; ?>
@@ -118,6 +164,10 @@ $fill = static fn(string $key, ?string $fallback = '') => old_fill($old, $key, $
     </div>
     <?php endif; ?>
     <div style="margin-top:12px"><label class="label">Observações</label><textarea class="textarea" name="notes"><?= e($fill('notes')) ?></textarea></div>
-    <p><button class="btn btn-primary">Salvar</button></p>
+    <p>
+      <button class="btn btn-primary">Salvar</button>
+      <?php if (!$isNew): ?><a class="btn btn-ghost" href="/app/clientes/ver?id=<?= e($c['id']) ?>">Cancelar</a><?php endif; ?>
+    </p>
   </div>
 </form>
+<?php endif; ?>

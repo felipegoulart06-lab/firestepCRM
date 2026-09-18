@@ -19,6 +19,11 @@ expect(str_contains($src, 'Cliente CPF') && str_contains($src, 'Cliente CNPJ'), 
 expect(str_contains($src, 'Razão social') && str_contains($src, 'Nome fantasia'), 'CNPJ tem dados de empresa');
 expect(str_contains($src, 'data-req-cnpj') && str_contains($src, 'Endereço (obrigatório para CNPJ)'), 'endereço obrigatório no CNPJ');
 expect(str_contains($src, 'data-geo-box') && str_contains($src, 'name="lat"'), 'CNPJ busca endereço no mapa');
+expect(str_contains($src, '$viewOnly') && str_contains($src, 'Dados do cadastro') && str_contains($src, '/app/clientes/editar'), 'Ver mostra dados e oferece Editar');
+$lista = file_get_contents(dirname(__DIR__) . '/views/app/clientes.php');
+expect(str_contains($lista, '/app/clientes/editar?id='), 'lista tem botão Editar');
+expect(str_contains($index, "'/app/clientes/ver'") && str_contains($index, "'/app/clientes/editar'"), 'rotas de ver e editar cliente');
+expect(str_contains($index, "/app/clientes/editar?id="), 'erro de validação volta para Editar');
 expect(str_contains($index, 'Cliente CNPJ precisa de endereço completo'), 'servidor exige endereço no CNPJ');
 expect(str_contains($js, 'data-req-cnpj') && str_contains($js, 'client-kind-body'), 'JS troca os campos conforme o tipo');
 if ($fail) {

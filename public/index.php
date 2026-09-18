@@ -712,7 +712,7 @@ if (str_starts_with($path, '/app')) {
         }
         if ($path === '/app/clientes/salvar') {
             $id = post('id');
-            $back = $id ? '/app/clientes/ver?id='.$id : '/app/clientes/novo';
+            $back = $id ? '/app/clientes/editar?id='.$id : '/app/clientes/novo';
             $kind = strtolower(trim((string)post('document_kind', '')));
             $name = trim((string)post('name', ''));
             $phone = trim((string)post('phone', ''));
@@ -1650,7 +1650,7 @@ if (str_starts_with($path, '/app')) {
         layout_end('app');
         exit;
     }
-    if ($path === '/app/clientes/ver') {
+    if ($path === '/app/clientes/ver' || $path === '/app/clientes/editar') {
         $c = one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$_GET['id']??'', $tenant['id']]);
         if (!$c) { http_response_code(404); echo 'Não encontrado'; exit; }
         $appts = all("SELECT a.*, s.name service_name FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.client_id=? ORDER BY a.starts_at DESC", [$tenant['id'],$c['id']]);
@@ -1666,6 +1666,7 @@ if (str_starts_with($path, '/app')) {
         layout_start('app', compact('user','tenant','path'));
         view('app/cliente', [
             'client'=>$c,
+            'viewOnly' => $path === '/app/clientes/ver',
             'fields'=>all('SELECT * FROM custom_fields WHERE tenant_id=? ORDER BY sort_order', [$tenant['id']]),
             'values'=>$vals,'appts'=>$appts,'last'=>$last,'next'=>$next,
             'totalAp'=>count(array_filter($appts, fn($a)=>$a['status']!=='CANCELLED')),
