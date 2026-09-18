@@ -381,9 +381,7 @@ function bindReportsExplorer(){
   const preview = document.getElementById('fx-preview');
   const form = document.getElementById('fx-form');
   const err = document.getElementById('fx-err');
-  const typesAll = document.getElementById('fx-types-all');
-  const usersAll = document.getElementById('fx-users-all');
-  const servicesAll = document.getElementById('fx-services-all');
+  const kindInput = document.getElementById('fx-kind');
   const lock = (on)=>{
     document.documentElement.classList.toggle('is-modal-open', on);
     document.body.classList.toggle('is-modal-open', on);
@@ -400,14 +398,22 @@ function bindReportsExplorer(){
     const kids = folder.querySelector('.fx-kids');
     if (kids) kids.hidden = !open;
   };
-  const setChecks = (box, on)=>{
-    box.querySelectorAll('input[type=checkbox]').forEach(i=>{ i.checked = on; });
+  const activePanel = ()=> form?.querySelector('.fx-kind-panel:not([hidden])');
+  const showKind = (kind)=>{
+    form?.querySelectorAll('.fx-kind-panel').forEach(p=>{
+      const on = p.dataset.fxKind === kind;
+      p.hidden = !on;
+      p.querySelectorAll('input,select,textarea,button').forEach(el=>{ el.disabled = !on; });
+    });
+    if (kindInput) kindInput.value = kind || '';
   };
   const qsFromForm = ()=>{
     const data = new FormData(form);
-    if (usersAll?.checked) data.delete('users[]');
-    if (servicesAll?.checked) data.delete('services[]');
-    if (!form.querySelector('[name=totals]')?.checked) data.set('totals', '0');
+    const panel = activePanel();
+    panel?.querySelectorAll('.js-fx-all[data-group]').forEach(all=>{
+      if (all.checked) data.delete(all.dataset.group === 'users' ? 'users[]' : 'services[]');
+    });
+    if (!panel?.querySelector('[name=totals]:not(:disabled)')?.checked) data.set('totals', '0');
     const qs = new URLSearchParams();
     for (const [k, v] of data.entries()) {
       if (v === '' || v === null) continue;
@@ -439,7 +445,7 @@ function bindReportsExplorer(){
     btn.classList.add('is-on');
     const file = btn.dataset.file || 'arquivo.pdf';
     const folder = btn.dataset.folderName || '';
-    const kind = btn.dataset.kind || 'atendimentos';
+    const kind = btn.dataset.kind || 'agendamentos';
     if (pathEl) {
       pathEl.innerHTML = '';
       pathEl.append(root.dataset.root || 'Relatórios', document.createTextNode(' '));
@@ -449,12 +455,11 @@ function bindReportsExplorer(){
       pathEl.append(s1, ' ' + folder + ' ', s2, ' ', b);
     }
     document.getElementById('fx-filter-title').textContent = file;
-    document.getElementById('fx-filter-hint').textContent = btn.dataset.hint || 'Defina o recorte e o que entra no documento.';
-    form.querySelectorAll('input[name="types[]"]').forEach(i=>{ i.checked = i.value === kind; });
-    if (typesAll) typesAll.checked = false;
-    if (kind === 'cliente_resumo') form.querySelector('[name=client_summary]').checked = true;
+    document.getElementById('fx-filter-hint').textContent = btn.dataset.hint || 'Filtros exclusivos deste relatório.';
+    showKind(kind);
     const cid = document.getElementById('fx-contract-id');
     if (cid) cid.value = btn.dataset.contractId || '';
+    if (err) err.hidden = true;
     openOverlay(filters);
   };
 
@@ -469,26 +474,28 @@ function bindReportsExplorer(){
     });
   });
 
-  typesAll?.addEventListener('change', ()=> setChecks(document.getElementById('fx-types'), typesAll.checked));
-  usersAll?.addEventListener('change', ()=>{
-    if (usersAll.checked) setChecks(document.getElementById('fx-users'), false);
-  });
-  servicesAll?.addEventListener('change', ()=>{
-    if (servicesAll.checked) setChecks(document.getElementById('fx-services'), false);
-  });
-  document.getElementById('fx-users')?.addEventListener('change', (e)=>{
-    if (e.target.matches('input[name="users[]"]') && e.target.checked && usersAll) usersAll.checked = false;
-  });
-  document.getElementById('fx-services')?.addEventListener('change', (e)=>{
-    if (e.target.matches('input[name="services[]"]') && e.target.checked && servicesAll) servicesAll.checked = false;
+  form?.addEventListener('change', (e)=>{
+    const all = e.target.closest?.('.js-fx-all');
+    if (all) {
+      const group = all.dataset.group;
+      const box = all.closest('.fx-kind-panel')?.querySelector('.js-fx-group[data-group="'+group+'"]');
+      if (all.checked && box) box.querySelectorAll('input[type=checkbox]').forEach(i=>{ i.checked = false; });
+      return;
+    }
+    const input = e.target;
+    if (input.matches?.('input[name="users[]"], input[name="services[]"]') && input.checked) {
+      const group = input.name === 'users[]' ? 'users' : 'services';
+      const allBox = input.closest('.fx-kind-panel')?.querySelector('.js-fx-all[data-group="'+group+'"]');
+      if (allBox) allBox.checked = false;
+    }
   });
 
   document.querySelectorAll('.js-fx-close').forEach(btn=> btn.addEventListener('click', closeOverlays));
 
   form?.addEventListener('submit', async (e)=>{
     e.preventDefault();
-    const types = [...form.querySelectorAll('input[name="types[]"]:checked')];
-    if (!types.length) {
+    const kind = (kindInput?.value || '').trim();
+    if (!kind) {
       err.hidden = false;
       fsLog('warn', 'relatorios', 'nenhum tipo selecionado para a prévia');
       return;

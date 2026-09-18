@@ -2,11 +2,115 @@
 $terms = $terms ?? terms_of($tenant);
 $from = date('Y-m-01');
 $to = date('Y-m-d');
-$reportUsers = all('SELECT id, name, role FROM users WHERE tenant_id=? AND '.sql_true('active').' ORDER BY name', [$tenant['id']]);
-$reportServices = all("SELECT id, name FROM services WHERE tenant_id=? AND status='ACTIVE' ORDER BY name", [$tenant['id']]);
+$tid = $tenant['id'];
+coverage_ensure_schema();
+$reportUsers = all('SELECT id, name, role FROM users WHERE tenant_id=? AND '.sql_true('active').' ORDER BY name', [$tid]);
+$reportAgents = array_values(array_filter($reportUsers, static fn(array $u) => is_user_agent($u)));
+$reportServices = all("SELECT id, name, category, status FROM services WHERE tenant_id=? ORDER BY name", [$tid]);
+$reportCats = [];
+foreach ($reportServices as $s) {
+    $cat = trim((string)($s['category'] ?? ''));
+    if ($cat !== '') {
+        $reportCats[$cat] = $cat;
+    }
+}
+ksort($reportCats, SORT_NATURAL | SORT_FLAG_CASE);
+$reportSources = [];
+foreach (all("SELECT COALESCE(NULLIF(utm_source,''), source) s FROM clients WHERE tenant_id=?", [$tid]) as $r) {
+    $v = trim((string)($r['s'] ?? ''));
+    if ($v !== '') {
+        $reportSources[$v] = $v;
+    }
+}
+foreach (all("SELECT COALESCE(NULLIF(utm_source,''), source) s FROM requests WHERE tenant_id=?", [$tid]) as $r) {
+    $v = trim((string)($r['s'] ?? ''));
+    if ($v !== '') {
+        $reportSources[$v] = $v;
+    }
+}
+foreach (all('SELECT DISTINCT source s FROM appointments WHERE tenant_id=?', [$tid]) as $r) {
+    $v = trim((string)($r['s'] ?? ''));
+    if ($v !== '') {
+        $reportSources[$v] = $v;
+    }
+}
+ksort($reportSources, SORT_NATURAL | SORT_FLAG_CASE);
+$reportCities = [];
+$reportStates = [];
+foreach (['clients', 'suppliers'] as $tbl) {
+    foreach (all("SELECT city, state FROM $tbl WHERE tenant_id=?", [$tid]) as $r) {
+        $city = trim((string)($r['city'] ?? ''));
+        $st = strtoupper(trim((string)($r['state'] ?? '')));
+        if ($city !== '') {
+            $reportCities[$city] = $city;
+        }
+        if (preg_match('/^[A-Z]{2}$/', $st)) {
+            $reportStates[$st] = $st;
+        }
+    }
+}
+ksort($reportCities, SORT_NATURAL | SORT_FLAG_CASE);
+ksort($reportStates);
+$reportProducts = [];
+foreach (all("SELECT DISTINCT product_type FROM suppliers WHERE tenant_id=? AND product_type IS NOT NULL AND product_type!='' ORDER BY product_type", [$tid]) as $r) {
+    $reportProducts[trim((string)$r['product_type'])] = trim((string)$r['product_type']);
+}
 $clientWord = lower($terms['clients']);
 $fxRoot = $fxRoot ?? 'Relatórios';
 $requestWord = lower($terms['requests'] ?? 'solicitações');
+if (!function_exists('fx_filter_people')) {
+    function fx_filter_people(array $people): void
+    {
+        echo '<div class="fx-fields"><div class="fx-block-head"><div class="fx-block-title">Equipe</div>';
+        echo '<label class="fx-check-mini"><input type="checkbox" class="js-fx-all" data-group="users" checked> Todos</label></div>';
+        echo '<div class="fx-checks fx-checks-scroll js-fx-group" data-group="users">';
+        if (!$people) {
+            echo '<p class="fx-note">Nenhum usuário ativo neste painel.</p>';
+        }
+        foreach ($people as $u) {
+            $tag = is_user_crm($u) ? 'admin' : (is_user_agent($u) ? 'agente' : 'usuário');
+            echo '<label><input type="checkbox" name="users[]" value="'.e($u['id']).'"> '.e($u['name']).' <i>'.e($tag).'</i></label>';
+        }
+        echo '</div></div>';
+    }
+    function fx_filter_services(array $services): void
+    {
+        echo '<div class="fx-fields"><div class="fx-block-head"><div class="fx-block-title">Serviços</div>';
+        echo '<label class="fx-check-mini"><input type="checkbox" class="js-fx-all" data-group="services" checked> Todos</label></div>';
+        echo '<div class="fx-checks fx-checks-scroll js-fx-group" data-group="services">';
+        if (!$services) {
+            echo '<p class="fx-note">Nenhum serviço cadastrado.</p>';
+        }
+        foreach ($services as $s) {
+            echo '<label><input type="checkbox" name="services[]" value="'.e($s['id']).'"> '.e($s['name']).'</label>';
+        }
+        echo '</div></div>';
+    }
+    function fx_filter_period(string $from, string $to, string $fromLabel = 'De', string $toLabel = 'Até'): void
+    {
+        echo '<div class="fx-fields"><div class="fx-block-title">Período</div><div class="fx-dates">';
+        echo '<div><label class="label">'.e($fromLabel).'</label><input class="input" type="date" name="from" value="'.e($from).'"></div>';
+        echo '<div><label class="label">'.e($toLabel).'</label><input class="input" type="date" name="to" value="'.e($to).'"></div>';
+        echo '</div></div>';
+    }
+    function fx_filter_totals(bool $summary = false): void
+    {
+        echo '<div class="fx-fields">';
+        echo '<label class="fx-check"><input type="checkbox" name="totals" value="1" checked> Incluir totais no rodapé</label>';
+        if ($summary) {
+            echo '<label class="fx-check"><input type="checkbox" name="client_summary" value="1"> Incluir resumo por cliente</label>';
+        }
+        echo '</div>';
+    }
+    function fx_options(array $items, string $empty = 'Todos'): void
+    {
+        echo '<option value="">'.e($empty).'</option>';
+        foreach ($items as $k => $v) {
+            $val = is_int($k) ? (string)$v : (string)$k;
+            echo '<option value="'.e($val).'">'.e((string)$v).'</option>';
+        }
+    }
+}
 $fxFolders = $fxFolders ?? [
     ['name' => 'Atendimento', 'files' => [
         ['kind' => 'agendamentos', 'file' => 'Relatório de agendamentos', 'hint' => 'Horários, clientes, serviços e status no período.'],
@@ -105,123 +209,462 @@ foreach ($fxFolders as $folder) {
       <button type="button" class="fx-x js-fx-close" aria-label="Fechar"><?= icon('x', 18) ?></button>
     </div>
     <form id="fx-form" class="fx-form">
+      <input type="hidden" name="types[]" id="fx-kind" value="">
       <input type="hidden" name="contract_id" id="fx-contract-id" value="">
-      <div class="fx-filter-grid">
-        <div class="fx-filter-col">
-          <div class="fx-fields">
-            <div class="fx-block-title">Período</div>
-            <div class="fx-dates">
-              <div><label class="label">De</label><input class="input" type="date" name="from" value="<?= e($from) ?>"></div>
-              <div><label class="label">Até</label><input class="input" type="date" name="to" value="<?= e($to) ?>"></div>
+
+      <div class="fx-kind-panel" data-fx-kind="agendamentos" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Data da agenda', 'Até'); ?>
+            <div class="fx-fields">
+              <div class="fx-block-title">Status do agendamento</div>
+              <select class="select" name="appt_status">
+                <option value="ALL">Todos</option>
+                <?php foreach (APPT_STATUS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v[0]) ?></option>
+                <?php endforeach; ?>
+              </select>
             </div>
+            <div class="fx-fields">
+              <label class="label">Canal / origem</label>
+              <select class="select" name="source"><?php fx_options($reportSources, 'Todos os canais'); ?></select>
+            </div>
+            <?php fx_filter_totals(true); ?>
           </div>
-          <div class="fx-fields">
-            <div class="fx-block-head">
-              <div class="fx-block-title">Tipos de relatório</div>
-              <label class="fx-check-mini"><input type="checkbox" id="fx-types-all"> Marcar todos</label>
+          <div class="fx-filter-col">
+            <?php fx_filter_people($reportUsers); ?>
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="solicitacoes" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Recebida de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Protocolo, nome ou telefone</label>
+              <input class="input" type="search" name="q" placeholder="Buscar solicitação">
             </div>
-            <div class="fx-checks fx-checks-cols" id="fx-types">
-              <label><input type="checkbox" name="types[]" value="agendamentos"> Relatório de agendamentos</label>
-              <label><input type="checkbox" name="types[]" value="solicitacoes"> Relatório de <?= e($requestWord) ?></label>
-              <label><input type="checkbox" name="types[]" value="clientes"> Relatório de <?= e($clientWord) ?></label>
-              <label><input type="checkbox" name="types[]" value="agentes"> Relatório de agentes</label>
-              <label><input type="checkbox" name="types[]" value="servicos"> Relatório de serviços</label>
-              <label><input type="checkbox" name="types[]" value="atendimentos"> Resumo de atendimentos</label>
-              <label><input type="checkbox" name="types[]" value="origens"> Resumo de origens</label>
-              <label><input type="checkbox" name="types[]" value="financeiro"> Resumo do caixa</label>
-              <label><input type="checkbox" name="types[]" value="documentos"> Todos os documentos</label>
-              <label><input type="checkbox" name="types[]" value="documentos_cpf"> Clientes CPF</label>
-              <label><input type="checkbox" name="types[]" value="documentos_cnpj"> Clientes CNPJ</label>
-              <label><input type="checkbox" name="types[]" value="documentos_agentes"> Documentos de agentes</label>
-              <label><input type="checkbox" name="types[]" value="cliente_resumo"> Resumo de cliente</label>
-              <label><input type="checkbox" name="types[]" value="contratos"> Contrato de prestação</label>
-              <label><input type="checkbox" name="types[]" value="abrangencia"> Abrangência</label>
-              <label><input type="checkbox" name="types[]" value="fornecedores"> Fornecedores</label>
+            <div class="fx-fields">
+              <label class="label">Status da solicitação</label>
+              <select class="select" name="request_status">
+                <option value="ALL">Todos</option>
+                <?php foreach (REQ_STATUS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Canal de entrada</label>
+              <select class="select" name="source"><?php fx_options($reportSources, 'Todos os canais'); ?></select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="clientes" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Status do cliente</label>
+              <select class="select" name="client_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Origem / tag de captação</label>
+              <select class="select" name="source"><?php fx_options($reportSources, 'Todas as origens'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Cidade</label>
+              <select class="select" name="city"><?php fx_options($reportCities, 'Todas'); ?></select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <label class="fx-check"><input type="checkbox" name="admins" value="1"> Somente cadastros feitos por admin</label>
+            <?php fx_filter_people($reportUsers); ?>
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="agentes" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Volume de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">ID, nome ou e-mail</label>
+              <input class="input" type="search" name="q" placeholder="Filtrar agente">
+            </div>
+            <div class="fx-fields">
+              <label class="label">Nível de acesso</label>
+              <select class="select" name="agent_role">
+                <option value="user_agent">Agentes</option>
+                <option value="user_crm">Administradores</option>
+                <option value="all">Toda a equipe</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Situação</label>
+              <select class="select" name="agent_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <?php fx_filter_people($reportAgents ?: $reportUsers); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="servicos" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Agendamentos de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Categoria</label>
+              <select class="select" name="category"><?php fx_options($reportCats, 'Todas as categorias'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Vigência / status</label>
+              <select class="select" name="service_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="origens" hidden>
+        <div class="fx-filter-grid">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to); ?>
+            <div class="fx-fields">
+              <label class="label">Canal de marketing</label>
+              <select class="select" name="source"><?php fx_options($reportSources, 'Todos os canais'); ?></select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="documentos" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Tipo de documento</label>
+              <select class="select" name="document_kind">
+                <option value="all">CPF e CNPJ</option>
+                <option value="cpf">Somente CPF</option>
+                <option value="cnpj">Somente CNPJ</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Validação</label>
+              <select class="select" name="doc_check">
+                <option value="all">Todos</option>
+                <option value="validated">Com documento</option>
+                <option value="pending">Pendentes</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">Status do cadastro</label>
+              <select class="select" name="client_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="fx-filter-col">
-          <div class="fx-fields">
-            <div class="fx-block-title">Status</div>
-            <div class="fx-status-grid">
-              <div>
-                <label class="label">Atendimento</label>
-                <select class="select" name="appt_status">
-                  <option value="ALL">Todos</option>
-                  <?php foreach (APPT_STATUS as $k => $v): ?>
-                    <option value="<?= e($k) ?>"><?= e($v[0]) ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <div>
-                <label class="label">Cadastro</label>
-                <select class="select" name="client_status">
-                  <option value="ALL">Todos</option>
-                  <option value="ACTIVE">Ativos</option>
-                  <option value="INACTIVE">Inativos</option>
-                </select>
-              </div>
-              <div>
-                <label class="label">Financeiro</label>
-                <select class="select" name="finance_status">
-                  <option value="all">Todos</option>
-                  <option value="open">Em aberto</option>
-                  <option value="billed">Faturado</option>
-                  <option value="paid">Pago</option>
-                </select>
+      <div class="fx-kind-panel" data-fx-kind="documentos_cpf" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <div class="fx-dates">
+                <div><label class="label">Idade mínima</label><input class="input" type="number" name="age_min" min="0" max="120" placeholder="—"></div>
+                <div><label class="label">Idade máxima</label><input class="input" type="number" name="age_max" min="0" max="120" placeholder="—"></div>
               </div>
             </div>
+            <div class="fx-fields">
+              <label class="label">Validação do CPF</label>
+              <select class="select" name="doc_check">
+                <option value="all">Todos</option>
+                <option value="validated">Validados</option>
+                <option value="pending">Pendentes</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
           </div>
-          <div class="fx-fields">
-            <div class="fx-block-title">Administradores</div>
-            <label class="fx-check"><input type="checkbox" name="admins" value="1"> Somente lançamentos de admin</label>
-            <p class="fx-note">Usa o usuário que criou o cadastro ou o agendamento.</p>
-          </div>
-          <div class="fx-fields">
-            <label class="fx-check"><input type="checkbox" name="totals" value="1" checked> Incluir totais no rodapé</label>
-            <label class="fx-check"><input type="checkbox" name="client_summary" value="1"> Incluir resumo de cliente no atendimento</label>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">UF</label>
+              <select class="select" name="state"><?php fx_options($reportStates, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Cidade / região</label>
+              <select class="select" name="city"><?php fx_options($reportCities, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Status</label>
+              <select class="select" name="client_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="fx-filter-col">
-          <div class="fx-fields">
-            <div class="fx-block-head">
-              <div class="fx-block-title">Usuários</div>
-              <label class="fx-check-mini"><input type="checkbox" id="fx-users-all" checked> Todos</label>
+      <div class="fx-kind-panel" data-fx-kind="documentos_cnpj" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Validação do CNPJ</label>
+              <select class="select" name="doc_check">
+                <option value="all">Todos</option>
+                <option value="validated">Validados</option>
+                <option value="pending">Pendentes</option>
+              </select>
             </div>
-            <div class="fx-checks fx-checks-scroll" id="fx-users">
-              <?php if (!$reportUsers): ?>
-                <p class="fx-note">Nenhum usuário ativo neste painel.</p>
-              <?php endif; ?>
-              <?php foreach ($reportUsers as $u): ?>
-                <label>
-                  <input type="checkbox" name="users[]" value="<?= e($u['id']) ?>">
-                  <?= e($u['name']) ?>
-                  <i><?= is_user_crm($u) ? 'admin' : (is_user_agent($u) ? 'agente' : 'usuário') ?></i>
-                </label>
-              <?php endforeach; ?>
+            <div class="fx-fields">
+              <label class="label">Status</label>
+              <select class="select" name="client_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">UF</label>
+              <select class="select" name="state"><?php fx_options($reportStates, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Cidade / setor de atuação</label>
+              <select class="select" name="city"><?php fx_options($reportCities, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Nome</label>
+              <input class="input" type="search" name="q" placeholder="Razão social">
             </div>
           </div>
-          <div class="fx-fields">
-            <div class="fx-block-head">
-              <div class="fx-block-title">Serviços</div>
-              <label class="fx-check-mini"><input type="checkbox" id="fx-services-all" checked> Todos</label>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="documentos_agentes" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Tipo de documento</label>
+              <select class="select" name="document_kind">
+                <option value="all">CPF e CNPJ</option>
+                <option value="cpf">CPF</option>
+                <option value="cnpj">CNPJ</option>
+              </select>
             </div>
-            <div class="fx-checks fx-checks-scroll" id="fx-services">
-              <?php if (!$reportServices): ?>
-                <p class="fx-note">Nenhum serviço ativo.</p>
-              <?php endif; ?>
-              <?php foreach ($reportServices as $s): ?>
-                <label><input type="checkbox" name="services[]" value="<?= e($s['id']) ?>"> <?= e($s['name']) ?></label>
-              <?php endforeach; ?>
+            <div class="fx-fields">
+              <label class="label">Pendência</label>
+              <select class="select" name="doc_check">
+                <option value="all">Todos</option>
+                <option value="validated">Validados</option>
+                <option value="pending">Pendentes</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">Situação do agente</label>
+              <select class="select" name="agent_status">
+                <option value="ALL">Todos</option>
+                <option value="ACTIVE">Ativos</option>
+                <option value="INACTIVE">Inativos</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Nome ou ID</label>
+              <input class="input" type="search" name="q" placeholder="Filtrar">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="financeiro" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to); ?>
+            <div class="fx-fields">
+              <label class="label">Competência ou caixa</label>
+              <select class="select" name="finance_date">
+                <option value="competence">Data de competência (vencimento)</option>
+                <option value="caixa">Data de caixa (pagamento)</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Plano de contas / tipo</label>
+              <select class="select" name="finance_kind">
+                <option value="all">Receber e pagar</option>
+                <option value="receivable">Contas a receber</option>
+                <option value="payable">Contas a pagar</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Fluxo</label>
+              <select class="select" name="finance_flow">
+                <option value="all">Entrada e saída</option>
+                <option value="in">Entrada</option>
+                <option value="out">Saída</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">Status financeiro</label>
+              <select class="select" name="finance_status">
+                <option value="all">Todos</option>
+                <option value="open">Em aberto</option>
+                <option value="billed">Faturado</option>
+                <option value="paid">Pago</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Forma de pagamento</label>
+              <select class="select" name="payment_method">
+                <option value="">Todas</option>
+                <?php foreach (FINANCE_PAY_METHODS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="contratos" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Agendamentos de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Status do agendamento</label>
+              <select class="select" name="appt_status">
+                <option value="ALL">Todos (exceto cancelados na lista vazia)</option>
+                <?php foreach (APPT_STATUS as $k => $v): ?>
+                  <option value="<?= e($k) ?>"><?= e($v[0]) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <div class="fx-dates">
+                <div><label class="label">Valor mínimo</label><input class="input" type="number" name="min_amount" min="0" step="0.01" placeholder="R$"></div>
+                <div><label class="label">Valor máximo</label><input class="input" type="number" name="max_amount" min="0" step="0.01" placeholder="R$"></div>
+              </div>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <?php fx_filter_services($reportServices); ?>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="abrangencia" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to); ?>
+            <div class="fx-fields">
+              <label class="label">Camada do mapa</label>
+              <select class="select" name="coverage_layer">
+                <option value="all">Fornecedores, clientes e visitas</option>
+                <option value="suppliers">Só fornecedores CNPJ</option>
+                <option value="clients">Só clientes CNPJ</option>
+                <option value="visits">Só atendimentos externos</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">Estado</label>
+              <select class="select" name="state"><?php fx_options($reportStates, 'Todos'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Cidade / região de atendimento</label>
+              <select class="select" name="city"><?php fx_options($reportCities, 'Todas'); ?></select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fx-kind-panel" data-fx-kind="fornecedores" hidden>
+        <div class="fx-filter-grid fx-filter-grid-2">
+          <div class="fx-filter-col">
+            <?php fx_filter_period($from, $to, 'Cadastro de', 'Até'); ?>
+            <div class="fx-fields">
+              <label class="label">Categoria de insumo</label>
+              <select class="select" name="product_type"><?php fx_options($reportProducts, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Tipo de documento</label>
+              <select class="select" name="document_kind">
+                <option value="all">CPF e CNPJ</option>
+                <option value="cpf">CPF</option>
+                <option value="cnpj">CNPJ</option>
+              </select>
+            </div>
+            <?php fx_filter_totals(); ?>
+          </div>
+          <div class="fx-filter-col">
+            <div class="fx-fields">
+              <label class="label">UF</label>
+              <select class="select" name="state"><?php fx_options($reportStates, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Cidade</label>
+              <select class="select" name="city"><?php fx_options($reportCities, 'Todas'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">Nome</label>
+              <input class="input" type="search" name="q" placeholder="Fornecedor">
             </div>
           </div>
         </div>
       </div>
 
       <div class="fx-filter-actions">
-        <p class="fx-err" id="fx-err" hidden>Marque pelo menos um tipo de relatório.</p>
+        <p class="fx-err" id="fx-err" hidden>Abra um relatório na árvore para gerar o PDF.</p>
         <button type="submit" class="btn btn-primary"><?= icon('file') ?> Visualizar</button>
       </div>
     </form>

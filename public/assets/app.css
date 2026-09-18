@@ -356,7 +356,10 @@ a.fx-x{text-decoration:none;color:#344054}
 .fx-idle p{margin:0;max-width:360px;font-size:13px;line-height:1.5}
 .fx-idle-ico{width:64px;height:64px;border-radius:14px;background:#fff;border:1px solid var(--line);color:#d97706;display:grid;place-items:center;box-shadow:0 8px 20px rgba(16,24,40,.06)}
 .fx-form{display:grid;gap:10px}
+.fx-kind-panel{display:grid;gap:10px}
+.fx-kind-panel[hidden]{display:none!important}
 .fx-filter-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.95fr) minmax(0,.9fr);gap:10px;align-items:start}
+.fx-filter-grid-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .fx-filter-col{display:grid;gap:10px;min-width:0}
 .fx-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fx-status-grid{display:grid;gap:8px}
@@ -398,8 +401,8 @@ a.fx-x{text-decoration:none;color:#344054}
 .fx-a4 th{color:#667085;font-weight:700;background:#f8fafc}
 .fx-a4 tfoot td{border-bottom:0;font-weight:700;padding-top:10px}
 .fx-a4-empty{color:#98a2b3;font-size:12px;padding:8px 0}
-@media(max-width:1100px){.fx-filter-grid{grid-template-columns:1fr 1fr}.fx-filter-col:first-child{grid-column:1/-1}}
-@media(max-width:900px){.fx{grid-template-columns:1fr}.fx-tree{border-right:0;border-bottom:1px solid var(--line);max-height:280px}.fx-preview-bar{flex-direction:column;align-items:flex-start}.fx-filter-grid,.fx-filter-col:first-child{grid-template-columns:1fr;grid-column:auto}.fx-checks-cols{grid-template-columns:1fr}.fx-dates{grid-template-columns:1fr 1fr}}
+@media(max-width:1100px){.fx-filter-grid,.fx-filter-grid-2{grid-template-columns:1fr 1fr}.fx-filter-col:first-child{grid-column:1/-1}}
+@media(max-width:900px){.fx{grid-template-columns:1fr}.fx-tree{border-right:0;border-bottom:1px solid var(--line);max-height:280px}.fx-preview-bar{flex-direction:column;align-items:flex-start}.fx-filter-grid,.fx-filter-grid-2,.fx-filter-col:first-child{grid-template-columns:1fr;grid-column:auto}.fx-checks-cols{grid-template-columns:1fr}.fx-dates{grid-template-columns:1fr 1fr}}
 .token-confirm{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;font-weight:600;color:#344054}
 .token-confirm input{margin-top:3px}
 .token-modal{position:fixed;inset:0;background:rgba(16,24,40,.62);backdrop-filter:blur(2px);display:flex;align-items:flex-start;justify-content:center;padding:24px;z-index:410;overflow:hidden;overscroll-behavior:none}

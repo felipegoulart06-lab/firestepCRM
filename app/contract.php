@@ -52,6 +52,11 @@ function contract_items(array $tenant, array $filters): array
             'deposit' => $deposit,
             'status' => APPT_STATUS[$r['status']][0] ?? $r['status'],
         ];
+        if (!report_match_amount($price, $filters)) {
+            array_pop($items);
+            $sum -= $price;
+            $fees -= $deposit;
+        }
     }
     $seg = one('SELECT name, category FROM segments WHERE slug=?', [(string)($tenant['segment'] ?? '')]);
     return [

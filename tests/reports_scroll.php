@@ -10,6 +10,10 @@ if (!str_contains($js, '.fx-filter-panel') || !str_contains($js, '.fx-overlay'))
     echo "FAIL JS ainda bloqueia o scroll dos filtros de relatório\n";
     $fail++;
 }
+if (!str_contains($js, 'dataset.fxKind') || !str_contains($js, 'showKind')) {
+    echo "FAIL JS não troca o container de filtro pelo tipo do relatório\n";
+    $fail++;
+}
 if (preg_match('/function blockScrollBehindModal[\s\S]+?closest\(\'\.overlay-panel\'\)/', $js)
     && !str_contains($js, '.fx-filter-panel')) {
     echo "FAIL blockScrollBehindModal só libera .overlay-panel\n";

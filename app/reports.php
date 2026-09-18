@@ -46,7 +46,7 @@ function report_kinds_from_request(): array
     }
     $kinds = array_values(array_unique($kinds));
     if ($kinds) {
-        return $kinds;
+        return [$kinds[0]];
     }
     $path = rtrim((string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
     return match ($path) {
@@ -89,12 +89,111 @@ function report_filters_from_request(): array
     if (!in_array($fin, ['all', 'open', 'paid', 'billed', 'cancelled'], true)) {
         $fin = 'all';
     }
+    $req = strtoupper(trim((string)($_GET['request_status'] ?? 'ALL')));
+    if ($req !== 'ALL' && !isset(REQ_STATUS[$req])) {
+        $req = 'ALL';
+    }
+    $source = trim((string)($_GET['source'] ?? ''));
+    if (strlen($source) > 80) {
+        $source = substr($source, 0, 80);
+    }
+    $category = trim((string)($_GET['category'] ?? ''));
+    if (strlen($category) > 80) {
+        $category = substr($category, 0, 80);
+    }
+    $city = trim((string)($_GET['city'] ?? ''));
+    if (strlen($city) > 80) {
+        $city = substr($city, 0, 80);
+    }
+    $state = strtoupper(trim((string)($_GET['state'] ?? '')));
+    if (!preg_match('/^[A-Z]{2}$/', $state)) {
+        $state = '';
+    }
+    $q = trim((string)($_GET['q'] ?? ''));
+    if (strlen($q) > 80) {
+        $q = substr($q, 0, 80);
+    }
+    $agentStatus = strtoupper(trim((string)($_GET['agent_status'] ?? 'ALL')));
+    if (!in_array($agentStatus, ['ALL', 'ACTIVE', 'INACTIVE'], true)) {
+        $agentStatus = 'ALL';
+    }
+    $agentRole = strtolower(trim((string)($_GET['agent_role'] ?? 'user_agent')));
+    if (!in_array($agentRole, ['all', 'user_agent', 'user_crm'], true)) {
+        $agentRole = 'user_agent';
+    }
+    $serviceStatus = strtoupper(trim((string)($_GET['service_status'] ?? 'ALL')));
+    if (!in_array($serviceStatus, ['ALL', 'ACTIVE', 'INACTIVE'], true)) {
+        $serviceStatus = 'ALL';
+    }
+    $finKind = strtolower(trim((string)($_GET['finance_kind'] ?? 'all')));
+    if (!in_array($finKind, ['all', 'receivable', 'payable'], true)) {
+        $finKind = 'all';
+    }
+    $finFlow = strtolower(trim((string)($_GET['finance_flow'] ?? 'all')));
+    if (!in_array($finFlow, ['all', 'in', 'out'], true)) {
+        $finFlow = 'all';
+    }
+    $finDate = strtolower(trim((string)($_GET['finance_date'] ?? 'competence')));
+    if (!in_array($finDate, ['competence', 'caixa'], true)) {
+        $finDate = 'competence';
+    }
+    $pay = strtolower(trim((string)($_GET['payment_method'] ?? '')));
+    if ($pay !== '' && !isset(FINANCE_PAY_METHODS[$pay])) {
+        $pay = '';
+    }
+    $docKind = strtolower(trim((string)($_GET['document_kind'] ?? 'all')));
+    if (!in_array($docKind, ['all', 'cpf', 'cnpj'], true)) {
+        $docKind = 'all';
+    }
+    $docCheck = strtolower(trim((string)($_GET['doc_check'] ?? 'all')));
+    if (!in_array($docCheck, ['all', 'pending', 'validated'], true)) {
+        $docCheck = 'all';
+    }
+    $product = trim((string)($_GET['product_type'] ?? ''));
+    if (strlen($product) > 80) {
+        $product = substr($product, 0, 80);
+    }
+    $layer = strtolower(trim((string)($_GET['coverage_layer'] ?? 'all')));
+    if (!in_array($layer, ['all', 'suppliers', 'clients', 'visits'], true)) {
+        $layer = 'all';
+    }
+    $ageMin = isset($_GET['age_min']) && $_GET['age_min'] !== '' ? (int)$_GET['age_min'] : null;
+    $ageMax = isset($_GET['age_max']) && $_GET['age_max'] !== '' ? (int)$_GET['age_max'] : null;
+    if ($ageMin !== null) {
+        $ageMin = max(0, min(120, $ageMin));
+    }
+    if ($ageMax !== null) {
+        $ageMax = max(0, min(120, $ageMax));
+    }
+    $minAmount = isset($_GET['min_amount']) && is_numeric($_GET['min_amount']) ? (float)$_GET['min_amount'] : null;
+    $maxAmount = isset($_GET['max_amount']) && is_numeric($_GET['max_amount']) ? (float)$_GET['max_amount'] : null;
     return [
         'from' => $from,
         'to' => $to,
         'appt_status' => $appt,
         'client_status' => $client,
         'finance_status' => $fin,
+        'request_status' => $req,
+        'source' => $source,
+        'category' => $category,
+        'city' => $city,
+        'state' => $state,
+        'q' => $q,
+        'agent_status' => $agentStatus,
+        'agent_role' => $agentRole,
+        'service_status' => $serviceStatus,
+        'finance_kind' => $finKind,
+        'finance_flow' => $finFlow,
+        'finance_date' => $finDate,
+        'payment_method' => $pay,
+        'document_kind' => $docKind,
+        'doc_check' => $docCheck,
+        'product_type' => $product,
+        'coverage_layer' => $layer,
+        'age_min' => $ageMin,
+        'age_max' => $ageMax,
+        'min_amount' => $minAmount,
+        'max_amount' => $maxAmount,
         'user_ids' => report_id_list($_GET['users'] ?? []),
         'admins_only' => ($_GET['admins'] ?? '') === '1',
         'service_ids' => report_id_list($_GET['services'] ?? []),
@@ -103,6 +202,72 @@ function report_filters_from_request(): array
         'include_client_summary' => ($_GET['client_summary'] ?? '') === '1',
         'contract_id' => report_id_list($_GET['contract_id'] ?? [])[0] ?? '',
     ];
+}
+
+function report_age_years(?string $birth): ?int
+{
+    $birth = trim((string)$birth);
+    if ($birth === '') {
+        return null;
+    }
+    $t = strtotime(substr($birth, 0, 10));
+    if ($t === false) {
+        return null;
+    }
+    return (int) floor((time() - $t) / 31557600);
+}
+
+function report_match_status(?string $status, string $want): bool
+{
+    if ($want === 'ALL') {
+        return true;
+    }
+    $isInactive = strtoupper((string)$status) === 'INACTIVE' || $status === '0';
+    return $want === 'INACTIVE' ? $isInactive : !$isInactive;
+}
+
+function report_match_geo(array $row, array $filters): bool
+{
+    if (($filters['state'] ?? '') !== '' && strtoupper(trim((string)($row['state'] ?? ''))) !== $filters['state']) {
+        return false;
+    }
+    $city = $filters['city'] ?? '';
+    if ($city !== '' && !str_contains(strtolower((string)($row['city'] ?? '')), strtolower($city))) {
+        return false;
+    }
+    return true;
+}
+
+function report_match_doc(?string $value, string $want): bool
+{
+    $has = trim((string)$value) !== '';
+    return match ($want) {
+        'pending' => !$has,
+        'validated' => $has,
+        default => true,
+    };
+}
+
+function report_match_amount(float $value, array $filters): bool
+{
+    if (($filters['min_amount'] ?? null) !== null && $value < $filters['min_amount']) {
+        return false;
+    }
+    if (($filters['max_amount'] ?? null) !== null && $value > $filters['max_amount']) {
+        return false;
+    }
+    return true;
+}
+
+function report_match_age(?int $age, array $filters): bool
+{
+    if (($filters['age_min'] ?? null) !== null && ($age === null || $age < $filters['age_min'])) {
+        return false;
+    }
+    if (($filters['age_max'] ?? null) !== null && ($age === null || $age > $filters['age_max'])) {
+        return false;
+    }
+    return true;
 }
 
 function report_actor_map(string $tenantId, string $action): array
@@ -161,6 +326,10 @@ function report_atendimentos(array $tenant, array $filters): array
         $sql .= ' AND a.status=?';
         $params[] = $filters['appt_status'];
     }
+    if (($filters['source'] ?? '') !== '') {
+        $sql .= ' AND a.source=?';
+        $params[] = $filters['source'];
+    }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND a.service_id IN ($ph)";
@@ -212,6 +381,18 @@ function report_clientes(array $tenant, array $filters): array
         $sql .= ' AND c.status=?';
         $params[] = $filters['client_status'];
     }
+    if (($filters['source'] ?? '') !== '') {
+        $sql .= " AND COALESCE(NULLIF(c.utm_source,''), c.source)=?";
+        $params[] = $filters['source'];
+    }
+    if (($filters['state'] ?? '') !== '') {
+        $sql .= ' AND UPPER(TRIM(c.state))=?';
+        $params[] = $filters['state'];
+    }
+    if (($filters['city'] ?? '') !== '') {
+        $sql .= ' AND LOWER(c.city) LIKE LOWER(?)';
+        $params[] = '%'.$filters['city'].'%';
+    }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND EXISTS (SELECT 1 FROM appointments ax WHERE ax.client_id=c.id AND ax.tenant_id=c.tenant_id AND ax.service_id IN ($ph))";
@@ -254,6 +435,19 @@ function report_solicitacoes(array $tenant, array $filters): array
         LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id
         WHERE r.tenant_id=? AND r.created_at>=? AND r.created_at<=?";
     $params = [$tid, $from, $to];
+    if (($filters['request_status'] ?? 'ALL') !== 'ALL') {
+        $sql .= ' AND r.status=?';
+        $params[] = $filters['request_status'];
+    }
+    if (($filters['source'] ?? '') !== '') {
+        $sql .= " AND COALESCE(NULLIF(r.utm_source,''), r.source)=?";
+        $params[] = $filters['source'];
+    }
+    if (($filters['q'] ?? '') !== '') {
+        $like = '%'.$filters['q'].'%';
+        $sql .= ' AND (r.id LIKE ? OR r.name LIKE ? OR r.phone LIKE ? OR r.email LIKE ?)';
+        array_push($params, $like, $like, $like, $like);
+    }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND r.service_id IN ($ph)";
@@ -297,8 +491,26 @@ function report_agentes(array $tenant, array $filters): array
          WHERE al.tenant_id=u.tenant_id AND al.user_id=u.id AND al.action='client.created'
            AND c.created_at>=? AND c.created_at<=?) client_count
         FROM users u
-        WHERE u.tenant_id=? AND u.role='user_agent'";
+        WHERE u.tenant_id=?";
     $params = [$from, $to, $from, $to, $tid];
+    $role = $filters['agent_role'] ?? 'user_agent';
+    if ($role === 'user_crm') {
+        $sql .= " AND u.role IN ('user_crm','TENANT_ADMIN')";
+    } elseif ($role === 'all') {
+        $sql .= " AND u.role IN ('user_agent','user_crm','TENANT_ADMIN','user_admin')";
+    } else {
+        $sql .= " AND u.role='user_agent'";
+    }
+    if (($filters['agent_status'] ?? 'ALL') === 'ACTIVE') {
+        $sql .= ' AND '.sql_true('u.active');
+    } elseif (($filters['agent_status'] ?? 'ALL') === 'INACTIVE') {
+        $sql .= ' AND NOT ('.sql_true('u.active').')';
+    }
+    if (($filters['q'] ?? '') !== '') {
+        $like = '%'.$filters['q'].'%';
+        $sql .= ' AND (u.id LIKE ? OR u.name LIKE ? OR u.email LIKE ?)';
+        array_push($params, $like, $like, $like);
+    }
     if ($filters['user_ids']) {
         $ph = implode(',', array_fill(0, count($filters['user_ids']), '?'));
         $sql .= " AND u.id IN ($ph)";
@@ -331,6 +543,14 @@ function report_servicos(array $tenant, array $filters): array
           AND a.starts_at>=? AND a.starts_at<=? AND a.status!='CANCELLED'
         WHERE s.tenant_id=?";
     $params = [$from, $to, $tid];
+    if (($filters['category'] ?? '') !== '') {
+        $sql .= ' AND s.category=?';
+        $params[] = $filters['category'];
+    }
+    if (($filters['service_status'] ?? 'ALL') !== 'ALL') {
+        $sql .= ' AND s.status=?';
+        $params[] = $filters['service_status'];
+    }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND s.id IN ($ph)";
@@ -357,17 +577,23 @@ function report_origens(array $tenant, array $filters): array
     $tid = $tenant['id'];
     $from = $filters['from'].' 00:00:00';
     $to = $filters['to'].' 23:59:59';
+    $srcSql = '';
+    $srcParams = [];
+    if (($filters['source'] ?? '') !== '') {
+        $srcSql = " AND COALESCE(NULLIF(utm_source,''), source, 'Não informado')=?";
+        $srcParams[] = $filters['source'];
+    }
     $clients = all(
         "SELECT COALESCE(NULLIF(utm_source,''), source, 'Não informado') source, COUNT(*) total
-         FROM clients WHERE tenant_id=? AND created_at>=? AND created_at<=?
+         FROM clients WHERE tenant_id=? AND created_at>=? AND created_at<=?".$srcSql."
          GROUP BY COALESCE(NULLIF(utm_source,''), source, 'Não informado')",
-        [$tid, $from, $to]
+        array_merge([$tid, $from, $to], $srcParams)
     );
     $requests = all(
         "SELECT COALESCE(NULLIF(utm_source,''), source, 'Não informado') source, COUNT(*) total
-         FROM requests WHERE tenant_id=? AND created_at>=? AND created_at<=?
+         FROM requests WHERE tenant_id=? AND created_at>=? AND created_at<=?".$srcSql."
          GROUP BY COALESCE(NULLIF(utm_source,''), source, 'Não informado')",
-        [$tid, $from, $to]
+        array_merge([$tid, $from, $to], $srcParams)
     );
     $map = [];
     foreach ($clients as $r) {
@@ -401,20 +627,34 @@ function report_financeiro(array $tenant, array $filters): array
         LEFT JOIN users u ON u.id=f.agent_id AND u.tenant_id=f.tenant_id
         LEFT JOIN appointments a ON a.id=f.source_id AND a.tenant_id=f.tenant_id
           AND f.source_type IN ('appointment','appointment_commission')
-        WHERE f.tenant_id=? AND f.status!='cancelled'
-          AND COALESCE(f.due_date, substr(f.created_at,1,10))>=?
-          AND COALESCE(f.due_date, substr(f.created_at,1,10))<=?";
+        WHERE f.tenant_id=? AND f.status!='cancelled'";
+    $dateCol = ($filters['finance_date'] ?? 'competence') === 'caixa'
+        ? "substr(COALESCE(f.paid_at, f.created_at),1,10)"
+        : "COALESCE(f.due_date, substr(f.created_at,1,10))";
+    $sql .= " AND $dateCol>=? AND $dateCol<=?";
     $params = [$tid, $filters['from'], $filters['to']];
     if ($filters['finance_status'] !== 'all') {
         $sql .= ' AND f.status=?';
         $params[] = $filters['finance_status'];
+    }
+    if (($filters['finance_kind'] ?? 'all') !== 'all') {
+        $sql .= ' AND f.kind=?';
+        $params[] = $filters['finance_kind'];
+    }
+    if (($filters['finance_flow'] ?? 'all') !== 'all') {
+        $sql .= ' AND f.flow=?';
+        $params[] = $filters['finance_flow'];
+    }
+    if (($filters['payment_method'] ?? '') !== '') {
+        $sql .= ' AND f.payment_method=?';
+        $params[] = $filters['payment_method'];
     }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND a.service_id IN ($ph)";
         $params = array_merge($params, $filters['service_ids']);
     }
-    $sql .= ' ORDER BY COALESCE(f.due_date, f.created_at)';
+    $sql .= " ORDER BY $dateCol";
     $rows = all($sql, $params);
     $table = [];
     foreach ($rows as $r) {
@@ -445,16 +685,39 @@ function report_financeiro(array $tenant, array $filters): array
 function report_documentos(array $tenant, array $filters, string $scope = 'all'): array
 {
     appointment_commission_ensure_schema();
+    coverage_ensure_schema();
     $tid = $tenant['id'];
+    $from = $filters['from'].' 00:00:00';
+    $to = $filters['to'].' 23:59:59';
     $sections = [];
     $wantCpf = in_array($scope, ['all', 'cpf'], true);
     $wantCnpj = in_array($scope, ['all', 'cnpj'], true);
     $wantAgents = in_array($scope, ['all', 'agentes'], true);
+    $docKindWant = $filters['document_kind'] ?? 'all';
     if ($wantCpf || $wantCnpj) {
         $cpfRows = [];
         $cnpjRows = [];
-        foreach (all('SELECT name, cpf, phone, email, status FROM clients WHERE tenant_id=? ORDER BY name', [$tid]) as $r) {
+        foreach (all('SELECT name, cpf, phone, email, status, birth_date, city, state, created_at FROM clients WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [$tid, $from, $to]) as $r) {
+            if (!report_match_status($r['status'] ?? 'ACTIVE', $filters['client_status'] ?? 'ALL')) {
+                continue;
+            }
+            if (!report_match_geo($r, $filters)) {
+                continue;
+            }
+            if (($filters['q'] ?? '') !== '' && !str_contains(strtolower((string)$r['name']), strtolower($filters['q']))) {
+                continue;
+            }
             $kind = br_doc_kind_from_value($r['cpf'] ?? '');
+            if ($docKindWant !== 'all' && $kind !== $docKindWant) {
+                continue;
+            }
+            if (!report_match_doc($r['cpf'] ?? '', $filters['doc_check'] ?? 'all')) {
+                continue;
+            }
+            $age = report_age_years($r['birth_date'] ?? null);
+            if ($kind === 'cpf' && !report_match_age($age, $filters)) {
+                continue;
+            }
             $line = [
                 (string)$r['name'],
                 $kind ? format_br_document($r['cpf'], $kind) : '—',
@@ -478,8 +741,20 @@ function report_documentos(array $tenant, array $filters, string $scope = 'all')
     }
     if ($wantAgents) {
         $agentRows = [];
-        foreach (all("SELECT name, email, phone, document_kind, cpf, active FROM users WHERE tenant_id=? AND role='user_agent' ORDER BY name", [$tid]) as $r) {
+        foreach (all("SELECT id, name, email, phone, document_kind, cpf, active, created_at FROM users WHERE tenant_id=? AND role='user_agent' AND created_at>=? AND created_at<=? ORDER BY name", [$tid, $from, $to]) as $r) {
+            if (!report_match_status(!empty($r['active']) ? 'ACTIVE' : 'INACTIVE', $filters['agent_status'] ?? 'ALL')) {
+                continue;
+            }
             $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cpf'] ?? '');
+            if ($docKindWant !== 'all' && $kind !== $docKindWant) {
+                continue;
+            }
+            if (!report_match_doc($r['cpf'] ?? '', $filters['doc_check'] ?? 'all')) {
+                continue;
+            }
+            if (($filters['q'] ?? '') !== '' && !str_contains(strtolower((string)$r['name'].' '.$r['id']), strtolower($filters['q']))) {
+                continue;
+            }
             $agentRows[] = [
                 (string)$r['name'],
                 $kind ? strtoupper($kind) : '—',
@@ -501,9 +776,10 @@ function report_abrangencia(array $tenant, array $filters): array
     $from = $filters['from'].' 00:00:00';
     $to = $filters['to'].' 23:59:59';
     $supRows = [];
+    $layer = $filters['coverage_layer'] ?? 'all';
     foreach (all('SELECT name,cnpj,document_kind,address,city,state,created_at FROM suppliers WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [$tid, $from, $to]) as $r) {
         $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cnpj'] ?? '');
-        if ($kind !== 'cnpj') {
+        if ($kind !== 'cnpj' || !report_match_geo($r, $filters)) {
             continue;
         }
         $supRows[] = [
@@ -514,7 +790,7 @@ function report_abrangencia(array $tenant, array $filters): array
     }
     $cliRows = [];
     foreach (all('SELECT name,cpf,address,city,state FROM clients WHERE tenant_id=? AND created_at>=? AND created_at<=? ORDER BY name', [$tid, $from, $to]) as $r) {
-        if (br_doc_kind_from_value($r['cpf'] ?? '') !== 'cnpj') {
+        if (br_doc_kind_from_value($r['cpf'] ?? '') !== 'cnpj' || !report_match_geo($r, $filters)) {
             continue;
         }
         $cliRows[] = [
@@ -542,6 +818,15 @@ function report_abrangencia(array $tenant, array $filters): array
         report_section('Clientes CNPJ no mapa', ['Nome', 'CNPJ', 'Local'], $cliRows, $filters['include_totals'] ? ['Total: '.count($cliRows)] : []),
         report_section('Agendamentos externos (manual)', ['Data', 'Cliente', 'Endereço'], $visitRows, $filters['include_totals'] ? ['Total: '.count($visitRows)] : []),
     ];
+    if ($layer === 'suppliers') {
+        return [$sections[0]];
+    }
+    if ($layer === 'clients') {
+        return [$sections[1]];
+    }
+    if ($layer === 'visits') {
+        return [$sections[2]];
+    }
     return $sections;
 }
 
@@ -555,6 +840,18 @@ function report_fornecedores(array $tenant, array $filters): array
     $table = [];
     foreach ($rows as $r) {
         $kind = strtolower((string)($r['document_kind'] ?? '')) ?: br_doc_kind_from_value($r['cnpj'] ?? '');
+        if (($filters['document_kind'] ?? 'all') !== 'all' && $kind !== $filters['document_kind']) {
+            continue;
+        }
+        if (($filters['product_type'] ?? '') !== '' && strcasecmp((string)($r['product_type'] ?? ''), $filters['product_type']) !== 0) {
+            continue;
+        }
+        if (!report_match_geo($r, $filters)) {
+            continue;
+        }
+        if (($filters['q'] ?? '') !== '' && !str_contains(strtolower((string)$r['name']), strtolower($filters['q']))) {
+            continue;
+        }
         $doc = ($kind === 'cpf' || $kind === 'cnpj') ? format_br_document($r['cnpj'], $kind) : (string)($r['cnpj'] ?: '—');
         $table[] = [
             (string)$r['name'],

@@ -148,7 +148,22 @@ expect(!str_contains($tree, "icon('pdf'"), 'lista de relatórios sem ícone de P
 
 $_GET = ['from' => $base['from'], 'to' => $base['to'], 'types' => ['clientes', 'origens']];
 $parsed = report_filters_from_request();
-expect($parsed['kinds'] === ['clientes', 'origens'], 'types[] no request');
+expect($parsed['kinds'] === ['clientes'], 'um único tipo por request, mesmo com types[] mistos');
+
+$reqLost = report_build($tenantA, array_merge($base, ['kinds' => ['solicitacoes'], 'request_status' => 'LOST']));
+expect(count($reqLost['sections'][0]['rows']) === 0, 'filtro de status da solicitação');
+
+$cliSrc = report_build($tenantA, array_merge($base, ['kinds' => ['clientes'], 'source' => 'Instagram']));
+expect(count($cliSrc['sections'][0]['rows']) === 1, 'filtro de origem de clientes');
+
+$fornProd = report_build($tenantA, array_merge($base, ['kinds' => ['fornecedores'], 'product_type' => 'Peças']));
+expect(count($fornProd['sections'][0]['rows']) === 1, 'filtro de categoria de insumo');
+expect($fornProd['sections'][0]['rows'][0][0] === 'Peças Silva', 'fornecedor filtrado por produto');
+
+preg_match_all('/data-fx-kind="([^"]+)"/', $tree, $kindPanels);
+expect(count($kindPanels[1]) === 14 && count(array_unique($kindPanels[1])) === 14, '14 containers de filtro distintos');
+expect(!str_contains($tree, 'id="fx-types"'), 'sem lista compartilhada de tipos de relatório');
+expect(str_contains(file_get_contents(dirname(__DIR__).'/public/assets/app.js'), 'dataset.fxKind'), 'JS troca o painel pelo kind do arquivo');
 
 unlink($tmp);
 exit($fail ? 1 : 0);
