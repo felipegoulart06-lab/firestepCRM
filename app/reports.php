@@ -889,7 +889,7 @@ function report_build(array $tenant, array $filters): array
         'agentes' => 'Relatório de agentes',
         'servicos' => 'Relatório de serviços',
         'origens' => 'Resumo de origens',
-        'financeiro' => 'Resumo do caixa',
+        'financeiro' => 'Relatório de caixa',
         'documentos' => 'Documentos',
         'documentos_cpf' => 'Documentos de clientes CPF',
         'documentos_cnpj' => 'Documentos de clientes CNPJ',

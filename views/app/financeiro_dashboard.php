@@ -31,7 +31,7 @@ $recent = all("SELECT f.*, c.name client_name FROM finance_entries f
   <a class="card card-hover insight" href="/app/financeiro/receber"><?= icon('inbox') ?><div><b>Contas a receber</b><div style="color:#667085">Em aberto até o pagamento. Fatura só sai com Faturar.</div></div></a>
   <a class="card card-hover insight" href="/app/financeiro/faturado"><?= icon('file') ?><div><b>Faturado</b><div style="color:#667085"><?= e(money($ov['faturado'])) ?> confirmados na data acordada.</div></div></a>
   <a class="card card-hover insight" href="/app/financeiro/pagar"><?= icon('list') ?><div><b>Contas a pagar</b><div style="color:#667085">Despesas e boletos em aberto.</div></div></a>
-  <a class="card card-hover insight" href="/app/financeiro/relatorios"><?= icon('file') ?><div><b>Relatórios</b><div style="color:#667085">Resumo do caixa em PDF.</div></div></a>
+  <a class="card card-hover insight" href="/app/relatorios"><?= icon('file') ?><div><b>Relatório de caixa</b><div style="color:#667085">Abre em Relatórios, junto dos demais PDFs.</div></div></a>
 </div>
 <section class="card" style="margin-top:14px">
   <div class="section-head"><h2>Últimos movimentos</h2><a class="btn btn-soft" href="/app/financeiro/lancamentos">Ver lançamentos</a></div>

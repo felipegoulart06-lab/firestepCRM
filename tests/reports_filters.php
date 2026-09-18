@@ -137,6 +137,8 @@ $svcRep = report_build($tenantA, array_merge($base, ['kinds' => ['servicos']]));
 expect(count($svcRep['sections'][0]['rows']) === 2, 'dois serviços no catálogo');
 
 $tree = file_get_contents(dirname(__DIR__).'/views/app/relatorios_fx.php');
+expect(!isset(finance_pages()['relatorios']), 'caixa sai do submenu Financeiro e fica em Relatórios');
+expect(str_contains($tree, "'kind' => 'financeiro'") && str_contains($tree, 'Relatório de caixa'), 'caixa no menu Relatórios com os demais');
 expect(str_contains($tree, "'name' => 'Abrangência'") && str_contains($tree, "'name' => 'Fornecedores'"), 'pastas Abrangência e Fornecedores');
 expect(str_contains($tree, "'kind' => 'agendamentos'") && str_contains($tree, "'kind' => 'agentes'"), 'árvore com agendamentos e agentes');
 expect(str_contains($tree, "'name' => 'Documentos'") && str_contains($tree, "'kind' => 'documentos_cpf'"), 'pasta Documentos com CPF/CNPJ/agentes');

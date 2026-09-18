@@ -77,7 +77,6 @@ function finance_pages(): array
         'receber' => ['Contas a receber', '/app/financeiro/receber'],
         'faturado' => ['Faturado', '/app/financeiro/faturado'],
         'pagar' => ['Contas a pagar', '/app/financeiro/pagar'],
-        'relatorios' => ['Relatórios', '/app/financeiro/relatorios'],
     ];
 }
 

@@ -1833,6 +1833,9 @@ if (str_starts_with($path, '/app')) {
         exit;
     }
     if ($path === '/app/financeiro' || str_starts_with($path, '/app/financeiro/')) {
+        if ($path === '/app/financeiro/relatorios') {
+            redirect('/app/relatorios');
+        }
         ensure_finance_schema();
         finance_backfill_appointments($tenant['id']);
         $clients = all('SELECT id,name,cpf FROM clients WHERE tenant_id=? AND status=? ORDER BY name', [$tenant['id'], 'ACTIVE']);
@@ -1841,7 +1844,6 @@ if (str_starts_with($path, '/app')) {
         elseif ($path === '/app/financeiro/receber') $page = 'receber';
         elseif ($path === '/app/financeiro/faturado') $page = 'faturado';
         elseif ($path === '/app/financeiro/pagar') $page = 'pagar';
-        elseif ($path === '/app/financeiro/relatorios') $page = 'relatorios';
         elseif ($path === '/app/financeiro/relatorio.pdf') {
             if (empty($_GET['types']) && empty($_GET['type'])) {
                 $_GET['types'] = ['financeiro'];
@@ -1856,8 +1858,6 @@ if (str_starts_with($path, '/app')) {
         layout_start('app', compact('user','tenant','path'));
         if ($page === 'dashboard') {
             view('app/financeiro_dashboard', ['tenant'=>$tenant]);
-        } elseif ($page === 'relatorios') {
-            view('app/financeiro_relatorios', ['tenant'=>$tenant]);
         } else {
             view('app/financeiro_lista', [
                 'tenant'=>$tenant,

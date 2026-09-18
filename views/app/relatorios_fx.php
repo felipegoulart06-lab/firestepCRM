@@ -129,7 +129,7 @@ $fxFolders = $fxFolders ?? [
         ['kind' => 'documentos_agentes', 'file' => 'Agentes', 'hint' => 'CPF ou CNPJ cadastrado de cada agente.'],
     ]],
     ['name' => 'Financeiro', 'files' => [
-        ['kind' => 'financeiro', 'file' => 'Resumo do caixa', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
+        ['kind' => 'financeiro', 'file' => 'Relatório de caixa', 'hint' => 'Lançamentos, receber e pagar no intervalo.'],
     ]],
     ['name' => 'Contratos', 'files' => (static function () use ($tenant) {
         $files = [];
@@ -168,13 +168,14 @@ foreach ($fxFolders as $folder) {
     <div class="fx-tree-bar"><?= icon('folder') ?> <?= e($fxRoot) ?></div>
     <div class="fx-tree-body">
       <?php foreach ($fxFolders as $fi => $folder): ?>
-        <div class="fx-folder" data-folder="<?= e((string)$fi) ?>">
+        <?php $folderOpen = ($fxRoot === 'Relatórios' && ($folder['name'] ?? '') === 'Financeiro'); ?>
+        <div class="fx-folder<?= $folderOpen ? ' is-open' : '' ?>" data-folder="<?= e((string)$fi) ?>">
           <div class="fx-folder-row">
             <button type="button" class="fx-twist" aria-label="Abrir pasta <?= e($folder['name']) ?>"></button>
             <span class="fx-ico"><?= icon('folder', 16) ?></span>
             <span class="fx-folder-name"><?= e($folder['name']) ?></span>
           </div>
-          <ul class="fx-kids" hidden>
+          <ul class="fx-kids"<?= $folderOpen ? '' : ' hidden' ?>>
             <?php foreach ($folder['files'] as $file): ?>
               <li>
                 <button type="button" class="fx-file" data-kind="<?= e($file['kind']) ?>" data-file="<?= e($file['file']) ?>" data-folder-name="<?= e($folder['name']) ?>" data-hint="<?= e($file['hint']) ?>" data-contract-id="<?= e((string)($file['contract_id'] ?? '')) ?>">
