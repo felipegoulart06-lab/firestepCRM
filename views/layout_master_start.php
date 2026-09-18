@@ -7,7 +7,8 @@
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=r6">
+<style>html,body{margin:0;background:#f6f7f9}</style>
+<link rel="stylesheet" href="/assets/app.css?v=r23">
 </head>
 <body>
 <div class="wrap">

@@ -52,16 +52,22 @@ function closeModal(){
   ['ver','converter','nova','new','edit','block','convert','delblock','client_id','from'].forEach(k => url.searchParams.delete(k));
   location.href = url.pathname + url.search;
 }
+function visibleLayer(sel){
+  return [...document.querySelectorAll(sel)].find(el => {
+    if (!(el instanceof Element) || el.hidden) return false;
+    const s = getComputedStyle(el);
+    return s.display !== 'none' && s.visibility !== 'hidden';
+  }) || null;
+}
 function hoistModal(el){
   if (!el || el.parentElement === document.body) return el;
   document.body.appendChild(el);
   return el;
 }
 function lockBehindModal(){
-  const overlay = document.querySelector('.overlay')
-    || document.querySelector('.token-modal:not([hidden])')
-    || document.querySelector('.fx-overlay:not([hidden])');
-  if (overlay) hoistModal(overlay);
+  const overlay = visibleLayer('.overlay')
+    || visibleLayer('.token-modal')
+    || visibleLayer('.fx-overlay');
   const on = !!overlay;
   document.documentElement.classList.toggle('is-modal-open', on);
   document.body.classList.toggle('is-modal-open', on);
@@ -85,6 +91,7 @@ document.addEventListener('click', function(e){
 }, true);
 document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
+if (document.body) lockBehindModal();
 document.addEventListener('DOMContentLoaded', lockBehindModal);
 function copyTxt(id){ const el=document.getElementById(id); navigator.clipboard.writeText(el.value); }
 
@@ -386,7 +393,9 @@ function bindReportsExplorer(){
     document.documentElement.classList.toggle('is-modal-open', on);
     document.body.classList.toggle('is-modal-open', on);
   };
-  const openOverlay = (el)=>{ hoistModal(el); el.hidden = false; lock(true); };
+  if (filters) hoistModal(filters);
+  if (preview) hoistModal(preview);
+  const openOverlay = (el)=>{ if (el) { el.hidden = false; lock(true); } };
   const closeOverlays = ()=>{
     if (filters) filters.hidden = true;
     if (preview) preview.hidden = true;
@@ -601,8 +610,6 @@ function bindClausesEditor(){
     return;
   }
   fsLog('log', 'contratos', 'editor iniciado');
-  document.documentElement.classList.add('is-modal-open');
-  document.body.classList.add('is-modal-open');
   let data = { lists: [] };
   try { data = JSON.parse(raw.textContent || '{}'); } catch (e) {
     fsLog('error', 'contratos', 'JSON de listas inválido', e);
@@ -802,6 +809,8 @@ function bindFinanceReceive(){
   const receive = document.getElementById('fin-receive');
   const charge = document.getElementById('fin-charge');
   if (!receive && !charge) return;
+  if (receive) hoistModal(receive);
+  if (charge) hoistModal(charge);
   const extra = document.getElementById('fin-receive-extra');
   const method = document.getElementById('fin-receive-method');
   const doc = document.getElementById('fin-receive-doc');

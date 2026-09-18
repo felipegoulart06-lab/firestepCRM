@@ -10,10 +10,11 @@ $qsearch = trim($_GET['q'] ?? '');
 <?php head_viewport(); ?>
 <meta name="csrf" content="<?= e(csrf()) ?>">
 <title>FirestepCRM · <?= e($tenant['display_name'] ?: $tenant['business_name']) ?></title>
+<style>html,body{margin:0;background:#f6f7f9}</style>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/app.css?v=r22">
+<link rel="stylesheet" href="/assets/app.css?v=r23">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>

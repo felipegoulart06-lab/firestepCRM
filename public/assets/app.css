@@ -1,7 +1,9 @@
 :root{--navy:#101828;--navy-soft:#1d2939;--line:#d9dee7;--line-soft:#e9edf2;--muted:#667085;--text:#101828;--bg:#f6f7f9;--primary:#2563eb;--primary-soft:#eff6ff;--success:#12b76a;--danger:#d92d20;--radius:7px}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,"Segoe UI",system-ui,-apple-system,sans-serif}
+html{scroll-behavior:auto;scrollbar-gutter:stable;background:var(--bg);color-scheme:light}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+@view-transition{navigation:auto}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
 body{min-width:320px}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit}
@@ -114,7 +116,10 @@ table.data tbody tr:hover td{background:#fcfcfd}
 .wa-card p{margin:0;color:#667085;font-size:13px;line-height:1.45}
 .wa-card-btns{display:grid;gap:6px;margin-top:12px}
 .wa-card-btns span{display:block;text-align:center;border:1px solid #d0d5dd;border-radius:8px;padding:8px;font-size:13px;font-weight:650;color:#175cd3;background:#f8fafc}
-html.is-modal-open,body.is-modal-open{overflow:hidden!important;overscroll-behavior:none}
+html.is-modal-open,body.is-modal-open,
+html:has(.overlay:not([hidden])),body:has(.overlay:not([hidden])),
+html:has(.fx-overlay:not([hidden])),body:has(.fx-overlay:not([hidden])),
+html:has(.token-modal:not([hidden])),body:has(.token-modal:not([hidden])){overflow:hidden!important;overscroll-behavior:none}
 body.is-modal-open .overlay,body.is-modal-open .token-modal,body.is-modal-open .fx-overlay,body.is-modal-open .overlay *,body.is-modal-open .token-modal *,body.is-modal-open .fx-overlay *{pointer-events:auto}
 body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-open .sidebar,body.is-modal-open .table-wrap{overflow:hidden!important}
 .calendar-shell{overflow:auto;border-color:#667085;background:#182230}
