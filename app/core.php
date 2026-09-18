@@ -171,20 +171,88 @@ function slot_conflict_message(?array $conflict, int $durationMinutes): string
     return 'Não é possível agendar. O serviço dura '.$need.' e esse período já está ocupado pelo agendamento de '.$who.$svcBit.' ('.$when.'). Exclua ou altere esse agendamento para liberar o tempo do serviço.';
 }
 
-function outside_hours(array $tenant, string $start, string $end): bool
+function hm_to_minutes(?string $hm, bool $closing = false): int
 {
-    $hours = json_arr($tenant['business_hours'] ?: '{}', default_hours());
-    $ts = strtotime($start);
-    $te = strtotime($end);
+    $hm = trim((string)$hm);
+    if ($hm === '24:00') {
+        return 1440;
+    }
+    if ($hm === '' || $hm === '00:00') {
+        return $closing ? 1440 : 0;
+    }
+    $h = (int)substr($hm, 0, 2);
+    $m = (int)substr($hm, 3, 2);
+    $total = ($h * 60) + $m;
+    if ($closing && $total === 0) {
+        return 1440;
+    }
+    return $total;
+}
+
+function business_day_config(array $tenant, string $date): ?array
+{
+    $hours = json_arr($tenant['business_hours'] ?? '', default_hours());
+    if ($hours === []) {
+        $hours = default_hours();
+    }
+    $ts = strtotime($date.' 12:00:00');
+    if ($ts === false) {
+        return null;
+    }
     $day = (int)date('w', $ts);
     $cfg = $hours[$day] ?? $hours[(string)$day] ?? null;
-    if (!$cfg || !empty($cfg['closed'])) return true;
-    $toMin = fn($hm) => ((int)substr($hm,0,2))*60 + (int)substr($hm,3,2);
-    $s = ((int)date('G',$ts))*60 + (int)date('i',$ts);
-    $e = ((int)date('G',$te))*60 + (int)date('i',$te);
-    if ($s < $toMin($cfg['start']) || $e > $toMin($cfg['end'])) return true;
+    return is_array($cfg) ? $cfg : null;
+}
+
+function business_hours_label(array $tenant, string $date): string
+{
+    $cfg = business_day_config($tenant, $date);
+    if (!$cfg || !empty($cfg['closed'])) {
+        $days = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+        $ts = strtotime($date.' 12:00:00');
+        $name = $days[(int)date('w', $ts ?: time())] ?? 'este dia';
+        return 'fechado '.$name;
+    }
+    $end = (string)($cfg['end'] ?? '18:00');
+    if ($end === '00:00' || $end === '24:00') {
+        $end = '24:00';
+    }
+    return substr((string)($cfg['start'] ?? '08:00'), 0, 5).'–'.$end;
+}
+
+function outside_hours(array $tenant, string $start, string $end): bool
+{
+    $cfg = business_day_config($tenant, substr($start, 0, 10));
+    if (!$cfg || !empty($cfg['closed'])) {
+        return true;
+    }
+    $ts = strtotime($start);
+    $te = strtotime($end);
+    if ($ts === false || $te === false) {
+        return true;
+    }
+    $open = hm_to_minutes($cfg['start'] ?? '08:00', false);
+    $close = hm_to_minutes($cfg['end'] ?? '18:00', true);
+    if ($close <= $open) {
+        $close += 1440;
+    }
+    $s = ((int)date('G', $ts)) * 60 + (int)date('i', $ts);
+    $e = ((int)date('G', $te)) * 60 + (int)date('i', $te);
+    if ($e <= $s && substr($end, 0, 10) !== substr($start, 0, 10)) {
+        $e += 1440;
+    }
+    if ($s < $open || $e > $close) {
+        return true;
+    }
     foreach ($cfg['breaks'] ?? [] as $b) {
-        if ($s < $toMin($b['end']) && $e > $toMin($b['start'])) return true;
+        $bs = hm_to_minutes($b['start'] ?? '', false);
+        $be = hm_to_minutes($b['end'] ?? '', true);
+        if ($be <= $bs) {
+            continue;
+        }
+        if ($s < $be && $e > $bs) {
+            return true;
+        }
     }
     return false;
 }
@@ -199,7 +267,8 @@ function create_appointment(array $tenant, array $in): array
     $start = $in['date'] . ' ' . substr((string)$in['start'], 0, 5) . ':00';
     $end = date('Y-m-d H:i:s', strtotime($start) + $dur * 60);
     if (outside_hours($tenant, $start, $end) && empty($in['allow_waiting'])) {
-        return ['ok'=>false,'message'=>'Fora do horário de funcionamento.'];
+        $label = business_hours_label($tenant, $in['date']);
+        return ['ok'=>false,'message'=>'Fora do horário de funcionamento ('.$label.'). O término do serviço também precisa caber no expediente.'];
     }
     $conflict = find_slot_conflict($tenant['id'], $start, $end, $in['ignore'] ?? null);
     if ($conflict) {

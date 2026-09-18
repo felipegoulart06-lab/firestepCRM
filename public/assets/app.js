@@ -81,7 +81,7 @@ document.addEventListener('click', function(e){
     closeModal();
     return;
   }
-  if (t.classList.contains('overlay') || t.classList.contains('token-modal')) closeModal();
+  if (t.classList.contains('token-modal')) closeModal();
 }, true);
 document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
@@ -151,7 +151,58 @@ function bindDocFields(root){
 }
 document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
 document.addEventListener('DOMContentLoaded', bindExternalVisit);
+document.addEventListener('DOMContentLoaded', bindHoursGuard);
 document.addEventListener('DOMContentLoaded', bindCommissionBox);
+function bindHoursGuard(){
+  document.querySelectorAll('form[data-hours]').forEach(function(form){
+    if (form.dataset.hoursBound) return;
+    form.dataset.hoursBound = '1';
+    let hours = {};
+    try { hours = JSON.parse(form.getAttribute('data-hours') || '{}'); } catch (err) { hours = {}; }
+    const hint = form.querySelector('[data-hours-hint]');
+    const dateEl = form.querySelector('[name="date"]');
+    const startEl = form.querySelector('[name="start"]');
+    const svcEl = form.querySelector('[name="service_id"]');
+    const toMin = function(hm, closing){
+      hm = String(hm || '');
+      if (hm === '24:00' || (closing && (hm === '' || hm === '00:00'))) return 1440;
+      const p = hm.split(':');
+      const n = (Number(p[0])||0)*60 + (Number(p[1])||0);
+      return closing && n === 0 ? 1440 : n;
+    };
+    const check = function(){
+      if (!hint || !dateEl || !startEl) return;
+      const date = dateEl.value;
+      const start = startEl.value;
+      if (!date || !start) { hint.hidden = true; return; }
+      const day = new Date(date + 'T12:00:00').getDay();
+      const cfg = hours[day] || hours[String(day)] || null;
+      const opt = svcEl && svcEl.options[svcEl.selectedIndex];
+      const dur = opt ? Number(opt.getAttribute('data-duration') || 60) : 60;
+      const [sh, sm] = start.split(':').map(Number);
+      const s = (sh||0)*60 + (sm||0);
+      const e = s + (dur > 0 ? dur : 60);
+      if (!cfg || cfg.closed) {
+        hint.hidden = false;
+        hint.textContent = 'Fora do horário de funcionamento (fechado neste dia).';
+        return;
+      }
+      let open = toMin(cfg.start, false);
+      let close = toMin(cfg.end, true);
+      if (close <= open) close += 1440;
+      const out = s < open || e > close;
+      hint.hidden = !out;
+      if (out) {
+        const endLabel = (cfg.end === '00:00' || cfg.end === '24:00') ? '24:00' : cfg.end;
+        hint.textContent = 'Fora do horário de funcionamento (' + (cfg.start || '08:00') + '–' + endLabel + '). O término do serviço também precisa caber no expediente.';
+      }
+    };
+    dateEl?.addEventListener('change', check);
+    startEl?.addEventListener('change', check);
+    svcEl?.addEventListener('change', check);
+    check();
+  });
+}
 function bindCommissionBox(){
   document.querySelectorAll('[data-commission-box]').forEach(function(box){
     const form = box.closest('form');

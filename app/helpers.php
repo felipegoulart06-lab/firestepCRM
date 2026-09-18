@@ -775,6 +775,8 @@ function flash(?string $msg = null, string $kind = 'ok'): ?string
     }
     $m = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
+    $GLOBALS['_last_flash'] = $m;
+    $GLOBALS['_last_flash_kind'] = $_SESSION['flash_kind'] ?? 'ok';
     return $m;
 }
 

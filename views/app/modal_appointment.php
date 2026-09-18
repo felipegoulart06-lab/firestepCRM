@@ -1,6 +1,7 @@
 <?php
-$date = $edit ? substr($edit['starts_at'],0,10) : ($_GET['date'] ?? date('Y-m-d'));
-$start = $edit ? substr($edit['starts_at'],11,5) : ($_GET['start'] ?? '09:00');
+$oldAppt = take_old_form();
+$date = $edit ? substr($edit['starts_at'],0,10) : (old_fill($oldAppt, 'date', $_GET['date'] ?? date('Y-m-d')));
+$start = $edit ? substr($edit['starts_at'],11,5) : (old_fill($oldAppt, 'start', $_GET['start'] ?? '09:00'));
 $mode = $_GET['block'] ?? '';
 $modalClose = $modalClose ?? '/app/agenda';
 $forcedClient = $forcedClient ?? null;
@@ -9,6 +10,12 @@ $services = $services ?? [];
 $viewOnly = !empty($viewOnly);
 $showEditForm = $edit && !$viewOnly;
 $allowEditFromDetails = !empty($allowEditFromDetails);
+$formHours = json_arr($tenant['business_hours'] ?? '', default_hours());
+if ($formHours === []) {
+    $formHours = default_hours();
+}
+$formFlash = (string)($GLOBALS['_last_flash'] ?? '');
+$formFlashKind = (string)($GLOBALS['_last_flash_kind'] ?? '');
 ?>
         <div class="overlay" role="presentation">
   <div class="card overlay-panel" style="max-width:<?= $edit?'720':'500' ?>px;padding:18px" onclick="event.stopPropagation()">
@@ -92,7 +99,7 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
         <button class="btn btn-primary">Bloquear</button>
       </form>
     <?php elseif (!$viewOnly): ?>
-      <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px">
+      <form method="post" action="/app/agenda/salvar" class="grid" style="margin-top:10px" data-hours="<?= e(json_encode($formHours, JSON_UNESCAPED_UNICODE)) ?>">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <input type="hidden" name="return_to" value="<?= e($modalClose) ?>">
         <?php if ($edit): ?>
@@ -174,7 +181,7 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
           <select class="select" name="service_id" required style="margin-top:6px" data-service-select>
             <option value="">Selecione</option>
             <?php foreach ($services as $s): ?>
-              <option value="<?= e($s['id']) ?>" data-price="<?= e((string)(float)($s['price'] ?? 0)) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id'])?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min · <?= e(money((float)($s['price'] ?? 0))) ?></option>
+              <option value="<?= e($s['id']) ?>" data-price="<?= e((string)(float)($s['price'] ?? 0)) ?>" data-duration="<?= e((string)service_span_minutes($s)) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id']) || old_fill($oldAppt, 'service_id')===$s['id'] ?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min · <?= e(money((float)($s['price'] ?? 0))) ?></option>
             <?php endforeach; ?>
           </select>
           <?php if (!$services): ?><p class="muted">Cadastre um serviço em Serviços para definir a duração do atendimento.</p><?php endif; ?>
@@ -183,7 +190,8 @@ $allowEditFromDetails = !empty($allowEditFromDetails);
           <div><label class="label">Data</label><input class="input" type="date" name="date" value="<?= e($date) ?>" required></div>
           <div><label class="label">Início</label><input class="input" type="time" name="start" value="<?= e($start) ?>" required></div>
         </div>
-        <p class="muted" style="margin:0">O término usa a duração do serviço (Serviços → Agenda e valor). Se esse período cruzar outro agendamento, não será possível salvar até excluir ou alterar o horário ocupado.</p>
+        <p class="muted" style="margin:0">O término usa a duração do serviço. O atendimento inteiro precisa caber no expediente do dia.</p>
+        <p class="settings-hint" data-hours-hint <?= ($formFlashKind==='error' && str_contains($formFlash, 'horário de funcionamento')) ? '' : 'hidden' ?> style="color:#b42318"><?= ($formFlashKind==='error' && str_contains($formFlash, 'horário de funcionamento')) ? e($formFlash) : 'Fora do horário de funcionamento.' ?></p>
         <?php if (is_user_crm($user ?? null)):
           $agents = $agents ?? [];
           $hasComm = is_array($edit) && (float)($edit['commission_amount'] ?? 0) > 0 && !empty($edit['commission_agent_id']);

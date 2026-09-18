@@ -687,6 +687,9 @@ if (str_starts_with($path, '/app')) {
                 }
                 $start = post('date').' '.post('start').':00';
                 $end = date('Y-m-d H:i:s', strtotime($start) + service_span_minutes($svc)*60);
+                if (outside_hours($tenant, $start, $end)) {
+                    bounce_form('/app/agendamentos?edit='.urlencode((string)$id), 'Fora do horário de funcionamento ('.business_hours_label($tenant, (string)post('date')).'). O término do serviço também precisa caber no expediente.');
+                }
                 $conflict = find_slot_conflict($tid, $start, $end, $id);
                 if ($conflict) {
                     flash(slot_conflict_message($conflict, (int)$svc['duration_minutes']), 'error');
@@ -715,8 +718,9 @@ if (str_starts_with($path, '/app')) {
                 flash($res['ok'] ? 'Agendamento criado.' : $res['message'], $res['ok'] ? 'ok' : 'error');
                 if ($res['ok']) {
                     save_appointment_visits($tid, (string)$res['id'], ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
+                    redirect(str_contains($back, '/clientes') ? $back : (str_contains($back, '/agendamentos') ? '/app/agendamentos' : '/app/agenda'));
                 }
-                redirect($res['ok'] ? (str_contains($back, '/clientes') ? $back : '/app/agendamentos?ver='.urlencode((string)$res['id'])) : $retryNew);
+                bounce_form($retryNew, (string)$res['message']);
             }
             redirect($back);
         }

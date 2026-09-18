@@ -27,7 +27,7 @@ $dash = static function ($v) {
 };
 $hourLine = static function (array $h) {
     if (!empty($h['closed'])) return 'Fechado';
-    $line = ($h['start'] ?? '08:00').' – '.($h['end'] ?? '18:00');
+    $line = ($h['start'] ?? '08:00').' – '.((( $h['end'] ?? '') === '00:00' || ($h['end'] ?? '') === '24:00') ? '24:00' : ($h['end'] ?? '18:00'));
     if (!empty($h['breaks'][0]['start']) && !empty($h['breaks'][0]['end'])) {
         $line .= ' · intervalo '.$h['breaks'][0]['start'].'–'.$h['breaks'][0]['end'];
     }
