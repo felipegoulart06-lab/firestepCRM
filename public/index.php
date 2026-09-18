@@ -1021,6 +1021,10 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/kanban') {
             $st = (string)post('status', '');
             $id = (string)post('id', '');
+            if ((string)post('confirm', '') !== '1') {
+                flash('Confirme com Sim para alterar o status.', 'error');
+                redirect('/app/kanban');
+            }
             if (!isset(APPT_STATUS[$st])) {
                 flash('Status inválido.');
                 redirect('/app/kanban');
@@ -1028,6 +1032,9 @@ if (str_starts_with($path, '/app')) {
             $prev = one('SELECT * FROM appointments WHERE id=? AND tenant_id=?', [$id, $tid]);
             if (!$prev) {
                 flash('Agendamento não encontrado.', 'error');
+                redirect('/app/kanban');
+            }
+            if ($prev['status'] === $st) {
                 redirect('/app/kanban');
             }
             q('UPDATE appointments SET status=? WHERE id=? AND tenant_id=?', [$st, $id, $tid]);

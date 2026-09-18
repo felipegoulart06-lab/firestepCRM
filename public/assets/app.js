@@ -883,3 +883,48 @@ function bindFinanceReceive(){
   syncExtra();
 }
 document.addEventListener('DOMContentLoaded', bindFinanceReceive);
+
+function bindKanbanStatus(){
+  const overlay = document.getElementById('kanban-confirm');
+  const form = document.getElementById('kanban-status-form');
+  const text = document.getElementById('kanban-confirm-text');
+  const idInput = document.getElementById('kanban-status-id');
+  const stInput = document.getElementById('kanban-status-value');
+  if (!overlay || !form) return;
+  hoistModal(overlay);
+  let pending = null;
+  const esc = (s)=> String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const lock = (on)=>{
+    overlay.hidden = !on;
+    document.documentElement.classList.toggle('is-modal-open', on);
+    document.body.classList.toggle('is-modal-open', on);
+  };
+  const revert = ()=>{
+    if (!pending) return;
+    pending.value = pending.getAttribute('data-current') || pending.value;
+    pending = null;
+  };
+  const close = ()=>{ lock(false); revert(); };
+  document.querySelectorAll('.js-kanban-status').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const next = sel.value;
+      const cur = sel.getAttribute('data-current') || '';
+      if (!next || next === cur) return;
+      pending = sel;
+      const label = sel.options[sel.selectedIndex]?.text || next;
+      const who = sel.getAttribute('data-who') || 'este agendamento';
+      if (text) text.innerHTML = 'Deseja realmente alterar o status de <b>'+esc(who)+'</b> para <b>'+esc(label)+'</b>?';
+      lock(true);
+    });
+  });
+  document.getElementById('kanban-no')?.addEventListener('click', close);
+  document.getElementById('kanban-yes')?.addEventListener('click', ()=>{
+    if (!pending) { close(); return; }
+    if (idInput) idInput.value = pending.getAttribute('data-id') || '';
+    if (stInput) stInput.value = pending.value;
+    pending = null;
+    form.submit();
+  });
+  overlay.addEventListener('click', (e)=>{ if (e.target === overlay) close(); });
+}
+document.addEventListener('DOMContentLoaded', bindKanbanStatus);

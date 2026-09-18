@@ -28,7 +28,9 @@ expect(str_contains($kanban, 'APPT_STATUS') && str_contains($kanban, 'client_nam
 expect(!str_contains($kanban, 'Pipeline de solicitações'), 'título não é só de solicitações');
 
 expect(str_contains($index, 'FROM appointments a') && str_contains($index, "if (\$path === '/app/kanban')"), 'lista do Pipeline lê appointments');
-expect(str_contains($index, 'UPDATE appointments SET status=?') && str_contains($index, "if (\$path === '/app/kanban')"), 'setas do Pipeline atualizam agendamento');
+expect(str_contains($index, 'UPDATE appointments SET status=?') && str_contains($index, "post('confirm'") && str_contains($index, "if (\$path === '/app/kanban')"), 'Pipeline só atualiza status após confirmar');
+expect(!str_contains($kanban, 'kanban-arrow') && !str_contains($kanban, '›') && !str_contains($kanban, '‹'), 'Pipeline não usa setas para mudar status');
+expect(str_contains($kanban, 'js-kanban-status') && str_contains($kanban, 'kanban-yes') && str_contains($kanban, '>Sim<') && str_contains($kanban, '>Não<'), 'Pipeline pede Sim ou Não ao mudar status');
 expect(str_contains($index, "if (\$path === '/app/solicitacoes/status')"), 'solicitações continuam com status próprio');
 
 if ($fail) {
