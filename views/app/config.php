@@ -496,33 +496,34 @@ $hourLine = static function (array $h) {
 <div class="card settings-panel google-login-card" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
-      <h2>Google Sheets</h2>
-      <p>Entre com a conta Google do negócio. O sistema pede autorização, grava os tokens e cria a planilha automaticamente.</p>
+      <h2>Google Drive</h2>
+      <p>Continuar com o Google cria uma pasta no Drive da conta, com 7 pastas: Agendamentos, Solicitações, Clientes, Agentes, Fornecedores, Serviços e Financeiro (6 arquivos).</p>
     </div>
   </div>
   <?php if ($connected): ?>
     <p><span class="badge" style="background:#dcfce7;color:#166534">Conta conectada</span> <?= e($sheets['google_email'] ?: 'Google') ?></p>
-    <?php if (!empty($sheets['spreadsheet_url'])): ?>
-      <p><a class="btn btn-ghost" href="<?= e($sheets['spreadsheet_url']) ?>" target="_blank" rel="noopener">Abrir planilha</a></p>
+    <?php $driveUrl = (string)($sheets['drive_folder_url'] ?: $sheets['spreadsheet_url'] ?: ''); ?>
+    <?php if ($driveUrl !== ''): ?>
+      <p><a class="btn btn-ghost" href="<?= e($driveUrl) ?>" target="_blank" rel="noopener">Abrir pasta no Drive</a></p>
     <?php endif; ?>
     <?php if (!empty($sheets['last_sync'])): ?>
       <p class="settings-hint">Última sincronização: <?= e(date('d/m/Y H:i', strtotime($sheets['last_sync']))) ?> · <?= ($sheets['last_status']??'')==='ok' ? 'OK' : 'Erro' ?><?php if (!empty($sheets['last_error'])): ?> · <?= e($sheets['last_error']) ?><?php endif; ?></p>
     <?php endif; ?>
     <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
-    <p class="settings-hint">O clique abre a tela oficial do Google. A conta escolhida passa a ser a da planilha deste painel.</p>
+    <p class="settings-hint">O clique abre a tela oficial do Google. Autorize o Drive; a pasta FirestepCRM é criada na conta escolhida.</p>
     <div class="settings-actions" style="justify-content:flex-start">
       <form method="post" action="/app/configuracoes/sheets/sync">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <button class="btn btn-primary">Sincronizar agora</button>
       </form>
-      <form method="post" action="/app/google/disconnect" onsubmit="return confirm('Desconectar o Google Sheets? A sincronização automática para até você entrar de novo.')">
+      <form method="post" action="/app/google/disconnect" onsubmit="return confirm('Desconectar o Google Drive? A sincronização automática para até você entrar de novo.')">
         <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
         <button class="btn btn-danger">Desconectar</button>
       </form>
     </div>
   <?php else: ?>
     <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
-    <p class="settings-hint">Obrigatório: a janela do Google vai abrir. Autorize o acesso à planilha; os tokens e a API Sheets desta conta são ligados sozinhos neste painel.</p>
+    <p class="settings-hint">Obrigatório: autorize o Google Drive. O sistema cria a pasta com as 7 subpastas e, em Financeiro, os arquivos Lançamentos, Contas a receber, Faturado, Contas a pagar, Relatórios e Dashboard.</p>
   <?php endif; ?>
 </div>
 
