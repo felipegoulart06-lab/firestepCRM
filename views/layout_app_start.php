@@ -11,6 +11,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <meta name="csrf" content="<?= e(csrf()) ?>">
 <title>FirestepCRM · <?= e($tenant['display_name'] ?: $tenant['business_name']) ?></title>
 <style>html,body{margin:0;background:#f6f7f9}</style>
+<script>window.MAPBOX_TOKEN=<?= json_encode(mapbox_public_token(), JSON_UNESCAPED_SLASHES) ?>;</script>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">

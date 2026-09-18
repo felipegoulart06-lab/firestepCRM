@@ -371,6 +371,9 @@ function coverage_pins(string $tenantId): array
         if ($kind !== 'cnpj' || $row['lat'] === null || $row['lng'] === null) {
             continue;
         }
+        if ((float)$row['lat'] === 0.0 && (float)$row['lng'] === 0.0) {
+            continue;
+        }
         $addr = trim($row['address'].' '.$row['city'].' '.$row['state']);
         $pins[] = [
             'kind' => 'supplier',
@@ -385,6 +388,9 @@ function coverage_pins(string $tenantId): array
     }
     foreach (all('SELECT id,name,cpf,address,city,state,lat,lng,phone,whatsapp FROM clients WHERE tenant_id=?', [$tenantId]) as $row) {
         if (br_doc_kind_from_value($row['cpf'] ?? '') !== 'cnpj' || $row['lat'] === null || $row['lng'] === null) {
+            continue;
+        }
+        if ((float)$row['lat'] === 0.0 && (float)$row['lng'] === 0.0) {
             continue;
         }
         $addr = trim($row['address'].' '.$row['city'].' '.$row['state']);
@@ -405,6 +411,9 @@ function coverage_pins(string $tenantId): array
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         WHERE s.tenant_id=? AND a.visit_type='externo' AND a.source='Manual' AND a.status!='CANCELLED'", [$tenantId]) as $row) {
         if ($row['lat'] === null || $row['lng'] === null) {
+            continue;
+        }
+        if ((float)$row['lat'] === 0.0 && (float)$row['lng'] === 0.0) {
             continue;
         }
         $when = date('d/m/Y H:i', strtotime($row['starts_at']));

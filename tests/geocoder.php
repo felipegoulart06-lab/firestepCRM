@@ -36,7 +36,7 @@ expect(($hit['city'] ?? '') === 'São Paulo' && ($hit['state'] ?? '') === 'SP', 
 expect(geo_posted_point('-23.56', '-46.65') !== null, 'ponto POST válido');
 expect(geo_posted_point('51.5', '-0.1') === null, 'ponto fora do Brasil rejeitado');
 $helpers = file_get_contents($root . '/app/helpers.php');
-expect(str_contains($helpers, 'https://api.mapbox.com') && str_contains($helpers, "style-src 'self' 'unsafe-inline' https://api.mapbox.com"), 'CSP libera CSS e JS do Mapbox');
+expect(str_contains($helpers, 'https://api.mapbox.com') && str_contains($helpers, "style-src 'self' 'unsafe-inline' https://api.mapbox.com") && str_contains($helpers, 'https://tiles.mapbox.com'), 'CSP libera CSS, JS e tiles do Mapbox');
 expect(geocoder_provider() === 'mapbox', 'geocoder padrão é Mapbox');
 
 $index = file_get_contents($root . '/public/index.php');

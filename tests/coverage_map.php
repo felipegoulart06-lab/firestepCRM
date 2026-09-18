@@ -85,7 +85,9 @@ expect(count(array_filter($pins2, fn($p) => $p['kind']==='visit')) === 2, 'agend
 expect(agent_route_forbidden('/app/abrangencia'), 'agente não acessa Abrangência');
 $view = file_get_contents(dirname(__DIR__).'/views/app/abrangencia.php');
 expect(str_contains($view, 'Legenda do mapa') && str_contains($view, 'id="map"'), 'página tem mapa e legenda');
-expect(str_contains($view, 'coverage-pins') && str_contains($view, 'loadMapbox') && str_contains($view, 'mapbox://styles/mapbox/streets-v12'), 'pins reais no Mapbox');
+$geojs = file_get_contents(dirname(__DIR__).'/public/assets/geo.js');
+expect(str_contains($view, 'coverage-pins') && str_contains($geojs, 'bindCoverageMap') && str_contains($geojs, 'mapbox://styles/mapbox/streets-v12'), 'pins reais no Mapbox');
+expect(str_contains($geojs, "map.on('load', place)") && str_contains($geojs, 'transformRequest'), 'mapa espera o estilo e envia o token nas tiles');
 $modal = file_get_contents(dirname(__DIR__).'/views/app/modal_appointment.php');
 expect(str_contains($modal, 'external_visit') && str_contains($modal, 'visit_addresses[]'), 'formulário de agendamento tem atendimento externo');
 

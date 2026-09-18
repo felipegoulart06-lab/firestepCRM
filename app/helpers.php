@@ -423,7 +423,7 @@ function security_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https://api.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; script-src 'self' 'unsafe-inline' https://api.mapbox.com blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob:; child-src blob:; font-src 'self' data: https://api.mapbox.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https://api.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com https://*.mapbox.com; script-src 'self' 'unsafe-inline' https://api.mapbox.com blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob: https://api.mapbox.com; child-src blob:; font-src 'self' data: https://api.mapbox.com https://*.mapbox.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || (function_exists('is_vercel') && is_vercel());

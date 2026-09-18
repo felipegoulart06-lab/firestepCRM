@@ -7,9 +7,17 @@
     return String(window.MAPBOX_TOKEN || '').trim();
   }
 
+  function withToken(url) {
+    const token = mapboxToken();
+    if (!token || url.indexOf('mapbox.com') === -1 || url.indexOf('access_token=') !== -1) return { url: url };
+    return { url: url + (url.indexOf('?') === -1 ? '?' : '&') + 'access_token=' + encodeURIComponent(token) };
+  }
+
   function loadMapbox() {
+    const token = mapboxToken();
+    if (!token) return Promise.reject(new Error('MAPBOX_TOKEN vazio'));
     if (window.mapboxgl) {
-      window.mapboxgl.accessToken = mapboxToken();
+      window.mapboxgl.accessToken = token;
       return Promise.resolve(window.mapboxgl);
     }
     if (mapboxReady) return mapboxReady;
@@ -31,7 +39,7 @@
         window.mapboxgl.accessToken = mapboxToken();
         resolve(window.mapboxgl);
       };
-      s.onerror = reject;
+      s.onerror = function () { reject(new Error('Falha ao baixar Mapbox GL')); };
       document.head.appendChild(s);
     });
     return mapboxReady;
@@ -109,7 +117,8 @@
             style: 'mapbox://styles/mapbox/streets-v12',
             center: [lng, lat],
             zoom: 16,
-            attributionControl: true
+            attributionControl: true,
+            transformRequest: function (url) { return withToken(url); }
           });
           marker = new mapboxgl.Marker({ draggable: true })
             .setLngLat([lng, lat])
@@ -181,8 +190,85 @@
     });
   }
 
+  function showMapError(el, msg) {
+    if (!el) return;
+    let box = el.parentElement && el.parentElement.querySelector('.cv-empty');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'cv-empty';
+      el.parentElement?.appendChild(box);
+    }
+    box.hidden = false;
+    box.textContent = msg;
+  }
+
+  function bindCoverageMap() {
+    const el = document.getElementById('map');
+    const raw = document.getElementById('coverage-pins');
+    if (!el || !raw) return;
+    loadMapbox().then(function (mapboxgl) {
+      if (mapboxgl.supported && !mapboxgl.supported()) {
+        showMapError(el, 'Este navegador não desenha o mapa. Atualize o Chrome ou o Edge.');
+        return;
+      }
+      const map = new mapboxgl.Map({
+        container: el,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-47.9292, -15.7801],
+        zoom: 4,
+        attributionControl: true,
+        failIfMajorPerformanceCaveat: false,
+        transformRequest: function (url) { return withToken(url); }
+      });
+      let pins = [];
+      try { pins = JSON.parse(raw.textContent || '[]'); } catch (e) { pins = []; }
+      const place = function () {
+        const bounds = [];
+        pins.forEach(function (p) {
+          const lat = Number(p && p.lat);
+          const lng = Number(p && p.lng);
+          if (!p || !isFinite(lat) || !isFinite(lng)) return;
+          if (lat === 0 && lng === 0) return;
+          if (lat < -35 || lat > 6 || lng < -75 || lng > -32) return;
+          const name = p.name || 'Local';
+          const phone = p.phone && p.phone !== '—' ? p.phone : 'Telefone não informado';
+          const info = p.info || '';
+          const html = '<strong>' + name.replace(/</g,'') + '</strong><br>' +
+            (p.kindLabel ? p.kindLabel.replace(/</g,'') + '<br>' : '') +
+            'Tel.: ' + phone.replace(/</g,'') +
+            (info ? '<br>' + info.replace(/</g,'') : '');
+          const pin = document.createElement('div');
+          pin.className = 'cv-pin cv-' + p.kind;
+          pin.innerHTML = '<i></i>';
+          new mapboxgl.Marker({ element: pin, anchor: 'bottom' })
+            .setLngLat([lng, lat])
+            .setPopup(new mapboxgl.Popup({ offset: 16 }).setHTML(html))
+            .addTo(map);
+          bounds.push([lng, lat]);
+        });
+        if (bounds.length === 1) map.jumpTo({ center: bounds[0], zoom: 13 });
+        else if (bounds.length > 1) {
+          const box = bounds.reduce(function (b, ll) { return b.extend(ll); }, new mapboxgl.LngLatBounds(bounds[0], bounds[0]));
+          map.fitBounds(box, { padding: 48, maxZoom: 13, duration: 0 });
+        }
+        map.resize();
+      };
+      map.on('load', place);
+      map.on('error', function (e) {
+        const err = e && e.error ? String(e.error.message || e.error) : '';
+        if (/token|unauthorized|401|403|not authorized/i.test(err)) {
+          showMapError(el, 'O mapa não autorizou o token Mapbox. Confira MAPBOX_ACCESS_TOKEN no servidor e as URLs permitidas no token.');
+        }
+      });
+      setTimeout(function () { map.resize(); }, 120);
+    }).catch(function () {
+      showMapError(el, 'O mapa não carregou. Falta o token Mapbox no servidor (MAPBOX_ACCESS_TOKEN).');
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-geo-box]').forEach(bindGeoBox);
     document.querySelectorAll('[data-geo-line]').forEach(window.bindGeoLine);
+    bindCoverageMap();
   });
 })();
