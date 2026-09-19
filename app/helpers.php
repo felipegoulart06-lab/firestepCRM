@@ -1040,6 +1040,7 @@ function icon(string $name, int $size = 18): string
         'logout' => '<path d="M10 17l5-5-5-5M15 12H3M15 3h6v18h-6"/>',
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'arrow-up' => '<path d="m18 15-6-6-6 6"/>',
+        'refresh' => '<path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/>',
         'tag' => '<path d="M20 13 13 20 4 11V4h7z"/><circle cx="8.5" cy="8.5" r="1"/>',
         'wallet' => '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 14h2"/>',
         'folder' => '<path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h5l2 2"/>',
@@ -1519,3 +1520,4 @@ require_once __DIR__ . '/clauses.php';
 require_once __DIR__ . '/contract.php';
 require_once __DIR__ . '/coverage.php';
 require_once __DIR__ . '/uazapi.php';
+require_once __DIR__ . '/metrics.php';

@@ -1445,27 +1445,9 @@ if (str_starts_with($path, '/app')) {
     }
 
     if ($path === '/app/metricas') {
-        $period = (int)($_GET['period'] ?? 30);
-        $period = in_array($period, [7, 30, 90], true) ? $period : 30;
-        $from = date('Y-m-d 00:00:00', strtotime("-$period days"));
-        $tid = $tenant['id'];
-        $requestTotal = (int)one('SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND created_at>=?', [$tid,$from])['c'];
-        $scheduledRequests = (int)one("SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND created_at>=? AND status IN ('SCHEDULED','DONE')", [$tid,$from])['c'];
-        $contactRequests = (int)one("SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND created_at>=? AND status IN ('CONTACTED','WAITING_CLIENT')", [$tid,$from])['c'];
-        $finishedRequests = (int)one("SELECT COUNT(*) c FROM requests WHERE tenant_id=? AND created_at>=? AND status='DONE'", [$tid,$from])['c'];
-        $appointmentTotal = (int)one("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND starts_at>=? AND status!='CANCELLED'", [$tid,$from])['c'];
-        $doneAppointments = (int)one("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND starts_at>=? AND status='DONE'", [$tid,$from])['c'];
+        $period = metrics_period();
         layout_start('app', compact('user','tenant','path'));
-        view('app/metricas', [
-            'tenant'=>$tenant,'period'=>$period,
-            'newClients'=>(int)one('SELECT COUNT(*) c FROM clients WHERE tenant_id=? AND created_at>=?', [$tid,$from])['c'],
-            'requestTotal'=>$requestTotal,'scheduledRequests'=>$scheduledRequests,
-            'contactRequests'=>$contactRequests,'finishedRequests'=>$finishedRequests,
-            'appointmentTotal'=>$appointmentTotal,'doneAppointments'=>$doneAppointments,
-            'sources'=>all("SELECT COALESCE(NULLIF(utm_source,''),source,'Não informado') source, COUNT(*) total FROM clients WHERE tenant_id=? AND created_at>=? GROUP BY COALESCE(NULLIF(utm_source,''),source,'Não informado') ORDER BY total DESC", [$tid,$from]),
-            'topServices'=>all("SELECT s.name, COUNT(a.id) total FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' GROUP BY s.name ORDER BY total DESC LIMIT 6", [$tid,$from]),
-            'utmCampaigns'=>(int)one("SELECT COUNT(DISTINCT utm_campaign) c FROM requests WHERE tenant_id=? AND created_at>=? AND utm_campaign IS NOT NULL AND utm_campaign!=''", [$tid,$from])['c'],
-        ]);
+        view('app/metricas', array_merge(['tenant' => $tenant], metrics_build($tenant, $period)));
         layout_end('app');
         exit;
     }
