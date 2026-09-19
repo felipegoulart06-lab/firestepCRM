@@ -170,13 +170,14 @@ function appointment_commission_ensure_schema(): void
             db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_type text');
             db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_value numeric(12,2)');
             db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS commission_amount numeric(12,2)');
+            db()->exec('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS reserva_n integer');
             db()->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS document_kind text');
             db()->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS cpf text');
             db()->exec('ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS agent_id text');
             return;
         }
         $appt = array_column(db()->query('PRAGMA table_info(appointments)')->fetchAll(), 'name');
-        foreach (['commission_agent_id' => 'TEXT', 'commission_type' => 'TEXT', 'commission_value' => 'REAL', 'commission_amount' => 'REAL'] as $col => $def) {
+        foreach (['commission_agent_id' => 'TEXT', 'commission_type' => 'TEXT', 'commission_value' => 'REAL', 'commission_amount' => 'REAL', 'reserva_n' => 'INTEGER'] as $col => $def) {
             if (!in_array($col, $appt, true)) {
                 db()->exec("ALTER TABLE appointments ADD COLUMN $col $def");
             }
@@ -194,6 +195,71 @@ function appointment_commission_ensure_schema(): void
     } catch (Throwable $e) {
         $done = false;
     }
+}
+
+function appointment_assign_reserva(string $tenantId, string $appointmentId): int
+{
+    appointment_commission_ensure_schema();
+    $cur = one('SELECT reserva_n FROM appointments WHERE id=? AND tenant_id=?', [$appointmentId, $tenantId]);
+    $n = (int)($cur['reserva_n'] ?? 0);
+    if ($n > 0) {
+        return $n;
+    }
+    $max = (int)(one('SELECT COALESCE(MAX(reserva_n),0) c FROM appointments WHERE tenant_id=?', [$tenantId])['c'] ?? 0);
+    $n = $max + 1;
+    q('UPDATE appointments SET reserva_n=? WHERE id=? AND tenant_id=?', [$n, $appointmentId, $tenantId]);
+    return $n;
+}
+
+function appointment_backfill_reserva(string $tenantId): void
+{
+    appointment_commission_ensure_schema();
+    $rows = all('SELECT id FROM appointments WHERE tenant_id=? AND (reserva_n IS NULL OR reserva_n=0) ORDER BY created_at ASC, starts_at ASC', [$tenantId]);
+    foreach ($rows as $row) {
+        appointment_assign_reserva($tenantId, (string)$row['id']);
+    }
+}
+
+function appointment_reserva_label(?array $a): string
+{
+    $n = (int)($a['reserva_n'] ?? 0);
+    return $n > 0 ? '#'.$n : '—';
+}
+
+function appointment_type_label(?array $a): string
+{
+    $st = (string)($a['finance_status'] ?? '');
+    if ($st === 'billed') {
+        return 'Faturado';
+    }
+    if ($st === 'paid') {
+        $pay = finance_pay_label($a['payment_method'] ?? '');
+        return $pay !== '—' ? $pay : 'Pago';
+    }
+    $pay = finance_pay_label($a['payment_method'] ?? '');
+    if ($pay !== '—') {
+        return $pay;
+    }
+    $kind = service_price_kind(['price_kind' => $a['price_kind'] ?? 'priced']);
+    if ($kind === 'cortesia') {
+        return 'Cortesia';
+    }
+    if ($kind === 'reuniao') {
+        return 'Reunião';
+    }
+    return '—';
+}
+
+function appointment_value_label(?array $a): string
+{
+    $kind = service_price_kind(['price_kind' => $a['price_kind'] ?? 'priced']);
+    if ($kind === 'cortesia' || $kind === 'reuniao') {
+        return service_price_label(['price_kind' => $kind, 'price' => 0]);
+    }
+    $fin = (float)($a['finance_amount'] ?? 0);
+    $price = (float)($a['service_price'] ?? 0);
+    $n = $fin > 0 ? $fin : $price;
+    return $n > 0 ? money($n) : '—';
 }
 
 function parse_appointment_commission(string $tenantId, float $servicePrice): array

@@ -57,8 +57,16 @@ if (!str_contains($index, "'tenant'=>\$tenant") || !str_contains($index, "view('
     echo "FAIL Lista Agendamentos não passa o tenant ao abrir detalhes\n";
     $fail++;
 }
+if (!str_contains($agendamentos, 'N° reserva') || !str_contains($agendamentos, 'Agente') || !str_contains($agendamentos, 'Valor') || !str_contains($agendamentos, 'Tipo')) {
+    echo "FAIL Lista Agendamentos sem colunas N° reserva, Agente, Valor e Tipo\n";
+    $fail++;
+}
 if (!str_contains($agendamentos, '$modalInline = true') || !str_contains($agendamentos, '?ver=') || !str_contains($agendamentos, '?edit=')) {
     echo "FAIL Lista Agendamentos com links de Ver/Editar quebrados\n";
+    $fail++;
+}
+if (!str_contains(file_get_contents($root . '/app/finance.php'), 'function appointment_assign_reserva') || !str_contains(file_get_contents($root . '/app/core.php'), 'appointment_assign_reserva')) {
+    echo "FAIL novo agendamento não gera N° reserva\n";
     $fail++;
 }
 if (str_contains($agendamentos, 'reserva.pdf')) {

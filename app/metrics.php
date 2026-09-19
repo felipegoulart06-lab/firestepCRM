@@ -118,6 +118,12 @@ function metrics_bars(array $rows, string $color = '#2563eb'): string
 function metrics_build(array $tenant, int $period): array
 {
     $tid = (string)$tenant['id'];
+    if (function_exists('appointment_backfill_reserva')) {
+        appointment_backfill_reserva($tid);
+    }
+    if (function_exists('ensure_finance_schema')) {
+        ensure_finance_schema();
+    }
     $now = time();
     if ($period === 1) {
         $from = date('Y-m-d 00:00:00', $now);
@@ -227,7 +233,15 @@ function metrics_build(array $tenant, int $period): array
         'sources' => $sources,
         'topServices' => all("SELECT s.name, COUNT(a.id) total FROM appointments a LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.status!='CANCELLED' GROUP BY s.name ORDER BY total DESC LIMIT 5", [$tid, $from]),
         'utmCampaigns' => $count("SELECT COUNT(DISTINCT utm_campaign) c FROM requests WHERE tenant_id=? AND created_at>=? AND utm_campaign IS NOT NULL AND utm_campaign!=''", [$tid, $from]),
-        'recentAppts' => all("SELECT a.id,a.starts_at,a.status,c.name client_name,s.name service_name FROM appointments a LEFT JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? ORDER BY a.starts_at DESC LIMIT 8", [$tid, $from]),
+        'recentAppts' => all("SELECT a.id,a.reserva_n,a.starts_at,a.status,c.name client_name,s.name service_name,s.price service_price,s.price_kind,ag.name agent_name,f.status finance_status,f.payment_method,f.amount finance_amount
+            FROM appointments a
+            LEFT JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+            LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+            LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
+            LEFT JOIN finance_entries f ON f.id=(
+                SELECT id FROM finance_entries WHERE tenant_id=a.tenant_id AND source_type='appointment' AND source_id=a.id ORDER BY created_at DESC LIMIT 1
+            )
+            WHERE a.tenant_id=? AND a.starts_at>=? ORDER BY a.starts_at DESC LIMIT 8", [$tid, $from]),
         'recentReqs' => all("SELECT id,name,source,status,created_at FROM requests WHERE tenant_id=? AND created_at>=? ORDER BY created_at DESC LIMIT 8", [$tid, $from]),
         'statusMap' => $statusMap,
         'months' => $monthKeys,

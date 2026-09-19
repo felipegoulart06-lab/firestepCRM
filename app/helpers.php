@@ -360,6 +360,7 @@ function migrate_database(PDO $pdo): void
             'commission_type' => 'TEXT',
             'commission_value' => 'REAL',
             'commission_amount' => 'REAL',
+            'reserva_n' => 'INTEGER',
         ],
         'services' => [
             'buffer_minutes' => 'INTEGER DEFAULT 0',

@@ -31,7 +31,7 @@ $total = count($items);
 endif; ?>
 
 <form method="get" action="/app/agendamentos" class="card service-toolbar">
-  <input class="input" name="q" value="<?= e($search) ?>" placeholder="Buscar cliente, telefone, e-mail, serviço ou origem...">
+  <input class="input" name="q" value="<?= e($search) ?>" placeholder="Buscar n° reserva, cliente, agente, serviço...">
   <select class="select" name="s" aria-label="Filtrar por status">
     <option value="ALL">Todos os status</option>
     <?php foreach (APPT_STATUS as $k=>$v): ?>
@@ -61,12 +61,14 @@ endif; ?>
 <table class="data">
   <thead>
     <tr>
+      <th>N° reserva</th>
       <th>Data</th>
       <th>Horário</th>
       <th>Cliente</th>
-      <th>Contato</th>
+      <th>Agente</th>
       <th>Serviço</th>
-      <th>Origem</th>
+      <th>Valor</th>
+      <th>Tipo</th>
       <th>Status</th>
       <th></th>
     </tr>
@@ -74,12 +76,17 @@ endif; ?>
   <tbody>
   <?php foreach ($items as $a): ?>
     <tr>
+      <td><strong><?= e(appointment_reserva_label($a)) ?></strong></td>
       <td><?= e(date('d/m/Y', strtotime($a['starts_at']))) ?></td>
       <td><?= e(substr($a['starts_at'],11,5)) ?> – <?= e(substr($a['ends_at'],11,5)) ?></td>
-      <td><strong><?= e($a['client_name']) ?></strong></td>
-      <td><?= e(phone_fmt($a['client_phone'] ?: $a['client_whatsapp'])) ?></td>
+      <td>
+        <strong><?= e($a['client_name']) ?></strong>
+        <div style="font-size:12px;color:#667085"><?= e(phone_fmt($a['client_phone'] ?: $a['client_whatsapp'])) ?></div>
+      </td>
+      <td><?= e($a['agent_name'] ?: '—') ?></td>
       <td><?= e($a['service_name'] ?: '—') ?></td>
-      <td><?= e($a['source'] ?: '—') ?></td>
+      <td><?= e(appointment_value_label($a)) ?></td>
+      <td><?= e(appointment_type_label($a)) ?></td>
       <td><?= badge_appt($a['status']) ?></td>
       <td class="row-actions-cell">
         <div class="row-actions">

@@ -1598,13 +1598,26 @@ if (str_starts_with($path, '/app')) {
         exit;
     }
     if ($path === '/app/agendamentos') {
+        appointment_commission_ensure_schema();
+        ensure_finance_schema();
+        appointment_backfill_reserva($tenant['id']);
         $q = '%'.trim($_GET['q'] ?? '').'%';
         $st = $_GET['s'] ?? 'ALL';
         $src = $_GET['origem'] ?? 'ALL';
-        $sql = "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email, s.name service_name
-                FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
-                WHERE a.tenant_id=? AND (c.name LIKE ? OR COALESCE(c.phone,'') LIKE ? OR COALESCE(c.email,'') LIKE ? OR COALESCE(s.name,'') LIKE ? OR COALESCE(a.source,'') LIKE ?)";
-        $p = [$tenant['id'], $q, $q, $q, $q, $q];
+        $sql = "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, c.email client_email,
+                    s.name service_name, s.price service_price, s.price_kind,
+                    ag.name agent_name, f.status finance_status, f.payment_method, f.amount finance_amount
+                FROM appointments a
+                JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+                LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+                LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
+                LEFT JOIN finance_entries f ON f.id=(
+                    SELECT id FROM finance_entries
+                    WHERE tenant_id=a.tenant_id AND source_type='appointment' AND source_id=a.id
+                    ORDER BY created_at DESC LIMIT 1
+                )
+                WHERE a.tenant_id=? AND (c.name LIKE ? OR COALESCE(c.phone,'') LIKE ? OR COALESCE(c.email,'') LIKE ? OR COALESCE(s.name,'') LIKE ? OR COALESCE(a.source,'') LIKE ? OR COALESCE(CAST(a.reserva_n AS TEXT),'') LIKE ? OR COALESCE(ag.name,'') LIKE ?)";
+        $p = [$tenant['id'], $q, $q, $q, $q, $q, $q, $q];
         if ($st !== 'ALL') { $sql .= ' AND a.status=?'; $p[] = $st; }
         if ($src !== 'ALL') { $sql .= ' AND a.source=?'; $p[] = $src; }
         $sql .= ' ORDER BY a.starts_at DESC';

@@ -37,7 +37,7 @@ expect(isset($data['newClients'], $data['revenue'], $data['months']), 'dashboard
 expect(count($data['months']) === 12, 'evolução usa 12 meses');
 $view = file_get_contents(dirname(__DIR__) . '/views/app/metricas.php');
 $css = file_get_contents(dirname(__DIR__) . '/public/assets/app.css');
-expect(str_contains($view, 'mx-kpis') && str_contains($view, 'Evolução mensal') && str_contains($view, 'Funil de conversão'), 'página tem cards, gráfico e funil');
+expect(str_contains($view, 'N° reserva') && str_contains($view, 'Agente') && str_contains($view, 'Tipo'), 'últimos agendamentos mostram reserva, agente e tipo');
 expect(str_contains($view, '365 =>') && str_contains($view, 'Hoje'), 'recorte inclui hoje e 12 meses');
 expect(str_contains($css, '.mx-kpis') && !str_contains($view, 'background:#000') && !str_contains($view, 'fundo preto'), 'visual claro do CRM, sem fundo preto');
 $index = file_get_contents(dirname(__DIR__) . '/public/index.php');

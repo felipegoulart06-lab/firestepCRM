@@ -322,6 +322,7 @@ function create_appointment(array $tenant, array $in): array
         $in['status'] ?? 'SCHEDULED', $in['source'] ?? 'Manual', $in['notes'] ?? null,
         isset($in['metadata']) ? json_encode($in['metadata'], JSON_UNESCAPED_UNICODE) : null, now(),
     ]);
+    appointment_assign_reserva($tenant['id'], $id);
     audit($tenant['id'], $in['user_id'] ?? null, 'appointment.created', 'appointment', $id);
     notify($tenant['id'], 'Novo agendamento', ($cli['name'] ?? '') . ' · ' . $in['date'] . ' ' . $in['start']);
     emit_outbound($tenant['id'], 'appointment.created', ['id'=>$id]);

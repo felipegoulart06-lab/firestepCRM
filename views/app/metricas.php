@@ -108,18 +108,33 @@ $activeAppts = (int)($statusMap['CONFIRMED'] ?? 0) + (int)($statusMap['IN_PROGRE
       <h2>Últimos <?= e(lower($terms['appointments'])) ?></h2>
       <span class="badge" style="background:#eff6ff;color:#1d4ed8"><?= count($recentAppts ?? []) ?></span>
     </div>
-    <div class="mx-feed">
+    <div class="mx-feed mx-feed-table">
       <?php if (empty($recentAppts)): ?>
         <div class="empty"><b>Nenhum horário neste recorte.</b></div>
-      <?php else: foreach ($recentAppts as $a): ?>
-        <a class="mx-feed-row" href="/app/agendamentos?ver=<?= e($a['id']) ?>">
-          <div>
-            <b><?= e($a['client_name'] ?: 'Cliente') ?></b>
-            <small><?= e($a['service_name'] ?: 'Serviço') ?> · <?= e(date('d/m H:i', strtotime($a['starts_at']))) ?></small>
-          </div>
-          <?= badge_appt((string)$a['status']) ?>
-        </a>
-      <?php endforeach; endif; ?>
+      <?php else: ?>
+        <table class="data mx-mini">
+          <thead>
+            <tr>
+              <th>N° reserva</th>
+              <th>Cliente</th>
+              <th>Agente</th>
+              <th>Valor</th>
+              <th>Tipo</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php foreach ($recentAppts as $a): ?>
+            <tr>
+              <td><a href="/app/agendamentos?ver=<?= e($a['id']) ?>"><b><?= e(appointment_reserva_label($a)) ?></b></a></td>
+              <td><?= e($a['client_name'] ?: 'Cliente') ?><div class="muted"><?= e(date('d/m H:i', strtotime($a['starts_at']))) ?></div></td>
+              <td><?= e($a['agent_name'] ?: '—') ?></td>
+              <td><?= e(appointment_value_label($a)) ?></td>
+              <td><?= e(appointment_type_label($a)) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      <?php endif; ?>
     </div>
   </section>
   <section class="card mx-panel">
