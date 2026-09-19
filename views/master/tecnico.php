@@ -48,6 +48,7 @@ $maskId = static function (string $id): string {
     <?php if ($fromEnvGoogle): ?>
       <p class="settings-hint">Há variáveis de ambiente no servidor. Elas prevalecem sobre o que estiver salvo aqui.</p>
     <?php endif; ?>
+    <p class="settings-hint">Sem Client ID e Secret, a integração Google Drive fica indisponível em todos os painéis (login, planilhas e backup automático). No Google Cloud, ative Drive API e Sheets API.</p>
     <p class="settings-hint">O Secret nunca é mostrado de novo. Para trocar, abra Editar e marque explicitamente a substituição.</p>
     <div class="settings-actions">
       <a class="btn btn-primary" href="/master/configuracoes/tecnico?edit=google">Editar credenciais</a>
@@ -77,7 +78,7 @@ $maskId = static function (string $id): string {
       <?php endif; ?>
       <ol class="muted" style="padding-left:18px">
         <li>Em console.cloud.google.com, crie (ou abra) o projeto da Firestep.</li>
-        <li>Ative a <b>Google Sheets API</b> uma vez neste projeto.</li>
+        <li>Ative a <b>Google Drive API</b> e a <b>Google Sheets API</b> neste projeto.</li>
         <li>Credenciais → OAuth 2.0 → tipo Aplicativo da Web.</li>
         <li>Adicione a URI de redirecionamento acima e cole aqui o Client ID e o Secret.</li>
       </ol>

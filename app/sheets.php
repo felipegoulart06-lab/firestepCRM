@@ -99,6 +99,7 @@ function sheets_config(array $tenant): array
         'folders' => [],
         'files' => [],
         'last_sync' => null,
+        'last_backup' => null,
         'last_status' => null,
         'last_error' => null,
     ];
@@ -123,6 +124,7 @@ function google_drive_folders(): array
         'fornecedores' => 'FORNECEDORES',
         'servicos' => 'SERVIÇOS',
         'financeiro' => 'FINANCEIRO',
+        'backups' => 'BACKUPS',
     ];
 }
 
@@ -176,7 +178,7 @@ function google_http(string $method, string $url, mixed $body = null, ?string $a
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 35,
+            CURLOPT_TIMEOUT => 55,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
         if ($payload !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
@@ -188,7 +190,7 @@ function google_http(string $method, string $url, mixed $body = null, ?string $a
             'method'=>$method,
             'header'=>implode("\r\n", $headers),
             'content'=>$payload ?? '',
-            'timeout'=>35,
+            'timeout'=>55,
             'ignore_errors'=>true,
             'follow_location'=>1,
         ]]);
@@ -447,6 +449,173 @@ function drive_create_folder(array $cfg, string $name, ?string $parentId = null)
         $body['parents'] = [$parentId];
     }
     return drive_api('POST', 'files?fields=id,name,webViewLink', $cfg, $body);
+}
+
+function drive_upload_file(array $cfg, string $name, string $parentId, string $bytes, string $mime): array
+{
+    $token = (string)($cfg['access_token'] ?? '');
+    $boundary = 'firestep'.bin2hex(random_bytes(8));
+    $meta = json_encode(['name' => $name, 'parents' => [$parentId]], JSON_UNESCAPED_UNICODE);
+    $body = "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{$meta}\r\n";
+    $body .= "--{$boundary}\r\nContent-Type: {$mime}\r\n\r\n{$bytes}\r\n--{$boundary}--\r\n";
+    $url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink';
+    $headers = [
+        'Authorization: Bearer '.$token,
+        'Content-Type: multipart/related; boundary='.$boundary,
+        'Accept: application/json',
+    ];
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_TIMEOUT => 55,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $raw = (string)curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+    } else {
+        $ctx = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => implode("\r\n", $headers),
+            'content' => $body,
+            'timeout' => 55,
+            'ignore_errors' => true,
+            'follow_location' => 1,
+        ]]);
+        $raw = (string)@file_get_contents($url, false, $ctx);
+        $code = 0;
+        if (isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m)) {
+            $code = (int)$m[1];
+        }
+    }
+    $json = json_decode($raw, true);
+    return ['ok' => $code >= 200 && $code < 300, 'code' => $code, 'json' => is_array($json) ? $json : [], 'raw' => $raw];
+}
+
+function google_backup_sources(): array
+{
+    return [
+        'users' => 'SELECT * FROM users WHERE tenant_id=?',
+        'clients' => 'SELECT * FROM clients WHERE tenant_id=?',
+        'services' => 'SELECT * FROM services WHERE tenant_id=?',
+        'appointments' => 'SELECT * FROM appointments WHERE tenant_id=?',
+        'appointment_stops' => 'SELECT * FROM appointment_stops WHERE tenant_id=?',
+        'requests' => 'SELECT * FROM requests WHERE tenant_id=?',
+        'calendar_blocks' => 'SELECT * FROM calendar_blocks WHERE tenant_id=?',
+        'user_notes' => 'SELECT * FROM user_notes WHERE tenant_id=?',
+        'custom_fields' => 'SELECT * FROM custom_fields WHERE tenant_id=?',
+        'custom_field_values' => 'SELECT * FROM custom_field_values WHERE tenant_id=?',
+        'webhooks' => 'SELECT * FROM webhooks WHERE tenant_id=?',
+        'webhook_logs' => 'SELECT * FROM webhook_logs WHERE tenant_id=?',
+        'notifications' => 'SELECT * FROM notifications WHERE tenant_id=?',
+        'audit_logs' => 'SELECT * FROM audit_logs WHERE tenant_id=?',
+        'analytics_events' => 'SELECT * FROM analytics_events WHERE tenant_id=?',
+        'finance_entries' => 'SELECT * FROM finance_entries WHERE tenant_id=?',
+        'suppliers' => 'SELECT * FROM suppliers WHERE tenant_id=?',
+    ];
+}
+
+function google_backup_try_all(string $sql, array $params): array
+{
+    try {
+        return all($sql, $params);
+    } catch (Throwable) {
+        return [];
+    }
+}
+
+function google_backup_snapshot(string $tenantId): array
+{
+    $tenant = one('SELECT * FROM tenants WHERE id=?', [$tenantId]) ?: [];
+    $cfg = json_arr($tenant['sheets_config'] ?? '{}');
+    if (!empty($cfg['access_token'])) {
+        $cfg['access_token'] = '[redacted]';
+    }
+    if (!empty($cfg['refresh_token'])) {
+        $cfg['refresh_token'] = '[redacted]';
+    }
+    if ($tenant) {
+        $tenant['sheets_config'] = $cfg;
+    }
+    $tables = [];
+    foreach (google_backup_sources() as $name => $sql) {
+        $rows = google_backup_try_all($sql, [$tenantId]);
+        if ($name === 'users') {
+            foreach ($rows as &$u) {
+                unset($u['password_hash']);
+            }
+            unset($u);
+        }
+        $tables[$name] = $rows;
+    }
+    return [
+        'generated_at' => now(),
+        'platform' => 'FirestepCRM',
+        'tenant' => $tenant,
+        'tables' => $tables,
+    ];
+}
+
+function google_backup_upload(string $tenantId, array $tenant, array &$cfg): array
+{
+    if (!google_token_for($tenantId, $cfg)) {
+        return ['ok' => false, 'message' => 'Token Google ausente.'];
+    }
+    if (!sheets_ensure_drive_tree($tenantId, $tenant, $cfg)) {
+        return ['ok' => false, 'message' => 'Não foi possível criar a pasta BACKUPS no Drive.'];
+    }
+    $parent = (string)($cfg['folders']['backups'] ?? '');
+    if ($parent === '') {
+        return ['ok' => false, 'message' => 'Pasta BACKUPS ausente.'];
+    }
+    $snap = google_backup_snapshot($tenantId);
+    $bytes = json_encode($snap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($bytes === false) {
+        return ['ok' => false, 'message' => 'Falha ao montar o JSON de backup.'];
+    }
+    $name = 'backup-'.gmdate('Y-m-d-His').'.json';
+    $up = drive_upload_file($cfg, $name, $parent, $bytes, 'application/json');
+    if (empty($up['ok'])) {
+        return ['ok' => false, 'message' => substr($up['raw'] ?: 'Falha ao enviar o backup ao Drive.', 0, 240)];
+    }
+    $cfg['last_backup'] = now();
+    sheets_save($tenantId, $cfg);
+    return ['ok' => true, 'message' => 'Backup gravado no Google Drive.', 'file' => $up['json']['id'] ?? ''];
+}
+
+function google_backup_all_tenants(): array
+{
+    if (!google_oauth_ready()) {
+        return ['ok' => false, 'message' => 'OAuth Google não configurado.', 'synced' => 0, 'skipped' => 0];
+    }
+    $tenants = all("SELECT * FROM tenants WHERE status='ACTIVE'");
+    $synced = 0;
+    $skipped = 0;
+    $errors = [];
+    foreach ($tenants as $tenant) {
+        $cfg = sheets_config($tenant);
+        if (!sheets_connected($cfg)) {
+            $skipped++;
+            continue;
+        }
+        $res = sync_google_sheets_all((string)$tenant['id']);
+        if (!empty($res['ok'])) {
+            $synced++;
+        } else {
+            $errors[] = ($tenant['display_name'] ?: $tenant['business_name']).': '.($res['message'] ?? 'erro');
+        }
+    }
+    return [
+        'ok' => $errors === [],
+        'synced' => $synced,
+        'skipped' => $skipped,
+        'errors' => $errors,
+        'message' => $errors === [] ? "Backup Drive: {$synced} conta(s)." : implode('; ', $errors),
+    ];
 }
 
 function drive_create_spreadsheet(array $cfg, string $name, string $parentId, string $tab): ?array
@@ -805,6 +974,10 @@ function sync_google_sheets_all(string $tenantId): array
             }
         }
     }
+    $backup = google_backup_upload($tenantId, $tenant, $cfg);
+    if (empty($backup['ok'])) {
+        return sheets_finish($tenantId, $cfg, false, $backup['message'] ?? 'Falha no backup JSON.');
+    }
     return sheets_finish($tenantId, $cfg, true);
 }
 
@@ -826,5 +999,5 @@ function google_complete_login(string $tenantId, array $tokens): array
         return ['ok'=>false,'message'=>'Google autenticado, mas a pasta no Drive não pôde ser criada.'];
     }
     sync_google_sheets_all($tenantId);
-    return ['ok'=>true,'message'=>'Google conectado. A pasta do Drive já está com as 7 pastas e os arquivos do Financeiro.'];
+    return ['ok'=>true,'message'=>'Google conectado. A pasta do Drive já está com as 8 pastas, os arquivos do Financeiro e o backup JSON.'];
 }

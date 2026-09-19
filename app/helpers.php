@@ -18,6 +18,23 @@ function env_str(string $key, ?string $default = null): ?string
     return trim((string)$value, " \t\n\r\0\x0B\"'");
 }
 
+function cron_secret_ok(): bool
+{
+    $secret = (string)(env_str('CRON_SECRET') ?? '');
+    if ($secret === '') {
+        return false;
+    }
+    $got = '';
+    $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    if (stripos($auth, 'Bearer ') === 0) {
+        $got = trim(substr($auth, 7));
+    }
+    if ($got === '') {
+        $got = (string)($_GET['token'] ?? '');
+    }
+    return $got !== '' && hash_equals($secret, $got);
+}
+
 function load_env_file(?string $path = null): void
 {
     $path ??= ROOT . '/.env';

@@ -35,6 +35,23 @@ if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
 
 db();
 
+/* -------- backup automático Google Drive (Vercel Cron; sem sessão) -------- */
+if ($path === '/cron/google-backup') {
+    header('Content-Type: application/json; charset=utf-8');
+    if ($method !== 'GET' && $method !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['ok' => false, 'error' => 'Use GET ou POST']);
+        exit;
+    }
+    if (!cron_secret_ok()) {
+        http_response_code(401);
+        echo json_encode(['ok' => false, 'error' => 'unauthorized']);
+        exit;
+    }
+    echo json_encode(google_backup_all_tenants(), JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 /* -------- webhook público (domínio cadastrado do tenant; sem sessão/cookie) -------- */
 if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
     $hookRow = one('SELECT * FROM webhooks WHERE token=? AND direction=?', [$m[1], 'INBOUND']);
