@@ -227,13 +227,14 @@ function contract_read_image(string $field, ?string $existing, string $label): s
 function letterhead_preview(array $tenant, bool $requireActive = true): ?array
 {
     $cfg = letterhead_config($tenant);
-    if ($requireActive && (empty($cfg['active']) || !letterhead_complete($cfg))) {
+    $isOn = !empty($cfg['active']) && letterhead_complete($cfg);
+    if ($requireActive && !$isOn) {
         return null;
     }
     if (!letterhead_complete($cfg)) {
         $color = letterhead_hex((string)($cfg['color'] ?: '#0f2744'));
         return [
-            'active' => true,
+            'active' => $isOn,
             'color' => $color,
             'ink' => letterhead_ink($color),
             'name' => (string)($tenant['display_name'] ?: $tenant['business_name'] ?: ''),
@@ -247,7 +248,7 @@ function letterhead_preview(array $tenant, bool $requireActive = true): ?array
     $color = letterhead_hex((string)$cfg['color']);
     $kind = strtoupper((string)($cfg['document_kind'] ?: 'doc'));
     return [
-        'active' => true,
+        'active' => $isOn,
         'color' => $color,
         'ink' => letterhead_ink($color),
         'name' => (string)$cfg['trade_name'],
@@ -396,8 +397,14 @@ function letterhead_preview_cfg(array $cfg): array
 
 function letterhead_cfg_for_pdf(?array $tenant): ?array
 {
-    if ($tenant && letterhead_active($tenant)) {
-        return letterhead_config($tenant);
+    if ($tenant) {
+        $cfg = letterhead_config($tenant);
+        if (letterhead_active($tenant)) {
+            return $cfg;
+        }
+        if (letterhead_complete($cfg)) {
+            return null;
+        }
     }
     $plat = platform_letterhead_config();
     if (platform_letterhead_active($plat)) {

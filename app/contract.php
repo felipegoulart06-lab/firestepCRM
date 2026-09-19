@@ -73,18 +73,8 @@ function contract_items(array $tenant, array $filters): array
 
 function contract_send_pdf(array $tenant, array $doc): never
 {
-    $cfg = letterhead_cfg_for_pdf($tenant) ?: [
-        'trade_name' => 'FirestepCRM',
-        'email' => '',
-        'phone' => '',
-        'document_kind' => '',
-        'document' => '',
-        'cep' => '',
-        'address' => '',
-        'color' => '#0f2744',
-        'logo' => '',
-    ];
-    $lh = letterhead_preview_cfg($cfg);
+    $cfg = letterhead_cfg_for_pdf($tenant);
+    $lh = $cfg ? letterhead_preview_cfg($cfg) : null;
     $sig = signature_preview($tenant);
     $jpeg = $lh && !empty($lh['logo']) ? contract_data_image((string)$lh['logo']) : null;
     $sigJpeg = $sig && !empty($sig['image']) ? contract_data_image((string)$sig['image']) : null;

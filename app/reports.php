@@ -1016,7 +1016,7 @@ function report_build(array $tenant, array $filters): array
     } else {
         $title = $contract ? 'Contrato e relatórios' : 'Relatórios operacionais';
     }
-    $useLh = $contract ? letterhead_preview($tenant, false) : letterhead_preview($tenant);
+    $useLh = letterhead_preview($tenant);
     return [
         'title' => $title,
         'filename' => ($contract ? 'contrato-' : 'relatorio-').date('Y-m-d').'.pdf',

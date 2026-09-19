@@ -48,6 +48,9 @@ letterhead_save('ten-lh', $cfg);
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(letterhead_complete(letterhead_config($tenant)), 'completo após salvar');
 expect(letterhead_preview($tenant) === null, 'ainda oculto nos contratos');
+expect(letterhead_cfg_for_pdf($tenant) === null, 'PDF de contrato sem cabeçalho desativado');
+$draft = letterhead_preview($tenant, false);
+expect($draft !== null && empty($draft['active']) && $draft['name'] === 'Studio Aura', 'rascunho existe mas não entra como ativo');
 
 $cfg['active'] = true;
 letterhead_save('ten-lh', $cfg);
@@ -107,6 +110,31 @@ platform_letterhead_save([
     'active' => true,
 ]);
 expect(platform_letterhead_active(), 'cabeçalho da plataforma ativo');
+$cfg['active'] = false;
+letterhead_save('ten-lh', $cfg);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(letterhead_preview($tenant) === null, 'desativado some da prévia mesmo com cabeçalho da plataforma');
+expect(letterhead_cfg_for_pdf($tenant) === null, 'desativado não cai no cabeçalho da plataforma');
+require_once dirname(__DIR__) . '/app/finance.php';
+require_once dirname(__DIR__) . '/app/core.php';
+require_once dirname(__DIR__) . '/app/reports.php';
+$doc = report_build($tenant, [
+    'from' => date('Y-m-01'),
+    'to' => date('Y-m-d'),
+    'appt_status' => 'ALL',
+    'client_status' => 'ALL',
+    'finance_status' => 'all',
+    'user_ids' => [],
+    'admins_only' => false,
+    'service_ids' => [],
+    'kinds' => ['contratos'],
+    'include_totals' => true,
+    'include_client_summary' => false,
+]);
+expect(empty($doc['letterhead']) || empty($doc['letterhead']['active']), 'relatório de contrato ignora cabeçalho desativado');
+$cfg['active'] = true;
+letterhead_save('ten-lh', $cfg);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 $dossie2 = tenant_dossier_pdf($tenant, ['username' => 'admin', 'email' => 'lh@ex.com'], null);
 expect(str_contains($dossie2, 'FirestepCRM'), 'dossie usa nome do CRM');
 expect(str_contains($dossie2, pdf_fill_dark()), 'corpo do PDF volta para tinta escura depois do cabeçalho');
