@@ -195,8 +195,15 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .kanban-actions{display:grid;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line-soft)}
 .kanban-actions .label{margin:0;font-size:10px}
 .kanban-actions .select{min-height:32px;font-size:12px;padding:4px 8px}
-@media(max-width:900px){.kanban{grid-template-columns:1fr 1fr}.kanban-col{max-height:320px;min-width:0}}
-@media(max-width:560px){.kanban{grid-template-columns:1fr}}
+.kcard-reserva{margin:0 0 4px;font-size:11px;font-weight:700;line-height:1.2}
+.kcard-reserva a{color:#344054}
+.kanban.is-compact{grid-template-columns:repeat(7,minmax(148px,1fr))}
+.kanban.is-compact .kcard-full{display:none}
+.kanban.is-compact .kcard{padding:6px 7px}
+.kanban.is-compact .kcard-reserva{margin:0;font-size:13px}
+.kanban.is-compact .kanban-actions{margin-top:4px;padding-top:4px}
+@media(max-width:900px){.kanban,.kanban.is-compact{grid-template-columns:1fr 1fr}.kanban-col{max-height:320px;min-width:0}}
+@media(max-width:560px){.kanban,.kanban.is-compact{grid-template-columns:1fr}}
 .service-summary{display:flex;gap:22px;align-items:center;margin:-8px 0 12px;color:#667085;font-size:12px}.service-summary strong{color:#101828;font-size:14px;margin-right:3px}
 .service-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 160px auto auto;gap:7px;padding:8px;margin-bottom:12px}
 .view-switch{display:flex;border:1px solid #d0d5dd;border-radius:5px;overflow:hidden}.view-switch a{padding:6px 9px;font-size:11px;font-weight:600;color:#667085}.view-switch a+a{border-left:1px solid #d0d5dd}.view-switch a.active{background:#344054;color:#fff}
@@ -463,7 +470,7 @@ body.nav-open .sidebar-scrim{display:block}
   .cl-tools{flex-wrap:wrap}
   .cl-tools .input{max-width:none;width:100%}
   .plan-board{grid-template-columns:1fr}
-  .kanban{grid-template-columns:1fr 1fr}
+  .kanban,.kanban.is-compact{grid-template-columns:1fr 1fr}
   .g4{grid-template-columns:1fr 1fr}
   .overlay,.fx-overlay,.token-modal{padding:12px 10px;align-items:flex-start}
   .overlay-panel,.cl-panel,.fx-filter-panel,.fx-preview-shell{max-width:100%}
@@ -477,7 +484,7 @@ body.nav-open .sidebar-scrim{display:block}
   table.data{min-width:720px}
 }
 @media(max-width:720px){
-  .g4,.kanban{grid-template-columns:1fr}
+  .g4,.kanban,.kanban.is-compact{grid-template-columns:1fr}
   .login-hero,.login-form{padding:24px}
   .top details .notif-pop{right:8px;left:8px;width:auto}
   .row-actions{flex-wrap:wrap;justify-content:flex-start}

@@ -1669,16 +1669,24 @@ if (str_starts_with($path, '/app')) {
         exit;
     }
     if ($path === '/app/kanban') {
+        $wantView = (string)($_GET['view'] ?? '');
+        if ($wantView === 'card' || $wantView === 'compact') {
+            pipeline_view_save((string)$user['id'], $wantView);
+            redirect('/app/kanban');
+        }
         layout_start('app', compact('user','tenant','path'));
-        view('app/kanban', ['items'=>all(
-            "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, s.name service_name
-             FROM appointments a
-             JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
-             LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
-             WHERE a.tenant_id=?
-             ORDER BY a.starts_at DESC",
-            [$tenant['id']]
-        )]);
+        view('app/kanban', [
+            'items'=>all(
+                "SELECT a.*, c.name client_name, c.phone client_phone, c.whatsapp client_whatsapp, s.name service_name
+                 FROM appointments a
+                 JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
+                 LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+                 WHERE a.tenant_id=?
+                 ORDER BY a.starts_at DESC",
+                [$tenant['id']]
+            ),
+            'pipelineView'=>pipeline_view_of($user),
+        ]);
         layout_end('app');
         exit;
     }

@@ -696,6 +696,38 @@ function app_home_path(?array $tenant, ?array $user = null): string
     return '/app/agenda';
 }
 
+function pipeline_view_cookie_name(string $userId): string
+{
+    return 'crm_pv_'.substr(hash('sha256', $userId), 0, 16);
+}
+
+function pipeline_view_normalize(?string $raw): string
+{
+    return $raw === 'compact' ? 'compact' : 'card';
+}
+
+function pipeline_view_of(?array $user = null): string
+{
+    $uid = (string)($user['id'] ?? '');
+    $key = $uid !== '' ? pipeline_view_cookie_name($uid) : 'crm_pv';
+    return pipeline_view_normalize((string)($_COOKIE[$key] ?? ''));
+}
+
+function pipeline_view_save(string $userId, string $view): void
+{
+    $view = pipeline_view_normalize($view);
+    $name = pipeline_view_cookie_name($userId);
+    $_COOKIE[$name] = $view;
+    $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    setcookie($name, $view, [
+        'expires' => time() + 86400 * 400,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
 function redirect_app_home(?array $tenant = null, ?array $user = null): void
 {
     if ($user && is_user_admin($user)) {
