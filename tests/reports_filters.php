@@ -93,7 +93,7 @@ expect(!str_contains(json_encode($all), 'Bia'), 'não vaza cliente do tenant B')
 
 $svc = report_build($tenantA, array_merge($base, ['service_ids' => ['svc-x']]));
 expect(count($svc['sections'][0]['rows']) === 1, 'filtro por serviço');
-expect($svc['sections'][0]['rows'][0][2] === 'Barba', 'serviço filtrado é Barba');
+expect($svc['sections'][0]['rows'][0][4] === 'Barba', 'serviço filtrado é Barba');
 
 $st = report_build($tenantA, array_merge($base, ['appt_status' => 'DONE']));
 expect(count($st['sections'][0]['rows']) === 1, 'filtro por status');
@@ -124,6 +124,23 @@ expect($abr['sections'][0]['rows'][0][0] === 'Atacado Ltda', 'só CNPJ no bloco 
 
 $agenda = report_build($tenantA, array_merge($base, ['kinds' => ['agendamentos']]));
 expect($agenda['sections'][0]['title'] === 'Agendamentos', 'tipo agendamentos');
+expect($agenda['sections'][0]['headers'] === ['N° reserva', 'Data', 'Cliente', 'Agente', 'Serviço', 'Valor', 'Tipo', 'Status'], 'PDF de agendamentos com reserva, agente, valor e tipo');
+
+q("UPDATE appointments SET commission_agent_id='ua' WHERE id='ap-x' AND tenant_id='ten-a'");
+$byAgent = report_build($tenantA, array_merge($base, ['user_ids' => ['ua']]));
+expect(count($byAgent['sections'][0]['rows']) === 2, 'filtro de equipe inclui agente da comissão');
+
+$nRes = (int)(one("SELECT reserva_n FROM appointments WHERE id='ap-a' AND tenant_id='ten-a'")['reserva_n'] ?? 0);
+$byRes = report_build($tenantA, array_merge($base, ['reserva_n' => $nRes]));
+expect(count($byRes['sections'][0]['rows']) === 1, 'filtro por N° reserva');
+expect($byRes['sections'][0]['rows'][0][2] === 'Ana', 'reserva filtrada é da Ana');
+
+q("INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,client_id,source_type,source_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+    'fin-bill', 'ten-a', 'receivable', 'in', 'billed', 'Corte faturado', 100, $day, 'cli-a', 'appointment', 'ap-a', $now, $now,
+]);
+$billed = report_build($tenantA, array_merge($base, ['appt_type' => 'billed']));
+expect(count($billed['sections'][0]['rows']) === 1, 'filtro tipo Faturado');
+expect($billed['sections'][0]['rows'][0][6] === 'Faturado', 'coluna Tipo = Faturado');
 
 $req = report_build($tenantA, array_merge($base, ['kinds' => ['solicitacoes']]));
 expect($req['sections'][0]['title'] === 'Solicitações', 'tipo solicitações');
@@ -141,6 +158,9 @@ expect(!isset(finance_pages()['relatorios']), 'caixa sai do submenu Financeiro e
 expect(str_contains($tree, "'kind' => 'financeiro'") && str_contains($tree, 'Relatório de caixa'), 'caixa no menu Relatórios com os demais');
 expect(str_contains($tree, "'name' => 'Abrangência'") && str_contains($tree, "'name' => 'Fornecedores'"), 'pastas Abrangência e Fornecedores');
 expect(str_contains($tree, "'kind' => 'agendamentos'") && str_contains($tree, "'kind' => 'agentes'"), 'árvore com agendamentos e agentes');
+expect(str_contains($tree, 'name="appt_type"') && str_contains($tree, 'name="reserva"'), 'agendamentos filtram tipo e N° reserva');
+expect(str_contains($tree, 'data-fx-kind="clientes"') && str_contains($tree, 'name="state"'), 'clientes filtram UF');
+expect(str_contains($tree, 'data-fx-kind="financeiro"') && str_contains($tree, 'name="min_amount"'), 'caixa filtra faixa de valor');
 expect(str_contains($tree, "'name' => 'Documentos'") && str_contains($tree, "'kind' => 'documentos_cpf'"), 'pasta Documentos com CPF/CNPJ/agentes');
 
 $docs = report_build($tenantA, array_merge($base, ['kinds' => ['documentos']]));
@@ -161,6 +181,22 @@ expect(count($cliSrc['sections'][0]['rows']) === 1, 'filtro de origem de cliente
 $fornProd = report_build($tenantA, array_merge($base, ['kinds' => ['fornecedores'], 'product_type' => 'Peças']));
 expect(count($fornProd['sections'][0]['rows']) === 1, 'filtro de categoria de insumo');
 expect($fornProd['sections'][0]['rows'][0][0] === 'Peças Silva', 'fornecedor filtrado por produto');
+
+q("INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,agent_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", [
+    'fin-ag', 'ten-a', 'payable', 'out', 'open', 'Repasse', 50, $day, 'ag-a', $now, $now,
+]);
+q("INSERT INTO finance_entries(id,tenant_id,kind,flow,status,description,amount,due_date,agent_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)", [
+    'fin-big', 'ten-a', 'payable', 'out', 'open', 'Fornecedor', 200, $day, 'ua', $now, $now,
+]);
+$finAgent = report_build($tenantA, array_merge($base, ['kinds' => ['financeiro'], 'user_ids' => ['ag-a']]));
+expect(count($finAgent['sections'][0]['rows']) === 1, 'caixa filtrado pelo agente');
+$finMin = report_build($tenantA, array_merge($base, ['kinds' => ['financeiro'], 'min_amount' => 150]));
+expect(count($finMin['sections'][0]['rows']) === 1, 'caixa filtrado por valor mínimo');
+expect(str_contains($finMin['sections'][0]['rows'][0][2], 'Fornecedor'), 'lançamento de 200 no filtro de valor');
+
+$_GET = ['from' => $base['from'], 'to' => $base['to'], 'types' => ['agendamentos'], 'reserva' => '#12', 'appt_type' => 'billed'];
+$parsedAppt = report_filters_from_request();
+expect($parsedAppt['reserva_n'] === 12 && $parsedAppt['appt_type'] === 'billed', 'request parseia reserva e tipo');
 
 preg_match_all('/data-fx-kind="([^"]+)"/', $tree, $kindPanels);
 expect(count($kindPanels[1]) === 14 && count(array_unique($kindPanels[1])) === 14, '14 containers de filtro distintos');

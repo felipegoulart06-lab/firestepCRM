@@ -230,6 +230,22 @@ foreach ($fxFolders as $folder) {
               <label class="label">Canal / origem</label>
               <select class="select" name="source"><?php fx_options($reportSources, 'Todos os canais'); ?></select>
             </div>
+            <div class="fx-fields">
+              <label class="label">Tipo</label>
+              <select class="select" name="appt_type">
+                <option value="all">Todos</option>
+                <option value="billed">Faturado</option>
+                <option value="paid">Pago</option>
+                <option value="cortesia">Cortesia</option>
+                <option value="convenio">Convênio</option>
+                <option value="reuniao">Reunião</option>
+                <option value="priced">Com valor</option>
+              </select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">N° reserva</label>
+              <input class="input" type="search" name="reserva" placeholder="#12" inputmode="numeric">
+            </div>
             <?php fx_filter_totals(true); ?>
           </div>
           <div class="fx-filter-col">
@@ -283,6 +299,10 @@ foreach ($fxFolders as $folder) {
             <div class="fx-fields">
               <label class="label">Origem / tag de captação</label>
               <select class="select" name="source"><?php fx_options($reportSources, 'Todas as origens'); ?></select>
+            </div>
+            <div class="fx-fields">
+              <label class="label">UF</label>
+              <select class="select" name="state"><?php fx_options($reportStates, 'Todas'); ?></select>
             </div>
             <div class="fx-fields">
               <label class="label">Cidade</label>
@@ -569,6 +589,13 @@ foreach ($fxFolders as $folder) {
                 <?php endforeach; ?>
               </select>
             </div>
+            <div class="fx-fields">
+              <div class="fx-dates">
+                <div><label class="label">Valor mínimo</label><input class="input" type="number" name="min_amount" min="0" step="0.01" placeholder="R$"></div>
+                <div><label class="label">Valor máximo</label><input class="input" type="number" name="max_amount" min="0" step="0.01" placeholder="R$"></div>
+              </div>
+            </div>
+            <?php fx_filter_people($reportAgents ?: $reportUsers); ?>
             <?php fx_filter_services($reportServices); ?>
           </div>
         </div>

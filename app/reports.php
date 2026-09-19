@@ -167,6 +167,15 @@ function report_filters_from_request(): array
     }
     $minAmount = isset($_GET['min_amount']) && is_numeric($_GET['min_amount']) ? (float)$_GET['min_amount'] : null;
     $maxAmount = isset($_GET['max_amount']) && is_numeric($_GET['max_amount']) ? (float)$_GET['max_amount'] : null;
+    $apptType = strtolower(trim((string)($_GET['appt_type'] ?? 'all')));
+    if (!in_array($apptType, ['all', 'billed', 'paid', 'cortesia', 'convenio', 'reuniao', 'priced'], true)) {
+        $apptType = 'all';
+    }
+    $reservaRaw = preg_replace('/\D+/', '', (string)($_GET['reserva'] ?? ''));
+    $reservaN = $reservaRaw !== '' ? (int)$reservaRaw : null;
+    if ($reservaN !== null && $reservaN < 1) {
+        $reservaN = null;
+    }
     return [
         'from' => $from,
         'to' => $to,
@@ -194,6 +203,8 @@ function report_filters_from_request(): array
         'age_max' => $ageMax,
         'min_amount' => $minAmount,
         'max_amount' => $maxAmount,
+        'appt_type' => $apptType,
+        'reserva_n' => $reservaN,
         'user_ids' => report_id_list($_GET['users'] ?? []),
         'admins_only' => ($_GET['admins'] ?? '') === '1',
         'service_ids' => report_id_list($_GET['services'] ?? []),
@@ -308,6 +319,39 @@ function report_match_actor(?string $actorId, array $filters, array $roles): boo
     return true;
 }
 
+function report_match_appointment_people(array $row, ?string $actorId, array $filters, array $roles): bool
+{
+    $adminFilters = $filters;
+    $adminFilters['user_ids'] = [];
+    if (!report_match_actor($actorId, $adminFilters, $roles)) {
+        return false;
+    }
+    if (!$filters['user_ids']) {
+        return true;
+    }
+    $agentId = trim((string)($row['commission_agent_id'] ?? ''));
+    return ($actorId !== null && in_array($actorId, $filters['user_ids'], true))
+        || ($agentId !== '' && in_array($agentId, $filters['user_ids'], true));
+}
+
+function report_match_appt_type(array $row, string $want): bool
+{
+    if ($want === 'all') {
+        return true;
+    }
+    $st = (string)($row['finance_status'] ?? '');
+    $kind = service_price_kind(['price_kind' => $row['price_kind'] ?? 'priced']);
+    return match ($want) {
+        'billed' => $st === 'billed',
+        'paid' => $st === 'paid',
+        'cortesia' => $kind === 'cortesia',
+        'convenio' => $kind === 'convenio',
+        'reuniao' => $kind === 'reuniao',
+        'priced' => $kind === 'priced' && $st !== 'billed',
+        default => true,
+    };
+}
+
 function report_section(string $title, array $headers, array $rows, array $foot = []): array
 {
     return ['title' => $title, 'headers' => $headers, 'rows' => $rows, 'foot' => $foot];
@@ -315,11 +359,21 @@ function report_section(string $title, array $headers, array $rows, array $foot 
 
 function report_atendimentos(array $tenant, array $filters): array
 {
+    appointment_commission_ensure_schema();
+    ensure_finance_schema();
     $tid = $tenant['id'];
-    $sql = "SELECT a.*, c.name client_name, s.name service_name
+    appointment_backfill_reserva($tid);
+    $sql = "SELECT a.*, c.name client_name, s.name service_name, s.price service_price, s.price_kind,
+            ag.name agent_name, f.status finance_status, f.payment_method, f.amount finance_amount
         FROM appointments a
         JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id
         LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id
+        LEFT JOIN users ag ON ag.id=a.commission_agent_id AND ag.tenant_id=a.tenant_id
+        LEFT JOIN finance_entries f ON f.id=(
+            SELECT id FROM finance_entries
+            WHERE tenant_id=a.tenant_id AND source_type='appointment' AND source_id=a.id
+            ORDER BY created_at DESC LIMIT 1
+        )
         WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=?";
     $params = [$tid, $filters['from'].' 00:00:00', $filters['to'].' 23:59:59'];
     if ($filters['appt_status'] !== 'ALL') {
@@ -330,6 +384,10 @@ function report_atendimentos(array $tenant, array $filters): array
         $sql .= ' AND a.source=?';
         $params[] = $filters['source'];
     }
+    if (($filters['reserva_n'] ?? null) !== null) {
+        $sql .= ' AND a.reserva_n=?';
+        $params[] = $filters['reserva_n'];
+    }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
         $sql .= " AND a.service_id IN ($ph)";
@@ -339,17 +397,27 @@ function report_atendimentos(array $tenant, array $filters): array
     $rows = all($sql, $params);
     $actors = report_actor_map($tid, 'appointment.created');
     $roles = report_user_roles($tid);
-    $rows = array_values(array_filter($rows, static fn(array $r) => report_match_actor($actors[$r['id']] ?? null, $filters, $roles)));
+    $typeWant = (string)($filters['appt_type'] ?? 'all');
+    $rows = array_values(array_filter($rows, static function (array $r) use ($actors, $filters, $roles, $typeWant) {
+        if (!report_match_appointment_people($r, $actors[$r['id']] ?? null, $filters, $roles)) {
+            return false;
+        }
+        return report_match_appt_type($r, $typeWant);
+    }));
 
-    $headers = ['Data', 'Cliente', 'Serviço', 'Status'];
+    $headers = ['N° reserva', 'Data', 'Cliente', 'Agente', 'Serviço', 'Valor', 'Tipo', 'Status'];
     $table = [];
     $byClient = [];
     foreach ($rows as $r) {
         $status = APPT_STATUS[$r['status']][0] ?? $r['status'];
         $table[] = [
+            appointment_reserva_label($r),
             date('d/m/Y H:i', strtotime((string)$r['starts_at'])),
             (string)$r['client_name'],
+            (string)($r['agent_name'] ?: '—'),
             (string)($r['service_name'] ?: 'Sem serviço'),
+            appointment_value_label($r),
+            appointment_type_label($r),
             (string)$status,
         ];
         $name = (string)$r['client_name'];
@@ -648,6 +716,19 @@ function report_financeiro(array $tenant, array $filters): array
     if (($filters['payment_method'] ?? '') !== '') {
         $sql .= ' AND f.payment_method=?';
         $params[] = $filters['payment_method'];
+    }
+    if ($filters['user_ids']) {
+        $ph = implode(',', array_fill(0, count($filters['user_ids']), '?'));
+        $sql .= " AND f.agent_id IN ($ph)";
+        $params = array_merge($params, $filters['user_ids']);
+    }
+    if (($filters['min_amount'] ?? null) !== null) {
+        $sql .= ' AND f.amount>=?';
+        $params[] = $filters['min_amount'];
+    }
+    if (($filters['max_amount'] ?? null) !== null) {
+        $sql .= ' AND f.amount<=?';
+        $params[] = $filters['max_amount'];
     }
     if ($filters['service_ids']) {
         $ph = implode(',', array_fill(0, count($filters['service_ids']), '?'));
