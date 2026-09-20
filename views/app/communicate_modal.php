@@ -23,7 +23,7 @@ if ($communicateItems):
       <textarea class="textarea" name="intro" id="communicate-intro" rows="3" maxlength="1000"></textarea>
 
       <label class="label communicate-vars-title">Variáveis do registro</label>
-      <p class="settings-hint">Todas começam incluídas. Clique em uma opção para retirar ou adicionar à mensagem.</p>
+      <p class="settings-hint">O último envio deste menu vira o modelo. Clique em uma opção para retirar ou adicionar à mensagem.</p>
       <div class="communicate-vars" id="communicate-vars"></div>
 
       <label class="label" for="communicate-outro">Mensagem final</label>

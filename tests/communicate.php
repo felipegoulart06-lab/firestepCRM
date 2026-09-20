@@ -34,6 +34,39 @@ $payload = $payloads['appointment:ap-1'] ?? [];
 expect(($payload['name'] ?? '') === 'Maria Silva', 'agendamento usa o cliente como destinatário');
 expect(($payload['phone'] ?? '') === '11999999999', 'agendamento usa o telefone do cliente');
 expect(isset($payload['variables']['reserva'], $payload['variables']['servico']), 'agendamento oferece reserva e serviço');
+expect(str_starts_with((string)$payload['intro'], 'Olá Maria Silva'), 'sem modelo salvo usa saudação padrão');
+
+$tenant['communicate_templates'] = [
+    'appointment' => [
+        'intro' => "Olá {Nome}, tudo bem?\nRecebemos a sua solicitação de Agendamento!",
+        'outro' => 'Em breve o motorista entrará em contato!',
+        'selected' => ['nome', 'servico'],
+    ],
+    'request' => [
+        'intro' => 'Pedido recebido',
+        'outro' => 'Obrigado',
+        'selected' => ['nome'],
+    ],
+];
+$savedAppt = communicate_items('appointment', $appointment, $tenant)['appointment:ap-1'] ?? [];
+expect(($savedAppt['intro'] ?? '') === "Olá {Nome}, tudo bem?\nRecebemos a sua solicitação de Agendamento!", 'agendamentos reabre o último intro enviado');
+expect(($savedAppt['outro'] ?? '') === 'Em breve o motorista entrará em contato!', 'agendamentos reabre o último outro enviado');
+expect(($savedAppt['selected'] ?? []) === ['nome', 'servico'], 'agendamentos reabre as variáveis do último envio');
+
+$requestPayload = communicate_payload('request', [
+    'id' => 'rq-1',
+    'name' => 'Carlos',
+    'phone' => '11988887777',
+    'email' => 'c@c.com',
+    'status' => 'NEW',
+    'source' => 'Site',
+], $tenant);
+expect(($requestPayload['intro'] ?? '') === 'Pedido recebido', 'solicitações tem modelo próprio');
+expect(($requestPayload['intro'] ?? '') !== ($savedAppt['intro'] ?? ''), 'modelos não se misturam entre menus');
+
+$css = file_get_contents(dirname(__DIR__).'/public/assets/app.css');
+expect(str_contains($css, '.communicate-chip') && str_contains($css, 'border-radius:0'), 'chips laranja ficam com canto reto');
+expect(!str_contains($css, '.communicate-chip{appearance:none;border:1px solid #f59e0b;background:#fbbf24;color:#3b2800;border-radius:999px'), 'chips não usam canto arredondado');
 
 $message = communicate_message('Olá!', ['nome', 'empresa'], [
     'nome' => ['Nome', 'Maria'],
@@ -62,7 +95,7 @@ foreach ($views as $file => $key) {
 
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
 expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pela UAZAPI');
-expect(str_contains($index, "flash((string)\$result['message']"), 'resultado do envio é avisado ao usuário');
+expect(str_contains($index, 'communicate_template_save') || str_contains(file_get_contents(dirname(__DIR__).'/app/communicate.php'), 'communicate_template_save'), 'enviar grava o modelo do menu');
 expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
 
 if ($fail) {

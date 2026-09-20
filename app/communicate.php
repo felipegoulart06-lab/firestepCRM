@@ -115,10 +115,82 @@ function communicate_message(string $intro, array $selected, array $vars, string
     return trim(implode("\n\n", $parts));
 }
 
+function communicate_templates_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (is_pgsql()) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS communicate_templates jsonb NOT NULL DEFAULT '{}'::jsonb");
+            return;
+        }
+        $cols = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
+        if (!in_array('communicate_templates', $cols, true)) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN communicate_templates TEXT DEFAULT '{}'");
+        }
+    } catch (Throwable) {
+        $done = false;
+    }
+}
+
+function communicate_templates_all(array $tenant): array
+{
+    $raw = $tenant['communicate_templates'] ?? '{}';
+    $data = is_array($raw) ? $raw : json_arr($raw);
+    return is_array($data) ? $data : [];
+}
+
+function communicate_template_of(array $tenant, string $kind): array
+{
+    $tpl = communicate_templates_all($tenant)[$kind] ?? null;
+    if (!is_array($tpl)) {
+        return ['intro' => null, 'outro' => null, 'selected' => null];
+    }
+    $selected = $tpl['selected'] ?? null;
+    if (is_array($selected)) {
+        $selected = array_values(array_filter(array_map('strval', $selected), static fn(string $key): bool => $key !== ''));
+    } else {
+        $selected = null;
+    }
+    return [
+        'intro' => array_key_exists('intro', $tpl) ? (string)$tpl['intro'] : null,
+        'outro' => array_key_exists('outro', $tpl) ? (string)$tpl['outro'] : null,
+        'selected' => $selected,
+    ];
+}
+
+function communicate_template_save(string $tenantId, array &$tenant, string $kind, string $intro, string $outro, array $selected): void
+{
+    if (!isset(communicate_kinds()[$kind])) {
+        return;
+    }
+    communicate_templates_ensure_schema();
+    $all = communicate_templates_all($tenant);
+    $all[$kind] = [
+        'intro' => $intro,
+        'outro' => $outro,
+        'selected' => array_values(array_filter(array_map('strval', $selected), static fn(string $key): bool => $key !== '')),
+    ];
+    $encoded = json_encode($all, JSON_UNESCAPED_UNICODE);
+    $tenant['communicate_templates'] = $all;
+    try {
+        if (is_pgsql()) {
+            q('UPDATE tenants SET communicate_templates=CAST(? AS jsonb), updated_at=? WHERE id=?', [$encoded, now(), $tenantId]);
+        } else {
+            q('UPDATE tenants SET communicate_templates=?, updated_at=? WHERE id=?', [$encoded, now(), $tenantId]);
+        }
+    } catch (Throwable) {
+        // coluna ausente em ambiente sem migrate; o payload desta sessão ainda usa $tenant
+    }
+}
+
 function communicate_payload(string $kind, array $row, array $tenant): array
 {
     $vars = communicate_variables($kind, $row, $tenant);
-    return [
+    $payload = [
         'kind' => $kind,
         'id' => (string)$row['id'],
         'name' => (string)($row['name'] ?? 'destinatário'),
@@ -128,6 +200,17 @@ function communicate_payload(string $kind, array $row, array $tenant): array
         'intro' => 'Olá '.(string)($row['name'] ?? '').', tudo bem?',
         'outro' => '',
     ];
+    $tpl = communicate_template_of($tenant, $kind);
+    if ($tpl['intro'] !== null) {
+        $payload['intro'] = $tpl['intro'];
+    }
+    if ($tpl['outro'] !== null) {
+        $payload['outro'] = $tpl['outro'];
+    }
+    if ($tpl['selected'] !== null) {
+        $payload['selected'] = array_values(array_filter($tpl['selected'], static fn(string $key): bool => isset($vars[$key])));
+    }
+    return $payload;
 }
 
 function communicate_items(string $kind, array $rows, array $tenant): array
@@ -162,6 +245,11 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
     if (!$row) {
         return ['ok' => false, 'message' => 'Registro não encontrado.'];
     }
+    $message = communicate_message($intro, $selected, communicate_variables($kind, $row, $tenant), $outro);
+    if ($message === '') {
+        return ['ok' => false, 'message' => 'Escreva uma mensagem ou selecione pelo menos uma variável.'];
+    }
+    communicate_template_save((string)$tenant['id'], $tenant, $kind, $intro, $outro, $selected);
     $number = uazapi_wa_number(communicate_phone($row));
     if ($number === '') {
         return ['ok' => false, 'message' => 'O destinatário não possui WhatsApp ou telefone válido.'];
@@ -169,10 +257,6 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
     $cfg = uazapi_config($tenant);
     if (!uazapi_ready($cfg)) {
         return ['ok' => false, 'message' => 'Configure a UAZAPI em Configurações → Integrações.'];
-    }
-    $message = communicate_message($intro, $selected, communicate_variables($kind, $row, $tenant), $outro);
-    if ($message === '') {
-        return ['ok' => false, 'message' => 'Escreva uma mensagem ou selecione pelo menos uma variável.'];
     }
     $sent = uazapi_send_text($cfg, $number, $message);
     return !empty($sent['ok'])
