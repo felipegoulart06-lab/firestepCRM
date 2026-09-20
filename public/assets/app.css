@@ -251,6 +251,13 @@ body.is-modal-open .calendar-shell,body.is-modal-open .kanban-col,body.is-modal-
 .settings-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .settings-panel-head p,.settings-hint{color:#667085;font-size:12px;margin:0}
 .settings-hint{margin-top:12px}
+.acct-autobackup{margin:-4px 0 12px;max-width:160px}
+.acct-autobackup>summary{list-style:none;cursor:default;height:6px;width:36px;opacity:.14;background:#98a2b3;border-radius:1px}
+.acct-autobackup>summary::-webkit-details-marker,.acct-autobackup>summary::marker{display:none;content:''}
+.acct-autobackup>summary:hover,.acct-autobackup[open]>summary{opacity:.4}
+.acct-autobackup-form{margin-top:6px}
+.acct-autobackup-form button{appearance:none;border:0;background:transparent;color:#d0d5dd;font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;padding:2px 0;font-weight:600}
+.acct-autobackup-form button:hover{color:#98a2b3}
 .settings-kv{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0;border:1px solid var(--line);border-radius:5px;overflow:hidden}
 .settings-kv>div{padding:10px 12px;border-bottom:1px solid var(--line-soft)}
 .settings-kv>div:nth-child(odd){border-right:1px solid var(--line-soft)}

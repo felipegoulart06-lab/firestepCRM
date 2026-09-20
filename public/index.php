@@ -94,6 +94,18 @@ if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
     exit;
 }
 
+if ($path === '/cron/r2-backup') {
+    if (!r2_cron_secret_ok()) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'não autorizado']);
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'backups' => r2_backup_all_tenants()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 boot_session();
 
 function current_user(): ?array
@@ -130,6 +142,7 @@ function require_tenant(): array
     $u = require_login();
     if ((!is_user_crm($u) && !is_user_agent($u)) || empty($u['tenant_id'])) redirect('/master');
     app_home_ensure_schema();
+    r2_ensure_schema();
     services_ensure_schema();
     notes_ensure_schema();
     if (function_exists('appointment_commission_ensure_schema')) {
@@ -1205,6 +1218,20 @@ if (str_starts_with($path, '/app')) {
             }
             flash('Conta atualizada.');
             redirect($mustChange && $pw ? app_home_path($tenant, $user) : '/app/configuracoes?tab=conta');
+        }
+        if ($path === '/app/configuracoes/auto-backup') {
+            r2_ensure_schema();
+            $on = post('auto_backup') === '1';
+            q('UPDATE tenants SET auto_backup='.sql_lit_bool($on).', updated_at=? WHERE id=?', [now(), $tid]);
+            if ($on && r2_ready()) {
+                $run = r2_backup_tenant($tid);
+                flash(!empty($run['ok']) ? 'AUTO BACKUP ativo.' : 'AUTO BACKUP ativo; a cópia não concluiu agora.');
+            } elseif ($on) {
+                flash('AUTO BACKUP ativo.');
+            } else {
+                flash('AUTO BACKUP desativado.');
+            }
+            redirect('/app/configuracoes?tab=conta');
         }
         if ($path === '/app/configuracoes/analytics') {
             $gtm = strtoupper(post('gtm_id', ''));

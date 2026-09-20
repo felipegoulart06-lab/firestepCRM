@@ -24,7 +24,7 @@ expect(!str_contains($index, '/app/google/connect') && !str_contains($index, '/m
 $vercel = file_get_contents($root.'/vercel.json');
 expect(!str_contains($vercel, 'google-backup'), 'Vercel sem cron do Drive');
 $env = file_get_contents($root.'/.env.example');
-expect(!str_contains($env, 'GOOGLE_CLIENT') && !str_contains($env, 'CRON_SECRET'), '.env.example sem credenciais Google');
+expect(!str_contains($env, 'GOOGLE_CLIENT'), '.env.example sem credenciais Google');
 $tec = file_get_contents($root.'/views/master/tecnico.php');
 expect(!str_contains($tec, 'google_client') && !str_contains($tec, 'Google Drive API'), 'Master sem credenciais OAuth Google');
 $core = file_get_contents($root.'/app/core.php');

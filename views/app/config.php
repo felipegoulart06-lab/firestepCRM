@@ -556,6 +556,14 @@ $hourLine = static function (array $h) {
     <label class="label">Usuário de acesso</label>
     <input class="input" value="<?= e($user['username']) ?>" readonly disabled>
     <p class="muted" style="margin:6px 0 12px">O login é o e-mail ou este usuário. O nome da empresa no menu não serve para entrar.</p>
+    <details class="acct-autobackup">
+      <summary></summary>
+      <form method="post" action="/app/configuracoes/auto-backup" class="acct-autobackup-form">
+        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+        <input type="hidden" name="auto_backup" value="<?= r2_enabled($tenant) ? '0' : '1' ?>">
+        <button type="submit"><?= r2_enabled($tenant) ? 'AUTO BACKUP · on' : 'AUTO BACKUP · off' ?></button>
+      </form>
+    </details>
     <div class="settings-warn">
       <?php if (!empty($user['must_change_password'])): ?>
       <p class="muted" style="margin:0 0 12px">Primeiro acesso: defina uma senha permanente (mínimo 10 caracteres, com letras e números). Não é preciso informar a senha temporária de novo.</p>

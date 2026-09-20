@@ -344,6 +344,8 @@ function migrate_database(PDO $pdo): void
             'access_token_generated_at' => 'TEXT',
             'access_token_viewed_at' => 'TEXT',
             'home_path' => "TEXT DEFAULT '/app/agenda'",
+            'auto_backup' => 'INTEGER DEFAULT 0',
+            'auto_backup_at' => 'TEXT',
         ],
         'users' => [
             'last_login_at' => 'TEXT',
@@ -1581,3 +1583,4 @@ require_once __DIR__ . '/coverage.php';
 require_once __DIR__ . '/uazapi.php';
 require_once __DIR__ . '/communicate.php';
 require_once __DIR__ . '/metrics.php';
+require_once __DIR__ . '/r2.php';
