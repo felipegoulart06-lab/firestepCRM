@@ -86,6 +86,14 @@ if (!str_contains($css, '.cal-busy-4 .ev') || !str_contains($css, 'data-density=
     echo "FAIL CSS da agenda sem tamanhos menores por densidade\n";
     $fail++;
 }
+if (str_contains($css, '.calendar-month{background:#182230') || str_contains($css, '.calendar-shell{overflow:auto;border-color:#667085;background:#182230}')) {
+    echo "FAIL Agenda ainda usa o calendário escuro\n";
+    $fail++;
+}
+if (!str_contains($agenda, 'cal-month-grid') || !str_contains($agenda, 'is-pad') || !str_contains($css, '.month-cell.is-today')) {
+    echo "FAIL Mês da agenda sem grade clara, preenchimento e destaque de hoje\n";
+    $fail++;
+}
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) falhou(ram).\n");

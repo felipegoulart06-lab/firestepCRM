@@ -102,28 +102,41 @@ foreach ($days ?? [] as $d) {
   $startM = strtotime(date('Y-m-01', $ts));
   $fill = ((int)date('N', $startM)) - 1;
   $count = (int)date('t', $ts);
+  $todayYmd = date('Y-m-d');
+  $gridCells = (int)ceil(($fill + $count) / 7) * 7;
 ?>
-<div class="card calendar-month" style="display:grid;grid-template-columns:repeat(7,1fr)">
-  <?php foreach (['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'] as $n): ?><div style="padding:8px;font-size:12px;color:#667085;font-weight:700"><?= $n ?></div><?php endforeach; ?>
-  <?php for ($i=0;$i<$fill+$count;$i++):
-    if ($i < $fill) { echo '<div style="min-height:88px;border-top:1px solid #f1f5f9"></div>'; continue; }
+<div class="card calendar-month">
+  <div class="cal-month-weekdays">
+    <?php foreach (['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'] as $n): ?><div><?= $n ?></div><?php endforeach; ?>
+  </div>
+  <div class="cal-month-grid">
+  <?php for ($i=0;$i<$gridCells;$i++):
+    if ($i < $fill || $i >= $fill + $count) {
+        echo '<div class="month-cell is-pad"></div>';
+        continue;
+    }
     $day = $i - $fill + 1;
     $ymd = date('Y-m-', $ts) . sprintf('%02d',$day);
+    $dow = ($i % 7) + 1;
     $dayEv = array_values(array_filter($events, fn($ev) => substr($ev['start'],0,10)===$ymd));
     $dayN = count($dayEv);
     $level = agenda_busy_level($dayN);
     $show = $level >= 4 ? 8 : ($level >= 3 ? 6 : 4);
+    $cellClass = 'month-cell';
+    if ($ymd === $todayYmd) $cellClass .= ' is-today';
+    if ($dow >= 6) $cellClass .= ' is-weekend';
   ?>
-    <div class="month-cell" data-density="<?= (int)$level ?>" data-n="<?= (int)$dayN ?>">
-      <a href="/app/agenda?new=1&date=<?= $ymd ?>" style="display:block"><b style="font-size:12px"><?= $day ?></b></a>
+    <div class="<?= $cellClass ?>" data-density="<?= (int)$level ?>" data-n="<?= (int)$dayN ?>">
+      <a class="month-daynum" href="/app/agenda?new=1&date=<?= $ymd ?>"><b><?= $day ?></b></a>
       <?php foreach (array_slice($dayEv, 0, $show) as $ev): $c = ev_color($ev['kind'], $ev['status']??'');
         $chipHref = $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : ($ev['kind']==='note' ? '/app/anotacoes?ver='.$ev['id'] : '/app/agenda?view=month&date='.$ymd.'&ver='.$ev['id']));
       ?>
-        <a class="ev ev-month" href="<?= e($chipHref) ?>" style="background:<?= $c[0] ?>;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
+        <a class="ev ev-month" href="<?= e($chipHref) ?>" style="background:<?= $c[0] ?>;border-left-color:<?= $c[1] ?>;color:<?= $c[2] ?>"><?= e(substr($ev['start'],11,5).' '.$ev['title']) ?></a>
       <?php endforeach; ?>
       <?php if ($dayN > $show): ?><span class="month-more">+<?= $dayN - $show ?></span><?php endif; ?>
     </div>
   <?php endfor; ?>
+  </div>
 </div>
 <?php endif; ?>
 
