@@ -6,6 +6,8 @@ $showForm = !empty($novo) || $edit;
 $src = $edit ?: [];
 $activeOn = $edit ? !empty($src['active']) : true;
 $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
+$communicateItems = communicate_items('agent', $agents, $tenant);
+$communicateBack = '/app/agentes'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SERVER['QUERY_STRING'] : '');
 ?>
 <div class="page-head">
   <div>
@@ -96,6 +98,7 @@ $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v :
   <td><?= !empty($r['active']) ? badge_appt('CONFIRMED') : badge_appt('DONE') ?></td>
   <td><?= e(!empty($r['last_login_at']) ? date('d/m/Y H:i', strtotime((string)$r['last_login_at'])) : 'Ainda não entrou') ?></td>
   <td style="white-space:nowrap">
+    <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="agent:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
     <a class="btn btn-ghost" href="/app/agentes?ver=<?= e($r['id']) ?>">Ver detalhes</a>
     <a class="btn btn-ghost" href="/app/agentes?edit=<?= e($r['id']) ?>">Editar</a>
     <form method="post" action="/app/agentes/excluir" style="display:inline" onsubmit="return confirm('Remover este agente?')">
@@ -110,3 +113,4 @@ $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v :
 </table>
 <?php endif; ?>
 </div>
+<?php include VIEWS . '/app/communicate_modal.php'; ?>

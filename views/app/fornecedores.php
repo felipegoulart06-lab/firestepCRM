@@ -8,6 +8,8 @@ $search = $search ?? '';
 $items = $items ?? [];
 $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_kind'] ?? br_doc_kind_from_value($src['cnpj'] ?? ''))];
 $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
+$communicateItems = communicate_items('supplier', $items, $tenant);
+$communicateBack = '/app/fornecedores'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SERVER['QUERY_STRING'] : '');
 ?>
 <div class="page-head">
   <div>
@@ -124,6 +126,7 @@ $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v :
       <td><?= e(trim(($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—') ?></td>
       <td>
         <div class="row-actions">
+          <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="supplier:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
           <a class="btn btn-ghost" href="/app/fornecedores?ver=<?= e($r['id']) ?>">Ver detalhes</a>
           <a class="btn btn-ghost" href="/app/fornecedores?edit=<?= e($r['id']) ?>">Editar</a>
           <form method="post" action="/app/fornecedores/excluir" onsubmit="return confirm('Remover este fornecedor?')">
@@ -139,3 +142,4 @@ $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v :
 </table>
 <?php endif; ?>
 </div>
+<?php include VIEWS . '/app/communicate_modal.php'; ?>

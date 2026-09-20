@@ -1096,6 +1096,8 @@ function icon(string $name, int $size = 18): string
         'folder' => '<path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h5l2 2"/>',
         'pdf' => '<path d="M14 2H7a2 2 0 0 0-2 2v16h14V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
         'map' => '<path d="M9 18 3 20V6l6-2 6 2 6-2v14l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
+        'message' => '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>',
+        'send' => '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
     ];
     $body = $paths[$name] ?? $paths['list'];
     return '<svg class="ico" width="'.$size.'" height="'.$size.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.$body.'</svg>';
@@ -1570,4 +1572,5 @@ require_once __DIR__ . '/clauses.php';
 require_once __DIR__ . '/contract.php';
 require_once __DIR__ . '/coverage.php';
 require_once __DIR__ . '/uazapi.php';
+require_once __DIR__ . '/communicate.php';
 require_once __DIR__ . '/metrics.php';

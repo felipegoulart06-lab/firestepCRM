@@ -8,6 +8,8 @@ $confirmConvert = !empty($confirmConvert);
 $canConvert = static function (array $r): bool {
     return !in_array($r['status'], ['SCHEDULED','ARCHIVED'], true);
 };
+$communicateItems = communicate_items('request', $requests, $tenant);
+$communicateBack = '/app/solicitacoes'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SERVER['QUERY_STRING'] : '');
 ?>
 <div class="page-head">
   <div>
@@ -56,6 +58,7 @@ if (!$show): ?>
         <td><?= badge_req($r['status']) ?></td>
         <td>
           <div class="row-actions">
+            <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="request:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
             <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($r['id']) ?><?= $fil!=='ALL'?'&f='.e($fil):'' ?>">Detalhes</a>
             <?php if ($canConvert($r)): ?>
             <a class="btn btn-primary" href="/app/solicitacoes?ver=<?= e($r['id']) ?>&amp;converter=1">Converter</a>
@@ -145,3 +148,4 @@ if (!$show): ?>
   </div>
 </div>
 <?php endif; ?>
+<?php include VIEWS . '/app/communicate_modal.php'; ?>

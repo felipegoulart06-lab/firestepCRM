@@ -924,3 +924,86 @@ function bindKanbanStatus(){
   });
 }
 document.addEventListener('DOMContentLoaded', bindKanbanStatus);
+
+function bindCommunicate(){
+  const modal = document.getElementById('communicate-modal');
+  const raw = document.getElementById('communicate-data');
+  if (!modal || !raw) return;
+  let data = {};
+  try { data = JSON.parse(raw.textContent || '{}'); } catch (_) { return; }
+  hoistModal(modal);
+  const form = document.getElementById('communicate-form');
+  const dest = document.getElementById('communicate-destination');
+  const kind = document.getElementById('communicate-kind');
+  const id = document.getElementById('communicate-id');
+  const intro = document.getElementById('communicate-intro');
+  const outro = document.getElementById('communicate-outro');
+  const vars = document.getElementById('communicate-vars');
+  const selectedInput = document.getElementById('communicate-selected');
+  const preview = document.getElementById('communicate-preview');
+  let current = null;
+  let selected = new Set();
+  const lock = (on)=>{
+    modal.hidden = !on;
+    document.documentElement.classList.toggle('is-modal-open', on);
+    document.body.classList.toggle('is-modal-open', on);
+  };
+  const close = ()=> lock(false);
+  const render = ()=>{
+    if (!current) return;
+    const lines = [];
+    const top = (intro?.value || '').trim();
+    if (top) lines.push(top);
+    const variableLines = [];
+    Object.entries(current.variables || {}).forEach(([key, pair])=>{
+      if (selected.has(key)) variableLines.push('*'+String(pair[0] || key)+':* '+String(pair[1] || ''));
+    });
+    if (variableLines.length) lines.push(variableLines.join('\n'));
+    const bottom = (outro?.value || '').trim();
+    if (bottom) lines.push(bottom);
+    if (preview) preview.textContent = lines.join('\n\n') || 'A mensagem aparecerá aqui.';
+    if (selectedInput) selectedInput.value = Array.from(selected).join(',');
+    vars?.querySelectorAll('button[data-key]').forEach(btn=>{
+      const on = selected.has(btn.dataset.key || '');
+      btn.classList.toggle('is-off', !on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  };
+  document.querySelectorAll('.js-communicate').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      current = data[btn.dataset.communicateKey || ''];
+      if (!current) return;
+      selected = new Set(current.selected || Object.keys(current.variables || {}));
+      if (kind) kind.value = current.kind || '';
+      if (id) id.value = current.id || '';
+      if (intro) intro.value = current.intro || '';
+      if (outro) outro.value = current.outro || '';
+      if (dest) dest.textContent = String(current.name || 'Destinatário')+' · '+String(current.phone || 'sem telefone');
+      if (vars) {
+        vars.innerHTML = '';
+        Object.entries(current.variables || {}).forEach(([key, pair])=>{
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'communicate-chip';
+          chip.dataset.key = key;
+          chip.textContent = String(pair[0] || key)+': '+String(pair[1] || '');
+          chip.addEventListener('click', ()=>{
+            selected.has(key) ? selected.delete(key) : selected.add(key);
+            render();
+          });
+          vars.appendChild(chip);
+        });
+      }
+      render();
+      lock(true);
+      intro?.focus();
+    });
+  });
+  document.querySelectorAll('.js-communicate-close').forEach(btn=> btn.addEventListener('click', close));
+  intro?.addEventListener('input', render);
+  outro?.addEventListener('input', render);
+  form?.addEventListener('submit', ()=>{
+    form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
+  });
+}
+document.addEventListener('DOMContentLoaded', bindCommunicate);

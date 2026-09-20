@@ -564,6 +564,25 @@ if (str_starts_with($path, '/app')) {
     if ($method === 'POST') {
         csrf_check();
         $tid = $tenant['id'];
+        if ($path === '/app/comunicar/enviar') {
+            $kind = trim((string)post('kind', ''));
+            $id = trim((string)post('id', ''));
+            if (!isset(communicate_kinds()[$kind])) {
+                flash('Tipo de destinatário inválido.', 'error');
+                redirect('/app');
+            }
+            $selected = array_values(array_filter(array_map('trim', explode(',', (string)post('selected', '')))));
+            $result = communicate_send(
+                $tenant,
+                $kind,
+                $id,
+                (string)post('intro', ''),
+                $selected,
+                (string)post('outro', '')
+            );
+            flash((string)$result['message'], !empty($result['ok']) ? 'ok' : 'error');
+            redirect(communicate_back($kind, (string)post('back', '')));
+        }
         if ($path === '/app/senha') {
             $pw = (string)post('password', '');
             $confirm = (string)post('password_confirm', '');

@@ -1,4 +1,10 @@
-<?php $terms = terms_of($tenant); $q = trim($_GET['q'] ?? ''); $st = $_GET['s'] ?? 'ALL'; ?>
+<?php
+$terms = terms_of($tenant);
+$q = trim($_GET['q'] ?? '');
+$st = $_GET['s'] ?? 'ALL';
+$communicateItems = communicate_items('client', $rows, $tenant);
+$communicateBack = '/app/clientes'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SERVER['QUERY_STRING'] : '');
+?>
 <div style="display:flex;justify-content:space-between;align-items:center">
   <div><h1><?= e($terms['clients']) ?></h1><p style="color:#667085">Base de relacionamento do seu negócio.</p></div>
   <a class="btn btn-primary" href="/app/clientes/novo"><?= icon('plus') ?> Novo <?= e(lower($terms['client'])) ?></a>
@@ -26,6 +32,7 @@
   <td><?= e($r['next'] ?: '—') ?></td>
   <td><?= $r['status']==='ACTIVE' ? badge_appt('CONFIRMED') : badge_appt('DONE') ?></td>
   <td style="white-space:nowrap">
+    <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="client:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
     <a class="btn btn-ghost" href="/app/clientes/ver?id=<?= e($r['id']) ?>">Ver</a>
     <a class="btn btn-ghost" href="/app/clientes/editar?id=<?= e($r['id']) ?>">Editar</a>
     <a class="btn btn-ghost" href="/app/agenda?new=1&amp;client_id=<?= e($r['id']) ?>&amp;from=clientes">Agendar</a>
@@ -40,3 +47,4 @@
 </table>
 <?php endif; ?>
 </div>
+<?php include VIEWS . '/app/communicate_modal.php'; ?>
