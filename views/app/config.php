@@ -555,14 +555,10 @@ $hourLine = static function (array $h) {
     <input class="input" type="email" value="<?= e($user['email']) ?>" readonly disabled>
     <label class="label">Usuário de acesso</label>
     <input class="input" value="<?= e($user['username']) ?>" readonly disabled>
-    <p class="muted" style="margin:6px 0 12px">O login é o e-mail ou este usuário. O nome da empresa no menu não serve para entrar.</p>
+    <p class="muted" style="margin:6px 0 8px">O login é o e-mail ou este usuário. O nome da empresa no menu não serve para entrar.</p>
     <details class="acct-autobackup">
-      <summary></summary>
-      <form method="post" action="/app/configuracoes/auto-backup" class="acct-autobackup-form">
-        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-        <input type="hidden" name="auto_backup" value="<?= r2_enabled($tenant) ? '0' : '1' ?>">
-        <button type="submit"><?= r2_enabled($tenant) ? 'AUTO BACKUP · on' : 'AUTO BACKUP · off' ?></button>
-      </form>
+      <summary title="Opções extras">···</summary>
+      <button type="submit" class="acct-autobackup-btn" formaction="/app/configuracoes/auto-backup" name="auto_backup" value="<?= r2_enabled($tenant) ? '0' : '1' ?>"><?= r2_enabled($tenant) ? 'AUTO BACKUP · on' : 'AUTO BACKUP · off' ?></button>
     </details>
     <div class="settings-warn">
       <?php if (!empty($user['must_change_password'])): ?>

@@ -24,7 +24,7 @@ $backupPos = strpos($cfgView, 'acct-autobackup');
 expect($pos !== false && $backupPos !== false && $backupPos > $pos, 'AUTO BACKUP fica abaixo da frase de login');
 expect(str_contains($cfgView, '/app/configuracoes/auto-backup'), 'Conta envia o toggle de AUTO BACKUP');
 $css = file_get_contents($root.'/public/assets/app.css');
-expect(str_contains($css, '.acct-autobackup>summary') && str_contains($css, 'opacity:.14'), 'controle de backup permanece discreto');
+expect(str_contains($css, '.acct-autobackup>summary') && str_contains($css, 'letter-spacing:.28em'), 'controle de backup permanece discreto');
 $index = file_get_contents($root.'/public/index.php');
 expect(str_contains($index, '/cron/r2-backup') && str_contains($index, 'r2_backup_all_tenants'), 'cron R2 registrado');
 $vercel = file_get_contents($root.'/vercel.json');
