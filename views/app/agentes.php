@@ -97,15 +97,17 @@ $communicateBack = '/app/agentes'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SERV
   <td><?= e(phone_fmt($r['phone'] ?? '')) ?></td>
   <td><?= !empty($r['active']) ? badge_appt('CONFIRMED') : badge_appt('DONE') ?></td>
   <td><?= e(!empty($r['last_login_at']) ? date('d/m/Y H:i', strtotime((string)$r['last_login_at'])) : 'Ainda não entrou') ?></td>
-  <td style="white-space:nowrap">
-    <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="agent:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
-    <a class="btn btn-ghost" href="/app/agentes?ver=<?= e($r['id']) ?>">Ver detalhes</a>
-    <a class="btn btn-ghost" href="/app/agentes?edit=<?= e($r['id']) ?>">Editar</a>
-    <form method="post" action="/app/agentes/excluir" style="display:inline" onsubmit="return confirm('Remover este agente?')">
-      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-      <input type="hidden" name="id" value="<?= e($r['id']) ?>">
-      <button class="btn btn-ghost">Excluir</button>
-    </form>
+  <td class="row-actions-cell">
+    <div class="row-actions">
+      <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="agent:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message', 13) ?> Comunicar</button>
+      <a class="btn btn-ghost" href="/app/agentes?ver=<?= e($r['id']) ?>">Ver detalhes</a>
+      <a class="btn btn-ghost" href="/app/agentes?edit=<?= e($r['id']) ?>">Editar</a>
+      <form method="post" action="/app/agentes/excluir" onsubmit="return confirm('Remover este agente?')">
+        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+        <input type="hidden" name="id" value="<?= e($r['id']) ?>">
+        <button class="btn btn-ghost">Excluir</button>
+      </form>
+    </div>
   </td>
 </tr>
 <?php endforeach; ?>

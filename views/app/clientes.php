@@ -31,15 +31,17 @@ $communicateBack = '/app/clientes'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$_SER
   <td><?= e($r['last'] ?: '—') ?></td>
   <td><?= e($r['next'] ?: '—') ?></td>
   <td><?= $r['status']==='ACTIVE' ? badge_appt('CONFIRMED') : badge_appt('DONE') ?></td>
-  <td style="white-space:nowrap">
-    <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="client:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
-    <a class="btn btn-ghost" href="/app/clientes/ver?id=<?= e($r['id']) ?>">Ver</a>
-    <a class="btn btn-ghost" href="/app/clientes/editar?id=<?= e($r['id']) ?>">Editar</a>
-    <a class="btn btn-ghost" href="/app/agenda?new=1&amp;client_id=<?= e($r['id']) ?>&amp;from=clientes">Agendar</a>
-    <form method="post" action="/app/clientes/excluir" style="display:inline" onsubmit="return confirm('Excluir este cadastro?')">
-      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($r['id']) ?>">
-      <button class="btn btn-ghost">Excluir</button>
-    </form>
+  <td class="row-actions-cell">
+    <div class="row-actions">
+      <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="client:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message', 13) ?> Comunicar</button>
+      <a class="btn btn-ghost" href="/app/clientes/ver?id=<?= e($r['id']) ?>">Ver</a>
+      <a class="btn btn-ghost" href="/app/clientes/editar?id=<?= e($r['id']) ?>">Editar</a>
+      <a class="btn btn-ghost" href="/app/agenda?new=1&amp;client_id=<?= e($r['id']) ?>&amp;from=clientes">Agendar</a>
+      <form method="post" action="/app/clientes/excluir" onsubmit="return confirm('Excluir este cadastro?')">
+        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="id" value="<?= e($r['id']) ?>">
+        <button class="btn btn-ghost">Excluir</button>
+      </form>
+    </div>
   </td>
 </tr>
 <?php endforeach; ?>

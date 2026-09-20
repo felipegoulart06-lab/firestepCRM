@@ -56,9 +56,9 @@ if (!$show): ?>
         <td><?= e($desired) ?></td>
         <td><?= e($r['source']) ?></td>
         <td><?= badge_req($r['status']) ?></td>
-        <td>
+        <td class="row-actions-cell">
           <div class="row-actions">
-            <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="request:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
+            <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="request:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message', 13) ?> Comunicar</button>
             <a class="btn btn-ghost" href="/app/solicitacoes?ver=<?= e($r['id']) ?><?= $fil!=='ALL'?'&f='.e($fil):'' ?>">Detalhes</a>
             <?php if ($canConvert($r)): ?>
             <a class="btn btn-primary" href="/app/solicitacoes?ver=<?= e($r['id']) ?>&amp;converter=1">Converter</a>

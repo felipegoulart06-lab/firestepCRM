@@ -92,7 +92,7 @@ endif; ?>
       <td><?= badge_appt($a['status']) ?></td>
       <td class="row-actions-cell">
         <div class="row-actions">
-          <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="appointment:<?= e($a['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
+          <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="appointment:<?= e($a['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message', 13) ?> Comunicar</button>
           <a class="btn btn-ghost" href="/app/agendamentos?ver=<?= e($a['id']) ?>">Ver detalhes</a>
           <a class="btn btn-ghost" href="/app/agendamentos?edit=<?= e($a['id']) ?>">Editar</a>
         </div>

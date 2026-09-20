@@ -124,9 +124,9 @@ $communicateBack = '/app/fornecedores'.(!empty($_SERVER['QUERY_STRING']) ? '?'.$
       <td><?= e(phone_fmt($r['phone'] ?? '') ?: '—') ?></td>
       <td><?= e($r['email'] ?: '—') ?></td>
       <td><?= e(trim(($r['city'] ?? '').' '.($r['state'] ?? '')) ?: '—') ?></td>
-      <td>
+      <td class="row-actions-cell">
         <div class="row-actions">
-          <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="supplier:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message') ?> Comunicar</button>
+          <button class="btn btn-ghost js-communicate" type="button" data-communicate-key="supplier:<?= e($r['id']) ?>" title="Comunicar pelo WhatsApp"><?= icon('message', 13) ?> Comunicar</button>
           <a class="btn btn-ghost" href="/app/fornecedores?ver=<?= e($r['id']) ?>">Ver detalhes</a>
           <a class="btn btn-ghost" href="/app/fornecedores?edit=<?= e($r['id']) ?>">Editar</a>
           <form method="post" action="/app/fornecedores/excluir" onsubmit="return confirm('Remover este fornecedor?')">

@@ -56,6 +56,7 @@ $views = [
 foreach ($views as $file => $key) {
     $src = file_get_contents(dirname(__DIR__).'/views/app/'.$file);
     expect(str_contains($src, 'js-communicate') && str_contains($src, $key), $file.' possui ação Comunicar');
+    expect(str_contains($src, 'row-actions'), $file.' alinha Comunicar na mesma faixa de ações');
     expect(str_contains($src, 'communicate_modal.php'), $file.' inclui o configurador da mensagem');
 }
 
