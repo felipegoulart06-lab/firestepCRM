@@ -234,72 +234,168 @@
       </div>
     </section>
 
-    <section id="destaques">
-      <div class="wrap">
-        <div class="sec-head wide">
-          <h2>Veja primeiro. Escolha depois.</h2>
-          <p>O catálogo Firestep Templates é um produto visual: imagem, categoria, tipo e prazo. Você enxerga o modelo antes de contratar.</p>
-        </div>
-        <div class="shop">
-          <article class="shop-card">
-            <div class="shop-preview" aria-hidden="true"><span>Website · Clínica</span></div>
-            <div class="shop-body">
-              <small>Website · Clínica</small>
-              <h3>Site para clínica</h3>
-              <p>Tipo: website institucional · Prazo: no catálogo</p>
-              <p>Serviços, equipe e contato. Base visual pronta para personalizar.</p>
-              <div class="shop-actions">
-                <a class="btn btn-primary" href="https://templates.firestep.cloud/" rel="noopener">Ver modelo</a>
-                <a class="btn btn-ghost" href="#contato" data-interesse="templates">Tenho interesse</a>
-              </div>
-            </div>
-          </article>
-          <article class="shop-card">
-            <div class="shop-preview p2" aria-hidden="true"><span>Website · Salão</span></div>
-            <div class="shop-body">
-              <small>Website · Salão</small>
-              <h3>Site para salão</h3>
-              <p>Tipo: website · Prazo: no catálogo</p>
-              <p>Serviços, horários e pedido de agendamento — para a empresa aparecer bem no celular.</p>
-              <div class="shop-actions">
-                <a class="btn btn-primary" href="https://templates.firestep.cloud/" rel="noopener">Ver modelo</a>
-                <a class="btn btn-ghost" href="#contato" data-interesse="templates">Tenho interesse</a>
-              </div>
-            </div>
-          </article>
-          <article class="shop-card">
-            <div class="shop-preview p3" aria-hidden="true"><span>Sistema · Agenda</span></div>
-            <div class="shop-body">
-              <small>Sistema · Agenda</small>
-              <h3>Projeto com agendamento</h3>
-              <p>Tipo: sistema · Prazo: no catálogo</p>
-              <p>Login, horário marcado ou área do cliente — sem começar do zero.</p>
-              <div class="shop-actions">
-                <a class="btn btn-primary" href="https://templates.firestep.cloud/" rel="noopener">Ver modelo</a>
-                <a class="btn btn-ghost" href="#contato" data-interesse="sistema">Tenho interesse</a>
-              </div>
-            </div>
-          </article>
-          <article class="shop-card">
-            <div class="shop-preview p4" aria-hidden="true"><span>Link na bio</span></div>
-            <div class="shop-body">
-              <small>Link na bio · Autônomo</small>
-              <h3>Página para autônomos</h3>
-              <p>Tipo: link na bio · Prazo: no catálogo</p>
-              <p>Um endereço para WhatsApp, serviços e redes — escolha rápida, marca sua.</p>
-              <div class="shop-actions">
-                <a class="btn btn-primary" href="https://templates.firestep.cloud/" rel="noopener">Ver modelo</a>
-                <a class="btn btn-ghost" href="#contato" data-interesse="bio">Tenho interesse</a>
-              </div>
-            </div>
-          </article>
-        </div>
-        <p class="note" style="margin-top:16px">
-          Estes são exemplos do tipo de projeto que você encontra no catálogo. Abra
-          <a href="https://templates.firestep.cloud/" rel="noopener"><b>templates.firestep.cloud</b></a>
-          para ver os modelos reais, filtrar por categoria e enviar interesse.
-        </p>
+    <!-- firestep TEMPLATES · 4 modelos -->
+    <style>
+    @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+    .fs-t4,.fs-t4 *{box-sizing:border-box}
+    .fs-t4{
+      --bg:#e8edf2;--text:#172033;--muted:#5c6b80;--line:#cfc6b8;--blue:#1b365d;--blue-dark:#12263f;
+      --teal:#0f766e;--rust:#e25c2a;--gold:#c9a227;--radius:2px;
+      width:min(1240px,calc(100% - 24px));
+      margin:0 auto;
+      color:var(--text);
+      font-family:"IBM Plex Sans","Segoe UI",Tahoma,Geneva,Verdana,Arial,sans-serif;
+      -webkit-text-size-adjust:100%;
+    }
+    .fs-t4 a{text-decoration:none;color:inherit}
+    .fs-t4-head{text-align:center;margin:0 auto 28px;max-width:720px}
+    .fs-t4-head h2{margin:0 0 8px;font-size:clamp(26px,3.4vw,36px);letter-spacing:-.6px;color:var(--blue);line-height:1.15}
+    .fs-t4-head p{margin:0;color:var(--muted);font-size:15px;line-height:1.55}
+    .fs-t4 .template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+    .fs-t4 .template-card{
+      background:#fffdf8;border:1px solid var(--line);border-radius:var(--radius);
+      overflow:hidden;display:flex;flex-direction:column;min-width:0;height:100%;
+    }
+    .fs-t4 .template-preview{position:relative;height:118px;width:100%;display:block}
+    .fs-t4 .template-card.is-website .template-preview{background:var(--blue)}
+    .fs-t4 .template-card.is-sistema .template-preview{background:var(--teal)}
+    .fs-t4 .template-card.is-catalogo .template-preview{background:var(--gold)}
+    .fs-t4 .template-card.is-bio .template-preview{background:var(--rust)}
+    .fs-t4 .card-type{
+      position:absolute;left:14px;right:14px;bottom:12px;margin:0;padding:0;background:transparent;
+      color:#fff;font-size:12px;font-weight:600;letter-spacing:.04em;
+    }
+    .fs-t4 .template-body{padding:16px 16px 18px;flex:1;display:flex;flex-direction:column}
+    .fs-t4 .card-cat{
+      display:block;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+      font-size:11px;font-family:"IBM Plex Mono","Segoe UI",monospace;
+    }
+    .fs-t4 .template-body h3{margin:6px 0 8px;font-size:17px;color:var(--blue);letter-spacing:-.2px;line-height:1.25}
+    .fs-t4 .template-body p{
+      margin:0 0 13px;color:var(--muted);font-size:14px;line-height:1.5;
+      display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;
+    }
+    .fs-t4 .template-body p.fs-t4-meta{
+      display:block;-webkit-line-clamp:unset;overflow:visible;margin:0 0 10px;font-size:13px;
+    }
+    .fs-t4 .template-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+    .fs-t4 .btn{
+      border:0;border-radius:2px;padding:8px 10px;min-height:40px;font-weight:600;font-size:13px;
+      display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;cursor:pointer;
+    }
+    .fs-t4 .btn-primary{background:var(--blue);color:#fff}
+    .fs-t4 .btn-primary:hover{background:var(--blue-dark)}
+    .fs-t4 .btn-outline{background:#fff;color:var(--text);border:1px solid var(--line)}
+    .fs-t4-foot{
+      margin:18px auto 0;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);
+      background:#fff;color:var(--muted);font-size:13px;line-height:1.5;text-align:center;
+    }
+    @media(max-width:1100px){.fs-t4 .template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:700px){
+      .fs-t4{width:min(100% - 16px,1240px)}
+      .fs-t4 .template-grid{grid-template-columns:1fr;gap:14px}
+      .fs-t4-head h2{font-size:28px}
+    }
+    @media(max-width:420px){.fs-t4 .template-actions{grid-template-columns:1fr}}
+    </style>
+    <section class="fs-t4" id="destaques" data-fs-snippet="4">
+      <div class="fs-t4-head">
+        <h2>Veja primeiro. Escolha depois.</h2>
+        <p>O catálogo Firestep Templates é um produto visual: imagem, categoria, tipo e prazo. Você enxerga o modelo antes de contratar.</p>
       </div>
+      <div class="template-grid">
+          <article class="template-card is-website">
+            <div class="template-preview">
+              <b class="card-type">Landing page · SALÃO DE BELEZA</b>
+            </div>
+            <div class="template-body">
+              <small class="card-cat">Landing page · SALÃO DE BELEZA</small>
+              <h3>Beau — Modelo de Salão de Beleza</h3>
+              <p class="fs-t4-meta">Tipo: Landing page · Prazo: Até 03 Dias úteis</p>
+              <p>Este modelo é para uso com o Adobe Muse CC 2014.3.2.11 ou superior.
+Este não é um modelos WordPress.
+Você pode editar a versão para tablet e celular clicando na guia tablet e celular. Os arquivos HTML são para visualização e upload para o host.
+
+A EQUIPE ENTRARÁ EM CONTATO PARA REPASSAR TODAS AS INFOMRAÇÕES.</p>
+              <div class="template-actions">
+                <a class="btn btn-primary" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU1UTR0R-2LONW" target="_blank" rel="noopener">Ver modelo</a>
+                <a class="btn btn-outline" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU1UTR0R-2LONW&amp;interesse=1" target="_blank" rel="noopener">Tenho interesse</a>
+              </div>
+            </div>
+          </article>
+          <article class="template-card is-website">
+            <div class="template-preview">
+              <b class="card-type">Landing page · SALÃO DE BELEZA</b>
+            </div>
+            <div class="template-body">
+              <small class="card-cat">Landing page · SALÃO DE BELEZA</small>
+              <h3>Wellnez 2 - Beauty and Spa</h3>
+              <p class="fs-t4-meta">Tipo: Landing page · Prazo: Até 03 dias úteis</p>
+              <p>Wellnez — O modelo HTML5 de salão de beleza de spa é um modelo HTML5 limpo e responsivo, especialmente criado para beleza, spa, salões de beleza, ioga, barbeiro, cuidados, cabelo, saúde, massagem, medicina, fisioterapia, centro de bem-estar, maquiagem, cosmética, tratamento. O Wellnez inclui ótimos recursos para esses modelos, como design incrível de página inicial, cores ilimitadas e formulário de agendamento. Você pode escolher o melhor design que atenda às suas necessidades, dependendo do tipo de beleza, spa de bem-estar, spa, salão de barbeiro ou outros
+
+.
+
+Este modelo é muito fácil de personalizar qualquer seção. Basta alterar seu texto, cor e imagens e criar seu site. Cada código foi comentado e é por isso que será muito fácil para sua personalização. Os modelos têm 3 designs de página inicial modernos e criativos, página de detalhes do blog bonita e limpa e página de compromissos, bem como controle deslizante personalizado e muito mais. Descubra... você vai adorar.
+
+O
+
+Wellnez é fácil de desenvolver, rápido, leve, limpo e contém o código-fonte validado pelo W3. O modelo é facilmente personalizável e extensível com documentação detalhada. Nossa equipe de suporte rápida e amigável está aqui para ajudá-lo com as necessidades de modelos.
+
+Wellnez tem designs de página inicial modernos e criativos, uma página de detalhes do blog bonita e limpa, bem como um controle deslizante personalizado e muitos outros recursos. Descubra... você vai adorar.</p>
+              <div class="template-actions">
+                <a class="btn btn-primary" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3QI9G2-12TPZ" target="_blank" rel="noopener">Ver modelo</a>
+                <a class="btn btn-outline" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3QI9G2-12TPZ&amp;interesse=1" target="_blank" rel="noopener">Tenho interesse</a>
+              </div>
+            </div>
+          </article>
+          <article class="template-card is-website">
+            <div class="template-preview">
+              <b class="card-type">Landing page · SALÃO DE BELEZA</b>
+            </div>
+            <div class="template-body">
+              <small class="card-cat">Landing page · SALÃO DE BELEZA</small>
+              <h3>BeautyZone 3 - Salão de Beleza Premium</h3>
+              <p class="fs-t4-meta">Tipo: Landing page · Prazo: Até 03 dias úteis</p>
+              <p>BeautyZone: é uma ótima opção para qualquer empresa de beleza e bem-estar que queira promover seus negócios on-line. Este tema é honesto para você se você deseja criar um site para spa, salão de beleza, cabeleireiro, serviço de massagem ou qualquer tipo de negócio de salão de beleza.
+
+Possui 2 páginas de apresentação elegantes e exclusivas que permitem que você mostre seus pacotes, serviços, produtos e habilidades. Este extenso tema é totalmente responsivo e permite que você exiba seu conhecimento e facilidade em uma grade responsiva. O design elegante em brilho e uma variedade de cores frias é um pacote incrível para impressionar seus espectadores. Amostras de módulos ou uma parte que você pode apresentar em suas páginas iniciais envolvem um controle deslizante de página inteira, equipe, serviço e outros. Este tema vem com recursos extras que um salão de beleza pode precisar, e ainda mais, como páginas de galeria, compromissos...
+
+É para você, se você estiver procurando o modelo responsivo HTML mais criativo e mais recente do Bootstrap 4.
+
+BeautyZone: é um modelo HTML limpo, leve e bonito.
+
+BeautyZone: é moderno e super simples, 100% responsivo, 100% perfeito em pixels e vem repleto de recursos de modelo incríveis, por exemplo; esquemas de cores incríveis, elemento deslizante criativo, animações CSS3 e muito mais.!</p>
+              <div class="template-actions">
+                <a class="btn btn-primary" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3G5YC0-913JY" target="_blank" rel="noopener">Ver modelo</a>
+                <a class="btn btn-outline" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3G5YC0-913JY&amp;interesse=1" target="_blank" rel="noopener">Tenho interesse</a>
+              </div>
+            </div>
+          </article>
+          <article class="template-card is-website">
+            <div class="template-preview">
+              <b class="card-type">Landing page · SALÃO DE BELEZA</b>
+            </div>
+            <div class="template-body">
+              <small class="card-cat">Landing page · SALÃO DE BELEZA</small>
+              <h3>BeautyZone - Salão de Beleza Premium</h3>
+              <p class="fs-t4-meta">Tipo: Landing page · Prazo: Até 03 dias úteis</p>
+              <p>BeautyZone: é uma ótima opção para qualquer empresa de beleza e bem-estar que queira promover seus negócios on-line. Este tema é honesto para você se você deseja criar um site para spa, salão de beleza, cabeleireiro, serviço de massagem ou qualquer tipo de negócio de salão de beleza.
+
+Possui 2 páginas de apresentação elegantes e exclusivas que permitem que você mostre seus pacotes, serviços, produtos e habilidades. Este extenso tema é totalmente responsivo e permite que você exiba seu conhecimento e facilidade em uma grade responsiva. O design elegante em brilho e uma variedade de cores frias é um pacote incrível para impressionar seus espectadores. Amostras de módulos ou uma parte que você pode apresentar em suas páginas iniciais envolvem um controle deslizante de página inteira, equipe, serviço e outros. Este tema vem com recursos extras que um salão de beleza pode precisar, e ainda mais, como páginas de galeria, compromissos...
+
+É para você, se você estiver procurando o modelo responsivo HTML mais criativo e mais recente do Bootstrap 4.
+
+BeautyZone: é um modelo HTML limpo, leve e bonito.
+
+BeautyZone: é moderno e super simples, 100% responsivo, 100% perfeito em pixels e vem repleto de recursos de modelo incríveis, por exemplo; esquemas de cores incríveis, elemento deslizante criativo, animações CSS3 e muito mais.!</p>
+              <div class="template-actions">
+                <a class="btn btn-primary" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3FL19S-AILLF" target="_blank" rel="noopener">Ver modelo</a>
+                <a class="btn btn-outline" href="https://firestep-templates-mprnpauu3-felipe-goularts-projects.vercel.app/detalhe.html?id=TMP-MU3FL19S-AILLF&amp;interesse=1" target="_blank" rel="noopener">Tenho interesse</a>
+              </div>
+            </div>
+          </article>
+      </div>
+      <p class="fs-t4-foot">Estes são exemplos do tipo de projeto que você encontra no catálogo. Abra templates.firestep.cloud para ver os modelos reais, filtrar por categoria e enviar interesse.</p>
     </section>
 
     <section id="crm">
