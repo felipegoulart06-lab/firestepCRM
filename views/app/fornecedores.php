@@ -6,6 +6,7 @@ $showForm = !empty($novo) || $edit;
 $src = $edit ?: [];
 $search = $search ?? '';
 $items = $items ?? [];
+$tenant = is_array($tenant ?? null) ? $tenant : [];
 $kindFill = ['document_kind' => old_fill($old, 'document_kind', $src['document_kind'] ?? br_doc_kind_from_value($src['cnpj'] ?? ''))];
 $show = static fn($v) => ($v !== null && trim((string)$v) !== '') ? (string)$v : '—';
 $communicateItems = communicate_items('supplier', $items, $tenant);

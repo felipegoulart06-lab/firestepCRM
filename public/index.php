@@ -1795,6 +1795,7 @@ if (str_starts_with($path, '/app')) {
         $sql .= ' ORDER BY name';
         layout_start('app', compact('user','tenant','path'));
         view('app/fornecedores', [
+            'tenant' => $tenant,
             'items' => all($sql, $p),
             'edit' => $edit,
             'viewing' => $viewing,

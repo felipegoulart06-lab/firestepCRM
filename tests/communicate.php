@@ -63,6 +63,7 @@ foreach ($views as $file => $key) {
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
 expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pela UAZAPI');
 expect(str_contains($index, "flash((string)\$result['message']"), 'resultado do envio é avisado ao usuário');
+expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
 
 if ($fail) {
     fwrite(STDERR, "{$fail} teste(s) de comunicação falharam.\n");
