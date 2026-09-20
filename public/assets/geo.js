@@ -205,7 +205,8 @@
   function bindCoverageMap() {
     const el = document.getElementById('map');
     const raw = document.getElementById('coverage-pins');
-    if (!el || !raw) return;
+    if (!el || !raw || el.dataset.geoBound) return;
+    el.dataset.geoBound = '1';
     loadMapbox().then(function (mapboxgl) {
       if (mapboxgl.supported && !mapboxgl.supported()) {
         showMapError(el, 'Este navegador não desenha o mapa. Atualize o Chrome ou o Edge.');
@@ -266,9 +267,9 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  window.firestepGeo = function () {
     document.querySelectorAll('[data-geo-box]').forEach(bindGeoBox);
     document.querySelectorAll('[data-geo-line]').forEach(window.bindGeoLine);
     bindCoverageMap();
-  });
+  };
 })();

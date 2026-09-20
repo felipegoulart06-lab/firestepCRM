@@ -47,19 +47,24 @@ document.addEventListener('click', function(e){
 function closeModal(){
   const url = new URL(location.href);
   ['ver','converter','nova','new','edit','block','convert','delblock','client_id','from'].forEach(k => url.searchParams.delete(k));
-  location.href = url.pathname + url.search;
+  softNav(url.pathname + url.search, {replace:true});
 }
 function visibleLayer(sel){
   return [...document.querySelectorAll(sel)].find(el => {
-    if (!(el instanceof Element) || el.hidden) return false;
+    if (!(el instanceof Element) || el.hidden || el.getAttribute('hidden') !== null) return false;
     const s = getComputedStyle(el);
-    return s.display !== 'none' && s.visibility !== 'hidden';
+    return s.display !== 'none' && s.visibility !== 'hidden' && s.pointerEvents !== 'none' && Number(s.opacity) !== 0;
   }) || null;
 }
 function hoistModal(el){
   if (!el || el.parentElement === document.body) return el;
   document.body.appendChild(el);
   return el;
+}
+function dropHoistedModals(){
+  document.querySelectorAll('body > .overlay, body > .fx-overlay, body > .token-modal').forEach(el => el.remove());
+  document.documentElement.classList.remove('is-modal-open');
+  document.body.classList.remove('is-modal-open');
 }
 function lockBehindModal(){
   const overlay = visibleLayer('.overlay')
@@ -68,6 +73,7 @@ function lockBehindModal(){
   const on = !!overlay;
   document.documentElement.classList.toggle('is-modal-open', on);
   document.body.classList.toggle('is-modal-open', on);
+  if (!on) document.body.classList.remove('is-modal-open');
 }
 function blockScrollBehindModal(e){
   if (!document.body.classList.contains('is-modal-open')) return;
@@ -92,7 +98,20 @@ document.addEventListener('click', function(e){
 document.addEventListener('wheel', blockScrollBehindModal, {passive:false, capture:true});
 document.addEventListener('touchmove', blockScrollBehindModal, {passive:false, capture:true});
 if (document.body) lockBehindModal();
-document.addEventListener('DOMContentLoaded', lockBehindModal);
+window.addEventListener('pageshow', function(){
+  if (window.matchMedia('(min-width:1101px)').matches) closeSide();
+  lockBehindModal();
+});
+window.addEventListener('resize', function(){
+  if (window.matchMedia('(min-width:1101px)').matches) closeSide();
+});
+function watchModals(){
+  document.querySelectorAll('.overlay, .fx-overlay, .token-modal').forEach(function(el){
+    if (el.dataset.lockWatch) return;
+    el.dataset.lockWatch = '1';
+    new MutationObserver(lockBehindModal).observe(el, { attributes: true, attributeFilter: ['hidden', 'style'] });
+  });
+}
 function copyTxt(id){ const el=document.getElementById(id); navigator.clipboard.writeText(el.value); }
 
 function maskCpf(v){
@@ -156,11 +175,7 @@ function bindDocFields(root){
     apply();
   });
 }
-document.addEventListener('DOMContentLoaded', ()=> bindDocFields(document));
-document.addEventListener('DOMContentLoaded', bindExternalVisit);
-document.addEventListener('DOMContentLoaded', bindHoursGuard);
-document.addEventListener('DOMContentLoaded', bindCommissionBox);
-document.addEventListener('DOMContentLoaded', bindServicePrice);
+document.addEventListener('DOMContentLoaded', firestepHydrate);
 function maskReais(el){
   let d = String(el.value || '').replace(/\D/g,'');
   if (!d) { el.value = ''; return; }
@@ -382,7 +397,8 @@ function bindExternalVisit(){
 
 function bindReportsExplorer(){
   const root = document.getElementById('fx-root');
-  if (!root) return;
+  if (!root || root.dataset.bound) return;
+  root.dataset.bound = '1';
   const pathEl = document.getElementById('fx-path');
   const filters = document.getElementById('fx-filters');
   const preview = document.getElementById('fx-preview');
@@ -578,7 +594,6 @@ function bindReportsExplorer(){
     openOverlay(preview);
   });
 }
-document.addEventListener('DOMContentLoaded', bindReportsExplorer);
 
 function maskCep(v){
   const d = String(v||'').replace(/\D/g,'').slice(0,8);
@@ -586,6 +601,8 @@ function maskCep(v){
 }
 function bindLetterhead(){
   const pal = document.getElementById('lh-palette');
+  if (pal && pal.dataset.bound) return;
+  if (pal) pal.dataset.bound = '1';
   const color = document.getElementById('lh-color');
   pal?.querySelectorAll('.lh-swatch').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -598,7 +615,6 @@ function bindLetterhead(){
     el.addEventListener('input', ()=>{ el.value = maskCep(el.value); });
   });
 }
-document.addEventListener('DOMContentLoaded', bindLetterhead);
 
 function bindClausesEditor(){
   const form = document.getElementById('cl-form');
@@ -609,6 +625,8 @@ function bindClausesEditor(){
     fsLog('log', 'contratos', 'editor ausente nesta página');
     return;
   }
+  if (form.dataset.bound) return;
+  form.dataset.bound = '1';
   fsLog('log', 'contratos', 'editor iniciado');
   let data = { lists: [] };
   try { data = JSON.parse(raw.textContent || '{}'); } catch (e) {
@@ -777,11 +795,6 @@ function bindClausesEditor(){
   if (lists[0]) load(lists[0].id);
   else showIdle();
 }
-document.addEventListener('DOMContentLoaded', bindFinancePay);
-document.addEventListener('DOMContentLoaded', function(){
-  try { bindClausesEditor(); }
-  catch (err) { fsLog('error', 'contratos', 'bindClausesEditor quebrou', err); }
-});
 function bindFinancePay(){
   document.querySelectorAll('[data-finance-pay]').forEach(function(form){
     if (form.dataset.payBound) return;
@@ -809,6 +822,9 @@ function bindFinanceReceive(){
   const receive = document.getElementById('fin-receive');
   const charge = document.getElementById('fin-charge');
   if (!receive && !charge) return;
+  if ((receive && receive.dataset.finBound) || (charge && charge.dataset.finBound)) return;
+  if (receive) receive.dataset.finBound = '1';
+  if (charge) charge.dataset.finBound = '1';
   if (receive) hoistModal(receive);
   if (charge) hoistModal(charge);
   const extra = document.getElementById('fin-receive-extra');
@@ -879,7 +895,6 @@ function bindFinanceReceive(){
   });
   syncExtra();
 }
-document.addEventListener('DOMContentLoaded', bindFinanceReceive);
 
 function bindKanbanStatus(){
   const overlay = document.getElementById('kanban-confirm');
@@ -888,6 +903,8 @@ function bindKanbanStatus(){
   const idInput = document.getElementById('kanban-status-id');
   const stInput = document.getElementById('kanban-status-value');
   if (!overlay || !form) return;
+  if (overlay.dataset.bound) return;
+  overlay.dataset.bound = '1';
   hoistModal(overlay);
   let pending = null;
   const esc = (s)=> String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -923,12 +940,13 @@ function bindKanbanStatus(){
     form.submit();
   });
 }
-document.addEventListener('DOMContentLoaded', bindKanbanStatus);
 
 function bindCommunicate(){
   const modal = document.getElementById('communicate-modal');
   const raw = document.getElementById('communicate-data');
   if (!modal || !raw) return;
+  if (modal.dataset.bound) return;
+  modal.dataset.bound = '1';
   let data = {};
   try { data = JSON.parse(raw.textContent || '{}'); } catch (_) { return; }
   hoistModal(modal);
@@ -1006,4 +1024,121 @@ function bindCommunicate(){
     form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
   });
 }
-document.addEventListener('DOMContentLoaded', bindCommunicate);
+
+function firestepHydrate(){
+  closeSide();
+  if (window.matchMedia('(min-width:1101px)').matches) {
+    document.body.classList.remove('nav-open');
+  }
+  lockBehindModal();
+  watchModals();
+  bindDocFields(document);
+  bindExternalVisit();
+  bindHoursGuard();
+  bindCommissionBox();
+  bindServicePrice();
+  bindReportsExplorer();
+  bindLetterhead();
+  bindFinancePay();
+  try { bindClausesEditor(); }
+  catch (err) { fsLog('error', 'contratos', 'bindClausesEditor quebrou', err); }
+  bindFinanceReceive();
+  bindKanbanStatus();
+  bindCommunicate();
+  if (typeof window.firestepGeo === 'function') window.firestepGeo();
+}
+
+let fsNavAbort = null;
+function fsAppUrl(href){
+  try {
+    const url = new URL(href, location.href);
+    if (url.origin !== location.origin) return null;
+    if (!url.pathname.startsWith('/app') && !url.pathname.startsWith('/master')) return null;
+    if (/\.(pdf|zip|csv|png|jpe?g|svg)$/i.test(url.pathname)) return null;
+    if (url.pathname === '/logout' || url.pathname.startsWith('/login')) return null;
+    return url;
+  } catch (_) {
+    return null;
+  }
+}
+function applyFetchedPage(doc, href, replace){
+  const next = doc.querySelector('.wrap');
+  const cur = document.querySelector('.wrap');
+  if (!next || !cur) throw new Error('layout');
+  dropHoistedModals();
+  cur.replaceWith(next);
+  document.title = doc.title || document.title;
+  doc.querySelectorAll('style').forEach(function(s){
+    if (!s.textContent || s.textContent.indexOf('--primary') === -1) return;
+    let theme = document.getElementById('fs-theme');
+    if (!theme) {
+      theme = document.createElement('style');
+      theme.id = 'fs-theme';
+      document.head.appendChild(theme);
+    }
+    theme.textContent = s.textContent;
+  });
+  if (replace) history.replaceState({soft:1}, '', href);
+  else history.pushState({soft:1}, '', href);
+  firestepHydrate();
+  window.scrollTo(0, 0);
+}
+function softNav(href, opts){
+  const url = fsAppUrl(href);
+  if (!url) {
+    location.href = href;
+    return Promise.resolve();
+  }
+  opts = opts || {};
+  document.body.classList.add('is-soft-nav');
+  if (fsNavAbort) fsNavAbort.abort();
+  fsNavAbort = new AbortController();
+  return fetch(url.href, {
+    credentials: 'same-origin',
+    headers: { 'Accept': 'text/html', 'X-Requested-With': 'FirestepNav' },
+    signal: fsNavAbort.signal,
+  }).then(function(res){
+    if (!res.ok) throw new Error('http');
+    return res.text();
+  }).then(function(html){
+    applyFetchedPage(new DOMParser().parseFromString(html, 'text/html'), url.href, !!opts.replace);
+  }).catch(function(err){
+    if (err && err.name === 'AbortError') return;
+    location.href = url.href;
+  }).finally(function(){
+    document.body.classList.remove('is-soft-nav');
+  });
+}
+document.addEventListener('click', function(e){
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target instanceof Element ? e.target.closest('a[href]') : null;
+  if (!a || a.hasAttribute('download') || a.dataset.fullNav === '1') return;
+  const target = a.getAttribute('target');
+  if (target && target !== '_self') return;
+  const href = a.getAttribute('href') || '';
+  if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) return;
+  if (!fsAppUrl(a.href)) return;
+  e.preventDefault();
+  softNav(a.href);
+}, true);
+document.addEventListener('submit', function(e){
+  const form = e.target;
+  if (!(form instanceof HTMLFormElement) || e.defaultPrevented) return;
+  if (form.dataset.fullNav === '1' || form.querySelector('input[type=file]')) return;
+  const method = String(form.getAttribute('method') || 'get').toLowerCase();
+  if (method !== 'get') return;
+  if (form.target && form.target !== '_self') return;
+  const url = fsAppUrl(form.action || location.href);
+  if (!url) return;
+  const data = new FormData(form);
+  url.search = '';
+  data.forEach(function(value, key){
+    if (value instanceof File) return;
+    url.searchParams.append(key, String(value));
+  });
+  e.preventDefault();
+  softNav(url.href);
+});
+window.addEventListener('popstate', function(){
+  softNav(location.href, {replace:true});
+});

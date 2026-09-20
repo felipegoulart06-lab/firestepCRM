@@ -39,6 +39,14 @@ if (!str_contains($css, 'body.is-modal-open .overlay *') || !str_contains($css, 
     echo "FAIL CSS do overlay continua bloqueando clique\n";
     $fail++;
 }
+if (!str_contains($js, 'function dropHoistedModals') || !str_contains($js, 'function softNav')) {
+    echo "FAIL navegação não limpa overlay preso nem troca o conteúdo sem reload\n";
+    $fail++;
+}
+if (!str_contains($css, 'left:var(--sidebar-width)') || !str_contains($css, 'body.nav-open .sidebar-scrim')) {
+    echo "FAIL overlay/scrim ainda podem cobrir o menu\n";
+    $fail++;
+}
 if (!str_contains($js, "t.matches('.overlay, .fx-overlay, .token-modal')")) {
     echo "FAIL clique no fundo do overlay não é ignorado\n";
     $fail++;
