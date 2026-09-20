@@ -1225,7 +1225,7 @@ if (str_starts_with($path, '/app')) {
             q('UPDATE tenants SET auto_backup='.sql_lit_bool($on).', updated_at=? WHERE id=?', [now(), $tid]);
             if ($on && r2_ready()) {
                 $run = r2_backup_tenant($tid);
-                flash(!empty($run['ok']) ? 'AUTO BACKUP ativo.' : 'AUTO BACKUP ativo; a cópia não concluiu agora.');
+                flash(!empty($run['ok']) ? 'AUTO BACKUP ativo. Cópia diária às 03:00.' : 'AUTO BACKUP ativo; a cópia de agora não concluiu.');
             } elseif ($on) {
                 flash('AUTO BACKUP ativo.');
             } else {
