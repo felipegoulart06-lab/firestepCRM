@@ -81,7 +81,3 @@ $editFolha = ($_GET['edit'] ?? '') === 'folha';
     </form>
   <?php endif; ?>
 </div>
-
-<p class="muted" style="max-width:720px;margin-top:16px">
-  <a href="/master/configuracoes/tecnico" style="color:#98a2b3;font-size:12px">Ajustes técnicos · Google Cloud e token Leaflet</a>
-</p>

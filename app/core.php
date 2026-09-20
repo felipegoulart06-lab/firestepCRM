@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/sheets.php';
 require_once __DIR__ . '/pdf.php';
 
 function create_tenant_panel(array $in, ?string $actor = null): array
@@ -90,7 +89,6 @@ function find_or_create_client(string $tenant, string $name, ?string $phone, ?st
     ]);
     audit($tenant, null, 'client.created', 'client', $id);
     emit_outbound($tenant, 'client.created', ['id'=>$id,'name'=>$name]);
-    push_google_sheets($tenant, 'client', 'upsert', $id);
     return one('SELECT * FROM clients WHERE id=? AND tenant_id=?', [$id, $tenant]);
 }
 
@@ -326,7 +324,6 @@ function create_appointment(array $tenant, array $in): array
     audit($tenant['id'], $in['user_id'] ?? null, 'appointment.created', 'appointment', $id);
     notify($tenant['id'], 'Novo agendamento', ($cli['name'] ?? '') . ' · ' . $in['date'] . ' ' . $in['start']);
     emit_outbound($tenant['id'], 'appointment.created', ['id'=>$id]);
-    push_google_sheets($tenant['id'], 'appointment', 'upsert', $id);
     if (!empty($in['commission']) && is_array($in['commission'])) {
         store_appointment_commission($tenant['id'], $id, $in['commission']);
     }

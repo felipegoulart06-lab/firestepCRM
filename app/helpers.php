@@ -18,23 +18,6 @@ function env_str(string $key, ?string $default = null): ?string
     return trim((string)$value, " \t\n\r\0\x0B\"'");
 }
 
-function cron_secret_ok(): bool
-{
-    $secret = (string)(env_str('CRON_SECRET') ?? '');
-    if ($secret === '') {
-        return false;
-    }
-    $got = '';
-    $auth = (string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-    if (stripos($auth, 'Bearer ') === 0) {
-        $got = trim(substr($auth, 7));
-    }
-    if ($got === '') {
-        $got = (string)($_GET['token'] ?? '');
-    }
-    return $got !== '' && hash_equals($secret, $got);
-}
-
 function load_env_file(?string $path = null): void
 {
     $path ??= ROOT . '/.env';
@@ -622,7 +605,7 @@ function sql_tenant_admin_join(string $tenantAlias = 't', string $userAlias = 'u
 
 function agent_route_forbidden(string $path): bool
 {
-    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/abrangencia', '/app/fornecedores', '/app/webhooks', '/app/configuracoes', '/app/onboarding', '/app/google'] as $prefix) {
+    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/abrangencia', '/app/fornecedores', '/app/webhooks', '/app/configuracoes', '/app/onboarding'] as $prefix) {
         if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
             return true;
         }
@@ -1145,6 +1128,30 @@ function view(string $file, array $data = []): void
 {
     extract($data, EXTR_SKIP);
     require VIEWS . '/' . $file . '.php';
+}
+
+function platform_settings(): array
+{
+    $row = one("SELECT value FROM platform_settings WHERE key='app'");
+    $raw = $row['value'] ?? '{}';
+    if (is_array($raw)) {
+        $data = $raw;
+    } else {
+        $data = json_decode((string)$raw, true);
+    }
+    return is_array($data) ? $data : [];
+}
+
+function save_platform_settings(array $settings): void
+{
+    unset($settings['google_client_id'], $settings['google_client_secret']);
+    $encoded = json_encode($settings, JSON_UNESCAPED_UNICODE);
+    $now = now();
+    if (is_pgsql()) {
+        q("INSERT INTO platform_settings(key,value,updated_at) VALUES('app', CAST(? AS jsonb), ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at", [$encoded, $now]);
+        return;
+    }
+    q("INSERT OR REPLACE INTO platform_settings(key,value,updated_at) VALUES('app',?,?)", [$encoded, $now]);
 }
 
 function head_viewport(): void

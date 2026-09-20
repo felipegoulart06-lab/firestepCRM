@@ -18,9 +18,6 @@ $clauseLists = clauses_lists($tenant);
 $clauseAppts = $editClausulas ? clauses_appointments((string)$tenant['id']) : [];
 $segRow = one('SELECT name FROM segments WHERE slug=?', [(string)($tenant['segment'] ?? '')]);
 $segLabel = (string)($segRow['name'] ?? '');
-$sheets = sheets_config($tenant);
-$googleReady = google_oauth_ready();
-$connected = sheets_connected($sheets);
 $dash = static function ($v) {
     $v = trim((string)$v);
     return $v !== '' ? e($v) : '—';
@@ -63,7 +60,6 @@ $hourLine = static function (array $h) {
     <div><dt>Contato</dt><dd><?= $dash($tenant['phone']) ?> · <?= $dash($tenant['email']) ?></dd></div>
     <div><dt>Cidade</dt><dd><?= $dash($tenant['city']) ?><?= $tenant['state'] ? ' / '.e($tenant['state']) : '' ?></dd></div>
     <div><dt>Fuso</dt><dd><?= $dash($tenant['timezone']) ?></dd></div>
-    <div><dt>Google Drive</dt><dd><?= $connected ? 'Conectado ('.e($sheets['google_email'] ?: 'conta Google').')' : ($googleReady ? 'Desconectado' : 'Indisponível') ?></dd></div>
     <div><dt>Tag Manager</dt><dd><?= !empty($analytics['gtm_id']) ? e($analytics['gtm_id']) : 'Não configurado' ?></dd></div>
   </dl>
   <p class="settings-hint">Horários, nomes internos e integrações ficam em abas próprias para evitar alteração acidental.</p>
@@ -490,46 +486,6 @@ $hourLine = static function (array $h) {
         <button class="btn btn-primary">Salvar integração</button>
       </div>
     </form>
-  <?php endif; ?>
-</div>
-
-<div class="card settings-panel google-login-card" style="margin-top:14px">
-  <div class="settings-panel-head">
-    <div>
-      <h2>Google Drive</h2>
-      <p>Continuar com o Google cria uma pasta no Drive da conta, com 8 pastas: Agendamentos, Solicitações, Clientes, Agentes, Fornecedores, Serviços, Financeiro (6 arquivos) e BACKUPS (JSON de todos os dados). A sincronização automática roda de madrugada e também no botão Sincronizar agora.</p>
-    </div>
-  </div>
-  <?php if (!$googleReady): ?>
-    <p><span class="badge" style="background:#fffaeb;color:#b54708">Integração indisponível</span></p>
-    <p class="settings-hint">O Admin Master precisa cadastrar o Client ID e o Client Secret em Ajustes técnicos (e ativar Google Drive API + Sheets API no Google Cloud). Sem isso, o login no Drive não inicia. Depois de configurado, use Continuar com o Google nesta tela para autorizar o backup automático.</p>
-  <?php elseif ($connected): ?>
-    <p><span class="badge" style="background:#dcfce7;color:#166534">Conta conectada</span> <?= e($sheets['google_email'] ?: 'Google') ?></p>
-    <?php $driveUrl = (string)($sheets['drive_folder_url'] ?: $sheets['spreadsheet_url'] ?: ''); ?>
-    <?php if ($driveUrl !== ''): ?>
-      <p><a class="btn btn-ghost" href="<?= e($driveUrl) ?>" target="_blank" rel="noopener">Abrir pasta no Drive</a></p>
-    <?php endif; ?>
-    <?php if (!empty($sheets['last_sync'])): ?>
-      <p class="settings-hint">Última sincronização: <?= e(date('d/m/Y H:i', strtotime($sheets['last_sync']))) ?> · <?= ($sheets['last_status']??'')==='ok' ? 'OK' : 'Erro' ?><?php if (!empty($sheets['last_error'])): ?> · <?= e($sheets['last_error']) ?><?php endif; ?></p>
-    <?php endif; ?>
-    <?php if (!empty($sheets['last_backup'])): ?>
-      <p class="settings-hint">Último backup JSON: <?= e(date('d/m/Y H:i', strtotime($sheets['last_backup']))) ?></p>
-    <?php endif; ?>
-    <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
-    <p class="settings-hint">O clique abre a tela oficial do Google. Autorize o Drive; a pasta FirestepCRM é criada na conta escolhida.</p>
-    <div class="settings-actions" style="justify-content:flex-start">
-      <form method="post" action="/app/configuracoes/sheets/sync">
-        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-        <button class="btn btn-primary">Sincronizar agora</button>
-      </form>
-      <form method="post" action="/app/google/disconnect" onsubmit="return confirm('Desconectar o Google Drive? A sincronização automática para até você entrar de novo.')">
-        <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-        <button class="btn btn-danger">Desconectar</button>
-      </form>
-    </div>
-  <?php else: ?>
-    <a class="btn-google" href="/app/google/connect">Continuar com o Google</a>
-    <p class="settings-hint">Obrigatório: autorize o Google Drive. O sistema cria a pasta com as 8 subpastas, os arquivos do Financeiro e o backup JSON em BACKUPS. Depois disso, o backup de todos os dados desta conta roda automaticamente.</p>
   <?php endif; ?>
 </div>
 

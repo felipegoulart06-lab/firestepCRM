@@ -35,23 +35,6 @@ if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
 
 db();
 
-/* -------- backup automático Google Drive (Vercel Cron; sem sessão) -------- */
-if ($path === '/cron/google-backup') {
-    header('Content-Type: application/json; charset=utf-8');
-    if ($method !== 'GET' && $method !== 'POST') {
-        http_response_code(405);
-        echo json_encode(['ok' => false, 'error' => 'Use GET ou POST']);
-        exit;
-    }
-    if (!cron_secret_ok()) {
-        http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'unauthorized']);
-        exit;
-    }
-    echo json_encode(google_backup_all_tenants(), JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
 /* -------- webhook público (domínio cadastrado do tenant; sem sessão/cookie) -------- */
 if (preg_match('#^/api/webhooks/([a-f0-9]+)$#', $path, $m)) {
     $hookRow = one('SELECT * FROM webhooks WHERE token=? AND direction=?', [$m[1], 'INBOUND']);
@@ -330,35 +313,6 @@ if (str_starts_with($path, '/master')) {
             flash($allow ? 'Acesso a Webhooks aprovado. O cliente já pode usar Integrações no painel dele.' : 'Acesso a Webhooks removido.');
             redirect('/master/integracoes');
         }
-        if ($path === '/master/configuracoes/google') {
-            $settings = platform_settings();
-            $currentId = trim((string)($settings['google_client_id'] ?? ''));
-            $clientId = trim((string)post('google_client_id', ''));
-            if ($clientId === '') {
-                $clientId = $currentId;
-            }
-            if ($clientId !== '' && !str_contains($clientId, '.apps.googleusercontent.com')) {
-                flash('O Client ID deve terminar com .apps.googleusercontent.com. Não use nome de pessoa nem e-mail.');
-                redirect('/master/configuracoes/tecnico?edit=google');
-            }
-            if ($currentId !== '' && $clientId !== $currentId && post('confirm_id_change') !== '1') {
-                flash('Marque a confirmação para trocar o Client ID. Nada foi alterado.');
-                redirect('/master/configuracoes/tecnico?edit=google');
-            }
-            $settings['google_client_id'] = $clientId;
-            $hasSecret = trim((string)($settings['google_client_secret'] ?? '')) !== '';
-            $replace = post('replace_secret') === '1' || !$hasSecret;
-            $secret = trim((string)post('google_client_secret', ''));
-            if ($replace && $secret !== '') {
-                $settings['google_client_secret'] = $secret;
-            } elseif ($replace && $hasSecret && $secret === '') {
-                flash('Para substituir o secret, cole o valor novo. O atual foi mantido.');
-                redirect('/master/configuracoes/tecnico?edit=google');
-            }
-            save_platform_settings($settings);
-            flash('Credenciais técnicas do Google salvas. O login dos profissionais fica no painel de cada cliente.');
-            redirect('/master/configuracoes/tecnico');
-        }
         if ($path === '/master/configuracoes/folha') {
             try {
                 $cfg = letterhead_from_post(platform_letterhead_config());
@@ -531,36 +485,6 @@ if (str_starts_with($path, '/app')) {
         redirect(app_home_path($tenant, $user));
     }
 
-    if ($path === '/app/google/connect' && $method === 'GET') {
-        if (!google_oauth_ready()) {
-            flash('A autenticação Google ainda não foi configurada pelo Admin Master.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        redirect(google_auth_url($tenant['id']));
-    }
-    if ($path === '/app/google/callback' && $method === 'GET') {
-        $state = $_GET['state'] ?? '';
-        $code = $_GET['code'] ?? '';
-        if (!$code || empty($_SESSION['google_oauth_state']) || !hash_equals($_SESSION['google_oauth_state'], $state)) {
-            flash('Falha na autenticação Google. Tente novamente.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        $oauthTid = (string)($_SESSION['google_oauth_tenant'] ?? '');
-        unset($_SESSION['google_oauth_state'], $_SESSION['google_oauth_tenant']);
-        if ($oauthTid === '' || !hash_equals((string)$tenant['id'], $oauthTid)) {
-            flash('Falha na autenticação Google. Tente novamente.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        $token = google_exchange_code($code);
-        if (empty($token['json']['access_token'])) {
-            flash('O Google não autorizou o acesso. Verifique as credenciais da plataforma.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        $done = google_complete_login($tenant['id'], $token['json']);
-        flash($done['message']);
-        redirect('/app/configuracoes?tab=integracoes');
-    }
-
     if ($method === 'POST') {
         csrf_check();
         $tid = $tenant['id'];
@@ -709,7 +633,6 @@ if (str_starts_with($path, '/app')) {
                     [$cid, $svc['id']??null, $start, $end, post('status','SCHEDULED'), post('notes'), $id, $tid]);
                 if ($prev && $prev['status'] !== post('status') && post('status')==='CONFIRMED') emit_outbound($tid, 'appointment.confirmed', ['id'=>$id]);
                 if (post('status')==='CANCELLED') { notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.'); emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]); }
-                push_google_sheets($tid, 'appointment', 'upsert', $id);
                 sync_appointment_finance($tid, $id);
                 save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
                 if (is_user_crm($user)) {
@@ -793,7 +716,6 @@ if (str_starts_with($path, '/app')) {
                 if ($ex) q('UPDATE custom_field_values SET value=? WHERE id=? AND tenant_id=?', [$val, $ex['id'], $tid]);
                 else q('INSERT INTO custom_field_values(id,tenant_id,field_id,client_id,value) VALUES(?,?,?,?,?)', [uid(),$tid,$f['id'],$id,$val]);
             }
-            push_google_sheets($tid, 'client', 'upsert', $id);
             locate_client_if_cnpj($tid, $id, $document, $address, $city, $state, $cep, post('lat'), post('lng'));
             flash('Cadastro salvo.');
             redirect('/app/clientes/ver?id='.$id);
@@ -801,7 +723,6 @@ if (str_starts_with($path, '/app')) {
         if ($path === '/app/clientes/excluir') {
             $delId = post('id');
             q('DELETE FROM clients WHERE id=? AND tenant_id=?', [$delId, $tid]);
-            push_google_sheets($tid, 'client', 'delete', $delId);
             flash('Cadastro excluído.');
             redirect('/app/clientes');
         }
@@ -963,7 +884,6 @@ if (str_starts_with($path, '/app')) {
                 q('INSERT INTO services(id,tenant_id,name,category,description,duration_minutes,buffer_minutes,price,deposit,price_kind,color,location_type,location_note,bookable_online,requires_confirmation,capacity,min_notice_hours,max_advance_days,client_instructions,internal_notes,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     array_merge([$id, $tid], $fields, [now()]));
             }
-            push_google_sheets($tid, 'service', 'upsert', $id);
             foreach (all("SELECT id FROM appointments WHERE tenant_id=? AND service_id=? AND status!='CANCELLED'", [$tid, $id]) as $ap) {
                 sync_appointment_finance($tid, $ap['id']);
             }
@@ -980,7 +900,6 @@ if (str_starts_with($path, '/app')) {
             q('UPDATE appointments SET service_id=NULL WHERE tenant_id=? AND service_id=?', [$tid, $delId]);
             q('UPDATE requests SET service_id=NULL WHERE tenant_id=? AND service_id=?', [$tid, $delId]);
             q('DELETE FROM services WHERE id=? AND tenant_id=?', [$delId, $tid]);
-            push_google_sheets($tid, 'service', 'delete', $delId);
             flash('Serviço excluído.');
             redirect('/app/servicos');
         }
@@ -1081,7 +1000,6 @@ if (str_starts_with($path, '/app')) {
                 notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.');
                 emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]);
             }
-            push_google_sheets($tid, 'appointment', 'upsert', $id);
             sync_appointment_finance($tid, $id);
             redirect('/app/kanban');
         }
@@ -1301,22 +1219,6 @@ if (str_starts_with($path, '/app')) {
                 json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
             ]);
             flash('Integração analítica atualizada.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        if ($path === '/app/configuracoes/sheets/sync') {
-            $result = sync_google_sheets_all($tid);
-            flash($result['message']);
-            redirect('/app/configuracoes?tab=integracoes');
-        }
-        if ($path === '/app/google/disconnect') {
-            $cfg = sheets_config($tenant);
-            $cfg['enabled'] = 0;
-            $cfg['access_token'] = '';
-            $cfg['refresh_token'] = '';
-            $cfg['expires_at'] = 0;
-            $cfg['google_email'] = '';
-            sheets_save($tid, $cfg);
-            flash('Conta Google desconectada.');
             redirect('/app/configuracoes?tab=integracoes');
         }
         if ($path === '/app/financeiro/salvar') {
