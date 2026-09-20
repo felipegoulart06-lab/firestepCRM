@@ -2,8 +2,6 @@
 *{box-sizing:border-box}
 html{scroll-behavior:auto;scrollbar-gutter:stable;background:var(--bg);color-scheme:light}
 html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
-@view-transition{navigation:auto}
-::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
 body{min-width:320px}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit}

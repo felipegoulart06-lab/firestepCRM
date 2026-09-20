@@ -19,8 +19,12 @@ if (preg_match("/lockBehindModal\\(\\)\\{[\\s\\S]*?querySelector\\('\\.overlay'\
     echo "FAIL lockBehindModal ainda pega .overlay escondido\n";
     $fail++;
 }
-if (!str_contains($css, 'scrollbar-gutter:stable') || !str_contains($css, '@view-transition')) {
+if (!str_contains($css, 'scrollbar-gutter:stable')) {
     echo "FAIL CSS ainda permite piscar no reload\n";
+    $fail++;
+}
+if (str_contains($css, '@view-transition') || str_contains($css, '::view-transition')) {
+    echo "FAIL View Transition nativa pode abortar a navegação\n";
     $fail++;
 }
 if (!str_contains($js, '[data-close-modal]') || !str_contains($js, 'function closeModal')) {
