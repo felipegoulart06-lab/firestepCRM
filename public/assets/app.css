@@ -612,20 +612,20 @@ body.is-soft-nav::before{content:"";position:fixed;top:0;left:0;right:0;height:2
 }
 
 /* Chat de ajuda — conversa, sem overlay */
-.fs-assist{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(88px,calc(env(safe-area-inset-bottom) + 72px));z-index:80;width:56px;height:56px;overflow:visible;pointer-events:none}
-.fs-assist-fab{position:absolute;right:0;bottom:0;width:56px;height:56px;border:0;border-radius:50%;background:#25d366;color:#fff;box-shadow:0 8px 22px rgba(37,211,102,.38),0 2px 8px rgba(16,24,40,.16);cursor:pointer;display:grid;place-items:center;pointer-events:auto;isolation:isolate;transition:transform .18s ease,box-shadow .18s ease}
-.fs-assist-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 12px 26px rgba(37,211,102,.42),0 2px 8px rgba(16,24,40,.18)}
+.fs-assist{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(28px,calc(env(safe-area-inset-bottom) + 16px));z-index:80;width:58px;height:58px;overflow:visible;pointer-events:none}
+.fs-assist-fab{position:absolute;right:0;bottom:0;width:58px;height:58px;padding:0;border:2px solid #fff;border-radius:50%;background:#0b3a6e;overflow:visible;box-shadow:0 8px 22px rgba(16,24,40,.22);cursor:pointer;display:block;pointer-events:auto;isolation:isolate;transition:transform .18s ease,box-shadow .18s ease}
+.fs-assist-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 12px 26px rgba(16,24,40,.24)}
 .fs-assist-fab:active{transform:scale(.96)}
 .fs-assist-fab:focus-visible{outline:2px solid #fff;outline-offset:3px}
-.fs-assist-fab svg{width:26px;height:26px;display:block}
-.fs-assist.is-open .fs-assist-fab{background:#128c7e}
+.fs-assist-fab img{width:100%;height:100%;object-fit:cover;object-position:center 12%;display:block;border-radius:50%}
+.fs-assist.is-open .fs-assist-fab{box-shadow:0 0 0 3px #1d4ed8,0 8px 22px rgba(16,24,40,.22)}
 .fs-assist-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px #fff;pointer-events:none}
 .fs-assist-badge[hidden]{display:none!important}
 .fs-assist-panel{position:absolute;right:0;bottom:70px;width:min(380px,calc(100vw - 24px));height:min(540px,calc(100vh - 160px));background:#ece5dd;border:0;border-radius:22px;box-shadow:0 22px 50px rgba(16,24,40,.22);display:flex;flex-direction:column;overflow:hidden;pointer-events:auto;transform-origin:bottom right;animation:fs-assist-pop .22s cubic-bezier(.2,.9,.2,1)}
 .fs-assist-panel[hidden]{display:none!important;animation:none}
 .fs-assist-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 14px;background:#075e54;color:#fff;flex:0 0 auto}
-.fs-assist-ava{width:36px;height:36px;border-radius:50%;background:#128c7e;display:grid;place-items:center;flex:0 0 auto}
-.fs-assist-ava svg{width:20px;height:20px}
+.fs-assist-ava{width:36px;height:36px;border-radius:50%;overflow:hidden;background:#0b3a6e;flex:0 0 auto}
+.fs-assist-ava img{width:100%;height:100%;object-fit:cover;object-position:center 12%;display:block}
 .fs-assist-who{min-width:0;flex:1}
 .fs-assist-who b{display:block;font-size:14px;font-weight:650;letter-spacing:0}
 .fs-assist-who span{display:flex;align-items:center;gap:6px;font-size:11px;opacity:.88;font-weight:500}

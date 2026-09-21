@@ -25,7 +25,7 @@ if ($path === '/favicon.ico') {
 if (preg_match('#^/assets/([A-Za-z0-9._-]+)$#', $path, $asset)) {
     $file = dirname(__DIR__) . '/public/assets/' . $asset[1];
     if (is_file($file)) {
-        $types = ['css' => 'text/css; charset=utf-8', 'js' => 'application/javascript; charset=utf-8', 'svg' => 'image/svg+xml', 'png' => 'image/png', 'ico' => 'image/x-icon'];
+        $types = ['css' => 'text/css; charset=utf-8', 'js' => 'application/javascript; charset=utf-8', 'svg' => 'image/svg+xml', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'ico' => 'image/x-icon'];
         header('Content-Type: ' . ($types[pathinfo($file, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
         header('Cache-Control: public, max-age=86400');
         readfile($file);

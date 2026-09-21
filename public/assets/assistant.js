@@ -1,10 +1,7 @@
 (function () {
   const FLOW = () => window.FS_ASSIST_FLOW;
   const csrf = () => document.querySelector("meta[name=csrf]")?.getAttribute("content") || "";
-  const iconBubble =
-    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2.2 6.9 2.2 11.6c0 2.7 1.4 5.1 3.6 6.7l-.9 3.3c-.1.5.4.9.8.7l3.7-1.6c.8.2 1.7.3 2.6.3 5.5 0 9.8-3.9 9.8-8.6C21.8 6.9 17.5 3 12 3z"/></svg>';
-  const iconPerson =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/></svg>';
+  const photo = '<img src="/assets/priscila.jpg" alt="Priscila" width="58" height="58">';
   const iconX =
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   const iconSend =
@@ -230,14 +227,14 @@
     wrap.id = "fs-assist";
     wrap.className = "fs-assist";
     wrap.innerHTML =
-      '<button type="button" class="fs-assist-fab" aria-label="Abrir conversa" aria-expanded="false">' +
+      '<button type="button" class="fs-assist-fab" aria-label="Falar com a Priscila" aria-expanded="false">' +
       '<span class="fs-assist-badge" hidden></span>' +
-      iconBubble +
+      photo +
       "</button>" +
-      '<div class="fs-assist-panel" hidden role="dialog" aria-label="Conversa de ajuda">' +
+      '<div class="fs-assist-panel" hidden role="dialog" aria-label="Conversa com a Priscila">' +
       '<div class="fs-assist-head">' +
-      '<div class="fs-assist-ava">' + iconPerson + "</div>" +
-      '<div class="fs-assist-who"><b>Suporte</b><span>online agora</span></div>' +
+      '<div class="fs-assist-ava">' + photo + "</div>" +
+      '<div class="fs-assist-who"><b>Priscila</b><span>online agora</span></div>' +
       '<div class="fs-assist-tabs">' +
       '<button type="button" data-tab="guide" class="is-on">Chat</button>' +
       '<button type="button" data-tab="inbox">Dúvidas</button>' +
