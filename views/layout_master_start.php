@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <style>html,body{margin:0;background:#f6f7f9}</style>
-<link rel="stylesheet" href="/assets/app.css?v=r23">
+<link rel="stylesheet" href="/assets/app.css?v=r36">
 </head>
 <body>
 <div class="wrap">
@@ -24,6 +24,10 @@
     <a href="/master/integracoes" class="<?= $path==='/master/integracoes'?'active':'' ?>"><?= icon('webhook') ?> Integrações<?php
       $pendHook = (int)(one("SELECT COUNT(*) c FROM tenants WHERE ".sql_not_blank('webhook_requested_at')." AND ".sql_false('webhook_access'))['c'] ?? 0);
       if ($pendHook > 0) echo ' <span class="badge" style="background:#fffaeb;color:#b54708">'.$pendHook.'</span>';
+    ?></a>
+    <a href="/master/assistente" class="<?= $path==='/master/assistente'?'active':'' ?>"><?= icon('message') ?> Assistente<?php
+      $pendAssist = function_exists('assistant_open_count') ? assistant_open_count() : 0;
+      if ($pendAssist > 0) echo ' <span class="badge" style="background:#dbeafe;color:#1d4ed8">'.$pendAssist.'</span>';
     ?></a>
     <a href="/master/logs" class="<?= $path==='/master/logs'?'active':'' ?>"><?= icon('list') ?> Logs</a>
     <a href="/master/configuracoes" class="<?= $path==='/master/configuracoes'?'active':'' ?>"><?= icon('settings') ?> Configurações</a>

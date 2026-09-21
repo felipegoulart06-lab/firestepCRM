@@ -12,6 +12,14 @@
   <a class="btn btn-primary" href="/master/integracoes">Abrir pedidos</a>
 </div>
 <?php endif; ?>
+<?php $assistOpen = function_exists('assistant_open_count') ? assistant_open_count() : 0; ?>
+<?php if ($assistOpen > 0): ?>
+<div class="card" style="padding:16px;margin-bottom:14px;border-color:#2563eb">
+  <b><?= $assistOpen === 1 ? '1 dúvida no assistente' : $assistOpen.' dúvidas no assistente' ?></b>
+  <p class="muted" style="margin:6px 0 10px">Clientes enviaram perguntas pelo chat do painel. Responda no Assistente.</p>
+  <a class="btn btn-primary" href="/master/assistente">Abrir assistente</a>
+</div>
+<?php endif; ?>
 <div class="grid g4">
   <div class="card stat"><span>Clientes cadastrados</span><b><?= (int)$total ?></b></div>
   <div class="card stat"><span>Ativos</span><b><?= (int)$active ?></b></div>

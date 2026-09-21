@@ -267,3 +267,17 @@ CREATE TABLE IF NOT EXISTS finance_entries (
 );
 CREATE INDEX IF NOT EXISTS idx_finance_tenant ON finance_entries(tenant_id, kind, status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_source ON finance_entries(tenant_id, source_type, source_id) WHERE source_id IS NOT NULL AND source_type IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS assistant_threads (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL,
+  answered_at TEXT,
+  answered_by TEXT
+);
+CREATE INDEX IF NOT EXISTS assistant_threads_tenant ON assistant_threads(tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS assistant_threads_status ON assistant_threads(status, created_at);

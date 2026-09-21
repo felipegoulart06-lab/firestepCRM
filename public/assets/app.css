@@ -610,3 +610,39 @@ body.is-soft-nav::before{content:"";position:fixed;top:0;left:0;right:0;height:2
   .mx-head{flex-direction:column;align-items:stretch}
   .mx-chart-svg{height:180px}
 }
+
+/* Assistente — canto da tela, sem overlay/scrim */
+.fs-assist{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:80;width:54px;height:54px;overflow:visible;pointer-events:none}
+.fs-assist-fab{position:absolute;right:0;bottom:0;width:54px;height:54px;border:0;border-radius:18px;background:var(--primary);color:#fff;box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 38%,transparent),0 2px 6px rgba(16,24,40,.18);cursor:pointer;display:grid;place-items:center;pointer-events:auto;isolation:isolate}
+.fs-assist-fab:hover{filter:brightness(.97);transform:translateY(-1px)}
+.fs-assist-fab:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.fs-assist-fab .ico{width:24px;height:24px}
+.fs-assist-ping{position:absolute;inset:-5px;border-radius:22px;border:2px solid var(--primary);opacity:.45;animation:fs-assist-ping 2.4s ease-out infinite;pointer-events:none}
+.fs-assist.is-open .fs-assist-ping{display:none}
+.fs-assist-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px #fff;pointer-events:none}
+.fs-assist-badge[hidden]{display:none!important}
+.fs-assist-panel{position:absolute;right:0;bottom:66px;width:min(392px,calc(100vw - 24px));height:min(560px,calc(100vh - 108px));background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px rgba(16,24,40,.16);display:flex;flex-direction:column;overflow:hidden;pointer-events:auto}
+.fs-assist-panel[hidden]{display:none!important}
+.fs-assist-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line-soft);background:#fcfcfd;flex:0 0 auto}
+.fs-assist-head b{font-size:13px;letter-spacing:-.01em}
+.fs-assist-head span{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.fs-assist-tabs{display:flex;gap:4px;margin-left:auto}
+.fs-assist-tabs button{border:0;background:transparent;color:#667085;font-size:11px;font-weight:700;padding:6px 8px;border-radius:6px;cursor:pointer}
+.fs-assist-tabs button.is-on{background:var(--primary-soft);color:var(--primary)}
+.fs-assist-x{border:0;background:transparent;color:#667085;width:32px;height:32px;border-radius:8px;cursor:pointer;display:grid;place-items:center}
+.fs-assist-x:hover{background:#f2f4f7;color:#101828}
+.fs-assist-log{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}
+.fs-assist-msg{max-width:92%;padding:9px 11px;border-radius:10px;font-size:13px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.fs-assist-msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--line-soft);color:var(--text);box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.fs-assist-msg.me{align-self:flex-end;background:var(--primary);color:#fff}
+.fs-assist-msg.sys{align-self:stretch;background:#eff6ff;border:1px solid #dbeafe;color:#175cd3;font-size:12px}
+.fs-assist-msg strong{font-weight:700}
+.fs-assist-choices{display:flex;flex-direction:column;gap:6px;padding:8px 12px 12px;background:#fff;border-top:1px solid var(--line-soft);flex:0 0 auto;max-height:42%;overflow:auto;overscroll-behavior:contain}
+.fs-assist-choices .btn{width:100%;justify-content:flex-start;white-space:normal;text-align:left;min-height:36px;height:auto;padding:8px 10px;line-height:1.3}
+.fs-assist-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line-soft);background:#fff;flex:0 0 auto}
+.fs-assist-form .input{flex:1;min-width:0}
+.fs-assist-form[hidden],.fs-assist-choices[hidden]{display:none!important}
+@keyframes fs-assist-ping{0%{transform:scale(.92);opacity:.5}80%,100%{transform:scale(1.28);opacity:0}}
+@media(max-width:1100px){
+  .fs-assist{z-index:70}
+}

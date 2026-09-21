@@ -1585,3 +1585,4 @@ require_once __DIR__ . '/uazapi.php';
 require_once __DIR__ . '/communicate.php';
 require_once __DIR__ . '/metrics.php';
 require_once __DIR__ . '/r2.php';
+require_once __DIR__ . '/assistant.php';

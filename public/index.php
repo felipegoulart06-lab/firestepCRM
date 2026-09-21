@@ -145,6 +145,7 @@ function require_tenant(): array
     r2_ensure_schema();
     services_ensure_schema();
     notes_ensure_schema();
+    assistant_ensure_schema();
     if (function_exists('appointment_commission_ensure_schema')) {
         appointment_commission_ensure_schema();
     }
@@ -232,6 +233,7 @@ if ($path === '/logout' && $method === 'POST') {
 /* -------- MASTER POST -------- */
 if (str_starts_with($path, '/master')) {
     $user = require_master();
+    assistant_ensure_schema();
     if ($method === 'POST') {
         csrf_check();
         if ($path === '/master/clientes/criar') {
@@ -378,6 +380,16 @@ if (str_starts_with($path, '/master')) {
             }
             redirect('/master/segmentos');
         }
+        if ($path === '/master/assistente/responder') {
+            $id = (string)post('id', '');
+            $answer = (string)post('answer', '');
+            if ($id === '' || !assistant_reply($id, (string)$user['id'], $answer)) {
+                flash('Não foi possível responder. Escreva a mensagem e tente de novo.', 'error');
+            } else {
+                flash('Resposta enviada ao cliente.');
+            }
+            redirect('/master/assistente');
+        }
     }
     if ($path === '/master') {
         layout_start('master', compact('user','path'));
@@ -477,6 +489,12 @@ if (str_starts_with($path, '/master')) {
         layout_end('master');
         exit;
     }
+    if ($path === '/master/assistente') {
+        layout_start('master', compact('user','path'));
+        view('master/assistente', ['threads' => assistant_master_list()]);
+        layout_end('master');
+        exit;
+    }
     if ($path === '/master/logs') { layout_start('master', compact('user','path')); view('master/logs', ['logs'=>all('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 80')]); layout_end('master'); exit; }
     if ($path === '/master/configuracoes') { layout_start('master', compact('user','path')); view('master/config'); layout_end('master'); exit; }
     if ($path === '/master/configuracoes/tecnico') { layout_start('master', compact('user','path')); view('master/tecnico'); layout_end('master'); exit; }
@@ -490,7 +508,7 @@ if (str_starts_with($path, '/app')) {
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
         redirect('/app/senha');
     }
-    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding'], true)) {
+    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding', '/app/assistente/duvida', '/app/assistente/conversas'], true)) {
         redirect('/app/onboarding');
     }
     if (is_user_agent($user) && agent_route_forbidden($path)) {
@@ -501,6 +519,12 @@ if (str_starts_with($path, '/app')) {
     if ($method === 'POST') {
         csrf_check();
         $tid = $tenant['id'];
+        if ($path === '/app/assistente/duvida') {
+            $out = assistant_submit($tid, (string)$user['id'], (string)post('question', ''));
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($out, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         if ($path === '/app/comunicar/enviar') {
             $kind = trim((string)post('kind', ''));
             $id = trim((string)post('id', ''));
@@ -1380,6 +1404,19 @@ if (str_starts_with($path, '/app')) {
         layout_start('lock', compact('user','tenant','path'));
         view('app/senha', compact('user','tenant'));
         layout_end('lock');
+        exit;
+    }
+
+    if ($path === '/app/assistente/conversas') {
+        header('Content-Type: application/json; charset=utf-8');
+        $threads = assistant_threads_for_user((string)$tenant['id'], (string)$user['id']);
+        $answered = 0;
+        foreach ($threads as $th) {
+            if (($th['status'] ?? '') === 'answered' && trim((string)($th['answer'] ?? '')) !== '') {
+                $answered++;
+            }
+        }
+        echo json_encode(['ok' => true, 'threads' => $threads, 'answered' => $answered], JSON_UNESCAPED_UNICODE);
         exit;
     }
 

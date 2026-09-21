@@ -79,7 +79,7 @@ function blockScrollBehindModal(e){
   if (!document.body.classList.contains('is-modal-open')) return;
   const t = e.target;
   if (!(t instanceof Element)) return;
-  if (t.closest('.overlay-panel, .overlay, .fx-overlay, .fx-filter-panel, .fx-preview-shell, .fx-a4-wrap, .fx-checks-scroll, .cl-panel, .token-modal')) return;
+  if (t.closest('.overlay-panel, .overlay, .fx-overlay, .fx-filter-panel, .fx-preview-shell, .fx-a4-wrap, .fx-checks-scroll, .cl-panel, .token-modal, .fs-assist')) return;
   e.preventDefault();
 }
 document.addEventListener('click', function(e){
@@ -1045,6 +1045,7 @@ function firestepHydrate(){
   bindFinanceReceive();
   bindKanbanStatus();
   bindCommunicate();
+  if (typeof window.fsAssistMount === 'function') window.fsAssistMount();
   if (typeof window.firestepGeo === 'function') window.firestepGeo();
 }
 
