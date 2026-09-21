@@ -101,6 +101,8 @@ $ui = file_get_contents(dirname(__DIR__).'/views/app/config.php').file_get_conte
 expect(!str_contains($ui, 'UAZAPI') && !str_contains($ui, 'uazapi.com'), 'configuração e Comunicar não mostram o provedor');
 expect(str_contains($ui, 'tab=comunicar') && str_contains($ui, 'Automatizar Comunicar'), 'Configurações tem aba de automação do Comunicar');
 expect(str_contains($index, '/app/configuracoes/comunicar') && str_contains($index, '/cron/comunicar-auto'), 'salvar automação e cron de lembrete');
+$vercel = file_get_contents(dirname(__DIR__).'/vercel.json');
+expect(str_contains($vercel, '/cron/comunicar-auto') && str_contains($vercel, '0 11 * * *') && !str_contains($vercel, '15 * * * *'), 'lembrete no Hobby é cron diário');
 
 $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'firestep-com-'.bin2hex(random_bytes(4)).'.sqlite';
 putenv('FIRESTEP_SQLITE='.$tmp);

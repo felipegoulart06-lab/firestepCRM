@@ -564,7 +564,7 @@ $hourLine = static function (array $h) {
       </div>
       <?php endforeach; ?>
     </dl>
-    <p class="settings-hint">Nada sai até você ligar a automação e ao menos uma regra. Sem WhatsApp em Integrações, os envios ficam parados.</p>
+    <p class="settings-hint">Nada sai até você ligar a automação e ao menos uma regra. O lembrete é conferido uma vez por dia, de manhã. Sem WhatsApp em Integrações, os envios ficam parados.</p>
   <?php else: ?>
     <form method="post" action="/app/configuracoes/comunicar">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">

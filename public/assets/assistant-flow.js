@@ -583,7 +583,7 @@ window.FS_ASSIST_FLOW = {
     comunicar_auto: {
       texts: [
         "A aba **Comunicar** nas Configurações liga a automação. Cada regra liga à parte e pode usar o último modelo do botão Comunicar.",
-        "O lembrete dispara nas horas que você definir antes do horário. Sem a conexão de WhatsApp em Integrações, nada é enviado."
+        "O lembrete usa as horas que você definir antes do horário e é conferido uma vez por dia. Sem a conexão de WhatsApp em Integrações, nada é enviado."
       ],
       choices: [
         { label: "Voltar a Comunicar", next: "comunicar" },

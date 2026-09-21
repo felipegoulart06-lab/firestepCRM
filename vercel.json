@@ -10,7 +10,7 @@
   },
   "crons": [
     { "path": "/cron/r2-backup", "schedule": "0 6 * * *" },
-    { "path": "/cron/comunicar-auto", "schedule": "15 * * * *" }
+    { "path": "/cron/comunicar-auto", "schedule": "0 11 * * *" }
   ],
   "routes": [
     { "src": "/assets/(.*)", "dest": "/public/assets/$1" },
