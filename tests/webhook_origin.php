@@ -34,6 +34,10 @@ expect(webhook_origin_matches($multi, 'https://templates.firestep.cloud') === tr
 expect(webhook_origin_matches($multi, 'https://www.outro.com.br') === true, 'segundo domínio da lista passa');
 expect(webhook_origin_matches($multi, 'https://evil.test') === false, 'fora da lista continua bloqueado');
 expect(webhook_cors_origin_value('https://www.firestep.cloud/form') === 'https://www.firestep.cloud', 'CORS ecoa só o origin');
+$cfgUi = file_get_contents(dirname(__DIR__).'/views/app/config.php');
+expect(!str_contains($cfgUi, 'Google Tag Manager') && !str_contains($cfgUi, 'gtm_id'), 'GTM não aparece nas Configurações');
+$idx = file_get_contents(dirname(__DIR__).'/public/index.php');
+expect(!str_contains($idx, '/app/configuracoes/analytics'), 'rota de GTM removida');
 
 $_SERVER['HTTP_ORIGIN'] = '';
 $_SERVER['HTTP_REFERER'] = 'https://www.firestep.cloud/contato';

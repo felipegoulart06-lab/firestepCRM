@@ -519,7 +519,7 @@ window.FS_ASSIST_FLOW = {
       choices: [
         { label: "Negócio e horários", next: "config_negocio" },
         { label: "Avançado (folha, campos)", next: "config_avancado" },
-        { label: "Integrações (GTM e WhatsApp)", next: "config_integ" },
+        { label: "Integrações (WhatsApp)", next: "config_integ" },
         { label: "Voltar a conexões", next: "hub_conexoes" },
         { label: "Voltar ao início", next: "menu" }
       ]
@@ -558,8 +558,8 @@ window.FS_ASSIST_FLOW = {
     },
     config_integ: {
       texts: [
-        "**Tag Manager**: ID no formato GTM-XXXXXXX, opcional. Informe também os endereços do site (separados por vírgula), sem o domínio do CRM.",
-        "**WhatsApp**: conexão usada pelo botão **Comunicar**. Sem isso configurado, o envio de mensagem não sai."
+        "**WhatsApp**: conexão usada pelo botão **Comunicar**. Sem isso configurado, o envio de mensagem não sai.",
+        "Os domínios autorizados do site ficam em **Webhooks**, não nesta aba."
       ],
       choices: [
         { label: "Como usar Comunicar?", next: "comunicar" },

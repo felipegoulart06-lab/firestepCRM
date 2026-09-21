@@ -379,7 +379,7 @@ function ingest_webhook(string $token, array $body, string $ip): array
     if (empty($tenant['webhook_access'])) return [403, ['error'=>'Integração aguardando autorização.']];
     $hosts = tenant_webhook_hosts($tenant);
     if (!$hosts) {
-        return [403, ['error'=>'Cadastre o domínio do site nas Integrações antes de usar o webhook.']];
+        return [403, ['error'=>'Cadastre o domínio do site em Webhooks antes de usar o endpoint.']];
     }
     $from = request_webhook_origin();
     if ($from === '' || !webhook_origin_matches($tenant, $from)) {
@@ -496,27 +496,24 @@ function assistant_feed(array $tenant): array
         ];
     }
 
-    $analytics = analytics_config($tenant);
-    if (!empty($analytics['gtm_id'])) {
-        $recent = all("SELECT metadata FROM analytics_events WHERE tenant_id=? AND event='visitor_active' AND created_at>=? ORDER BY created_at DESC", [
-            $tid, date('Y-m-d H:i:s', time()-300),
-        ]);
-        $visitors = [];
-        foreach ($recent as $event) {
-            $meta = json_decode($event['metadata'] ?: '{}', true);
-            if (!empty($meta['visitor_id'])) $visitors[$meta['visitor_id']] = true;
-        }
-        $count = count($visitors);
-        if ($count > 0) {
-            $messages[] = [
-                'id'=>'visitors-'.date('YmdHi', (int)(floor(time()/300)*300)),
-                'kind'=>'analytics','title'=>'Movimento no seu site',
-                'body'=>$count === 1
-                    ? 'Hey! Há 1 pessoa navegando no seu site neste momento.'
-                    : "Hey! Há {$count} pessoas navegando no seu site neste momento.",
-                'url'=>'/app/metricas','created_at'=>now(),
-            ];
-        }
+    $recent = all("SELECT metadata FROM analytics_events WHERE tenant_id=? AND event='visitor_active' AND created_at>=? ORDER BY created_at DESC", [
+        $tid, date('Y-m-d H:i:s', time()-300),
+    ]);
+    $visitors = [];
+    foreach ($recent as $event) {
+        $meta = json_decode($event['metadata'] ?: '{}', true);
+        if (!empty($meta['visitor_id'])) $visitors[$meta['visitor_id']] = true;
+    }
+    $count = count($visitors);
+    if ($count > 0) {
+        $messages[] = [
+            'id'=>'visitors-'.date('YmdHi', (int)(floor(time()/300)*300)),
+            'kind'=>'analytics','title'=>'Movimento no seu site',
+            'body'=>$count === 1
+                ? 'Hey! Há 1 pessoa navegando no seu site neste momento.'
+                : "Hey! Há {$count} pessoas navegando no seu site neste momento.",
+            'url'=>'/app/metricas','created_at'=>now(),
+        ];
     }
 
     foreach (all("SELECT id,event,response,created_at FROM webhook_logs WHERE tenant_id=? AND status='error' AND created_at>=? ORDER BY created_at DESC LIMIT 3", [

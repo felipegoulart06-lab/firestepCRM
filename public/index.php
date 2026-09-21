@@ -1303,21 +1303,6 @@ if (str_starts_with($path, '/app')) {
             }
             redirect('/app/configuracoes?tab=conta');
         }
-        if ($path === '/app/configuracoes/analytics') {
-            $gtm = strtoupper(post('gtm_id', ''));
-            if ($gtm && !preg_match('/^GTM-[A-Z0-9]+$/', $gtm)) {
-                flash('O ID do Google Tag Manager deve seguir o formato GTM-XXXXXXX.');
-                redirect('/app/configuracoes?tab=integracoes');
-            }
-            $cfg = analytics_config($tenant);
-            $cfg['gtm_id'] = $gtm;
-            $cfg['site_domain'] = implode(', ', tenant_webhook_hosts(['analytics_config' => json_encode(['site_domain' => (string)post('site_domain', '')])]));
-            q('UPDATE tenants SET analytics_config=?, updated_at=? WHERE id=?', [
-                json_encode($cfg, JSON_UNESCAPED_UNICODE), now(), $tid,
-            ]);
-            flash('Integração analítica atualizada.');
-            redirect('/app/configuracoes?tab=integracoes');
-        }
         if ($path === '/app/financeiro/salvar') {
             ensure_finance_schema();
             $kind = post('kind', '');

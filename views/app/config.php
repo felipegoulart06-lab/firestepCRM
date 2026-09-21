@@ -1,7 +1,6 @@
 <?php
 $hours = json_arr($tenant['business_hours'] ?: '{}', default_hours());
 $terms = terms_of($tenant);
-$analytics = analytics_config($tenant);
 $days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 $tab = $_GET['tab'] ?? 'resumo';
 $allowed = ['resumo','negocio','agenda','avancado','integracoes','comunicar','conta'];
@@ -61,7 +60,6 @@ $hourLine = static function (array $h) {
     <div><dt>Contato</dt><dd><?= $dash($tenant['phone']) ?> · <?= $dash($tenant['email']) ?></dd></div>
     <div><dt>Cidade</dt><dd><?= $dash($tenant['city']) ?><?= $tenant['state'] ? ' / '.e($tenant['state']) : '' ?></dd></div>
     <div><dt>Fuso</dt><dd><?= $dash($tenant['timezone']) ?></dd></div>
-    <div><dt>Tag Manager</dt><dd><?= !empty($analytics['gtm_id']) ? e($analytics['gtm_id']) : 'Não configurado' ?></dd></div>
     <?php $autoNow = communicate_automations_of($tenant); $autoOn = 0; foreach ($autoNow['rules'] as $r) { if (!empty($r['enabled'])) $autoOn++; } ?>
     <div><dt>Comunicar automático</dt><dd><?= !empty($autoNow['enabled']) ? ($autoOn.' regra'.($autoOn===1?'':'s').' ativa'.($autoOn===1?'':'s')) : 'Desligado' ?></dd></div>
   </dl>
@@ -455,45 +453,8 @@ $hourLine = static function (array $h) {
 <?php endif; ?>
 
 <?php if ($tab === 'integracoes'): ?>
-<div class="card settings-panel">
-  <div class="settings-panel-head">
-    <div>
-      <h2>Google Tag Manager</h2>
-      <p>Usado só para campanhas do site externo. Não instala rastreador no CRM.</p>
-    </div>
-    <?php if (!$edit): ?>
-      <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes&amp;edit=1">Editar</a>
-    <?php endif; ?>
-  </div>
-  <?php if (!$edit): ?>
-    <dl class="settings-kv">
-      <div><dt>Container</dt><dd><?= !empty($analytics['gtm_id']) ? e($analytics['gtm_id']) : 'Não configurado' ?></dd></div>
-      <div><dt>Domínios do webhook</dt><dd><?= $dash($analytics['site_domain'] ?? '') ?></dd></div>
-    </dl>
-  <?php else: ?>
-    <form method="post" action="/app/configuracoes/analytics" onsubmit="return confirm('Salvar a integração analítica?')">
-      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-      <div class="grid g2">
-        <div>
-          <label class="label">Google Tag Manager ID</label>
-          <input class="input" name="gtm_id" value="<?= e($analytics['gtm_id'] ?? '') ?>" placeholder="GTM-XXXXXXX">
-        </div>
-        <div>
-          <label class="label">Domínios autorizados no webhook</label>
-          <textarea class="input" name="site_domain" rows="3" placeholder="meusite.com.br, lp.meusite.com.br"><?= e($analytics['site_domain'] ?? '') ?></textarea>
-        </div>
-      </div>
-      <p class="settings-hint">Separe vários endereços por vírgula. Não use o domínio do CRM. <b>www</b> e subdomínios de cada um entram juntos. O ID do GTM pode ficar em branco. Formato GTM-XXXXXXX.</p>
-      <div class="settings-actions">
-        <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
-        <button class="btn btn-primary">Salvar integração</button>
-      </div>
-    </form>
-  <?php endif; ?>
-</div>
-
 <?php $uaz = uazapi_config($tenant); $uazTok = (string)($uaz['token'] ?? ''); ?>
-<div class="card settings-panel" style="margin-top:14px">
+<div class="card settings-panel">
   <div class="settings-panel-head">
     <div>
       <h2>WhatsApp</h2>
