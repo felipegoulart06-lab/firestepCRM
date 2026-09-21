@@ -106,6 +106,18 @@ if ($path === '/cron/r2-backup') {
     exit;
 }
 
+if ($path === '/cron/comunicar-auto') {
+    if (!r2_cron_secret_ok()) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'não autorizado']);
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'reminders' => communicate_automation_reminders()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 boot_session();
 
 function current_user(): ?array
@@ -694,6 +706,10 @@ if (str_starts_with($path, '/app')) {
                     [$cid, $svc['id']??null, $start, $end, post('status','SCHEDULED'), post('notes'), $id, $tid]);
                 if ($prev && $prev['status'] !== post('status') && post('status')==='CONFIRMED') emit_outbound($tid, 'appointment.confirmed', ['id'=>$id]);
                 if (post('status')==='CANCELLED') { notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.'); emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]); }
+                if ($prev && $prev['status'] !== post('status')) {
+                    if (post('status') === 'CONFIRMED') communicate_automation_fire($tenant, 'appointment.confirmed', 'appointment', (string)$id);
+                    if (post('status') === 'CANCELLED') communicate_automation_fire($tenant, 'appointment.cancelled', 'appointment', (string)$id);
+                }
                 sync_appointment_finance($tid, $id);
                 save_appointment_visits($tid, $id, ['external_visit' => $isExt ? '1' : '0', 'visit_addresses' => $visitAddrs, 'visit_lats' => (array)($_POST['visit_lats'] ?? []), 'visit_lngs' => (array)($_POST['visit_lngs'] ?? [])]);
                 if (is_user_crm($user)) {
@@ -1061,6 +1077,12 @@ if (str_starts_with($path, '/app')) {
                 notify($tid, 'Agendamento cancelado', 'Um horário foi cancelado.');
                 emit_outbound($tid, 'appointment.cancelled', ['id'=>$id]);
             }
+            if ($st === 'CONFIRMED') {
+                communicate_automation_fire($tenant, 'appointment.confirmed', 'appointment', $id);
+            }
+            if ($st === 'CANCELLED') {
+                communicate_automation_fire($tenant, 'appointment.cancelled', 'appointment', $id);
+            }
             sync_appointment_finance($tid, $id);
             redirect('/app/kanban');
         }
@@ -1390,6 +1412,11 @@ if (str_starts_with($path, '/app')) {
             ]);
             flash('Conexão de WhatsApp atualizada.');
             redirect('/app/configuracoes?tab=integracoes');
+        }
+        if ($path === '/app/configuracoes/comunicar') {
+            communicate_automations_save($tid, communicate_automations_from_post());
+            flash('Automação de Comunicar salva.');
+            redirect('/app/configuracoes?tab=comunicar');
         }
         if ($path === '/app/onboarding') {
             $step = (int)($_POST['step'] ?? 1);

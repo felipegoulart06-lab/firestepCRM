@@ -571,11 +571,23 @@ window.FS_ASSIST_FLOW = {
     comunicar: {
       texts: [
         "**Comunicar** envia WhatsApp ao destinatário pela conexão da empresa.",
-        "Você monta mensagem inicial, variáveis do registro (nome, data, reserva…) e um fechamento. A prévia aparece antes de enviar. O último envio vira modelo."
+        "Em **Configurações → Comunicar** você liga envios automáticos: novo horário, confirmação, cancelamento, lembrete e nova solicitação."
       ],
       choices: [
+        { label: "Envios automáticos", next: "comunicar_auto" },
         { label: "Onde configurar o WhatsApp?", next: "config_integ" },
         { label: "Voltar a Agendamentos", next: "agendamentos" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    comunicar_auto: {
+      texts: [
+        "A aba **Comunicar** nas Configurações liga a automação. Cada regra liga à parte e pode usar o último modelo do botão Comunicar.",
+        "O lembrete dispara nas horas que você definir antes do horário. Sem a conexão de WhatsApp em Integrações, nada é enviado."
+      ],
+      choices: [
+        { label: "Voltar a Comunicar", next: "comunicar" },
+        { label: "Ir para Integrações", next: "config_integ" },
         { label: "Voltar ao início", next: "menu" }
       ]
     },

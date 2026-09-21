@@ -325,6 +325,9 @@ function create_appointment(array $tenant, array $in): array
         q('UPDATE requests SET status=?, client_id=? WHERE id=? AND tenant_id=?', ['SCHEDULED', $in['client_id'], $in['request_id'], $tenant['id']]);
         audit($tenant['id'], $in['user_id'] ?? null, 'request.converted', 'request', $in['request_id']);
     }
+    if (function_exists('communicate_automation_fire')) {
+        communicate_automation_fire($tenant, 'appointment.created', 'appointment', $id);
+    }
     return ['ok'=>true,'id'=>$id];
 }
 
@@ -453,6 +456,9 @@ function ingest_webhook(string $token, array $body, string $ip): array
             json_encode($body, JSON_UNESCAPED_UNICODE), 'NEW', now(),
         ]);
         notify($tenant['id'], 'Nova solicitação recebida', $name.' — horário ocupado');
+        if (function_exists('communicate_automation_fire')) {
+            communicate_automation_fire($tenant, 'request.created', 'request', $rid);
+        }
         q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,http_status,status,response,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
             uid(), $tenant['id'], $hook['id'], 'Nova solicitação', json_encode($body), 200, 'ok', 'Horário ocupado. Criada solicitação.', $source, now(),
         ]);
@@ -466,6 +472,9 @@ function ingest_webhook(string $token, array $body, string $ip): array
         json_encode($body, JSON_UNESCAPED_UNICODE), 'NEW', now(),
     ]);
     notify($tenant['id'], 'Nova solicitação recebida', $name);
+    if (function_exists('communicate_automation_fire')) {
+        communicate_automation_fire($tenant, 'request.created', 'request', $rid);
+    }
     emit_outbound($tenant['id'], 'request.received', ['id'=>$rid,'name'=>$name]);
     q('INSERT INTO webhook_logs(id,tenant_id,webhook_id,event,payload,http_status,status,response,source,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [
         uid(), $tenant['id'], $hook['id'], 'Nova solicitação', json_encode($body), 200, 'ok', 'Recebido', $source, now(),

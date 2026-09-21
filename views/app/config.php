@@ -4,7 +4,7 @@ $terms = terms_of($tenant);
 $analytics = analytics_config($tenant);
 $days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 $tab = $_GET['tab'] ?? 'resumo';
-$allowed = ['resumo','negocio','agenda','avancado','integracoes','conta'];
+$allowed = ['resumo','negocio','agenda','avancado','integracoes','comunicar','conta'];
 if (!in_array($tab, $allowed, true)) $tab = 'resumo';
 $edit = ($_GET['edit'] ?? '') === '1';
 $editFolha = ($_GET['edit'] ?? '') === 'folha';
@@ -44,6 +44,7 @@ $hourLine = static function (array $h) {
   <a href="/app/configuracoes?tab=agenda" class="<?= $tab==='agenda'?'active':'' ?>">Horários</a>
   <a href="/app/configuracoes?tab=avancado" class="<?= $tab==='avancado'?'active':'' ?>">Avançado</a>
   <a href="/app/configuracoes?tab=integracoes" class="<?= $tab==='integracoes'?'active':'' ?>">Integrações</a>
+  <a href="/app/configuracoes?tab=comunicar" class="<?= $tab==='comunicar'?'active':'' ?>">Comunicar</a>
   <a href="/app/configuracoes?tab=conta" class="<?= $tab==='conta'?'active':'' ?>">Conta</a>
 </nav>
 
@@ -61,6 +62,8 @@ $hourLine = static function (array $h) {
     <div><dt>Cidade</dt><dd><?= $dash($tenant['city']) ?><?= $tenant['state'] ? ' / '.e($tenant['state']) : '' ?></dd></div>
     <div><dt>Fuso</dt><dd><?= $dash($tenant['timezone']) ?></dd></div>
     <div><dt>Tag Manager</dt><dd><?= !empty($analytics['gtm_id']) ? e($analytics['gtm_id']) : 'Não configurado' ?></dd></div>
+    <?php $autoNow = communicate_automations_of($tenant); $autoOn = 0; foreach ($autoNow['rules'] as $r) { if (!empty($r['enabled'])) $autoOn++; } ?>
+    <div><dt>Comunicar automático</dt><dd><?= !empty($autoNow['enabled']) ? ($autoOn.' regra'.($autoOn===1?'':'s').' ativa'.($autoOn===1?'':'s')) : 'Desligado' ?></dd></div>
   </dl>
   <p class="settings-hint">Horários, nomes internos e integrações ficam em abas próprias para evitar alteração acidental.</p>
 </div>
@@ -533,6 +536,67 @@ $hourLine = static function (array $h) {
       <div class="settings-actions">
         <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
         <button class="btn btn-primary">Salvar WhatsApp</button>
+      </div>
+    </form>
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($tab === 'comunicar'): ?>
+<?php $auto = communicate_automations_of($tenant); $catalog = communicate_automation_catalog(); ?>
+<div class="card settings-panel">
+  <div class="settings-panel-head">
+    <div>
+      <h2>Automatizar Comunicar</h2>
+      <p>O CRM envia sozinho no WhatsApp da conexão da empresa, usando o modelo do botão Comunicar ou o texto desta tela.</p>
+    </div>
+    <?php if (!$edit): ?>
+      <a class="btn btn-ghost" href="/app/configuracoes?tab=comunicar&amp;edit=1">Editar</a>
+    <?php endif; ?>
+  </div>
+  <?php if (!$edit): ?>
+    <dl class="settings-kv">
+      <div><dt>Automação</dt><dd><?= !empty($auto['enabled']) ? 'Ligada' : 'Desligada' ?></dd></div>
+      <?php foreach ($catalog as $rid => $meta): $rule = $auto['rules'][$rid]; ?>
+      <div>
+        <dt><?= e($meta['label']) ?></dt>
+        <dd><?= !empty($rule['enabled']) ? 'Ativa'.(isset($meta['hours_before']) ? ' · '.$rule['hours_before'].'h antes' : '') : 'Off' ?></dd>
+      </div>
+      <?php endforeach; ?>
+    </dl>
+    <p class="settings-hint">Nada sai até você ligar a automação e ao menos uma regra. Sem WhatsApp em Integrações, os envios ficam parados.</p>
+  <?php else: ?>
+    <form method="post" action="/app/configuracoes/comunicar">
+      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+      <label class="check-row" style="margin:0 0 16px">
+        <input type="checkbox" name="auto_enabled" value="1" <?= !empty($auto['enabled']) ? 'checked' : '' ?>>
+        Ligar envios automáticos
+      </label>
+      <?php foreach ($catalog as $rid => $meta): $rule = $auto['rules'][$rid]; ?>
+      <fieldset class="card" style="padding:14px;margin:0 0 12px;border:1px solid var(--line-soft)">
+        <legend style="font-weight:600;padding:0 6px"><?= e($meta['label']) ?></legend>
+        <p class="settings-hint" style="margin-top:0"><?= e($meta['hint']) ?></p>
+        <label class="check-row">
+          <input type="checkbox" name="on_<?= e($rid) ?>" value="1" <?= !empty($rule['enabled']) ? 'checked' : '' ?>>
+          Ativar esta regra
+        </label>
+        <?php if (isset($meta['hours_before'])): ?>
+        <label class="label">Horas antes do horário</label>
+        <input class="input" type="number" min="1" max="72" name="hours_<?= e($rid) ?>" value="<?= (int)$rule['hours_before'] ?>">
+        <?php endif; ?>
+        <label class="check-row">
+          <input type="checkbox" name="tpl_<?= e($rid) ?>" value="1" <?= !empty($rule['use_template']) ? 'checked' : '' ?>>
+          Usar o último modelo do botão Comunicar
+        </label>
+        <label class="label">Mensagem inicial (se não usar o modelo)</label>
+        <textarea class="textarea" name="intro_<?= e($rid) ?>" rows="3" maxlength="1000"><?= e($rule['intro']) ?></textarea>
+        <label class="label">Mensagem final</label>
+        <textarea class="textarea" name="outro_<?= e($rid) ?>" rows="2" maxlength="1000"><?= e($rule['outro']) ?></textarea>
+      </fieldset>
+      <?php endforeach; ?>
+      <div class="settings-actions">
+        <a class="btn btn-ghost" href="/app/configuracoes?tab=comunicar">Cancelar</a>
+        <button class="btn btn-primary">Salvar automação</button>
       </div>
     </form>
   <?php endif; ?>

@@ -40,7 +40,7 @@ expect(str_contains(file_get_contents($root.'/views/master/config.php'), 'WhatsA
 expect(str_contains($js, '/^\\(\\d{2}\\) \\d \\d{4}-\\d{4}$/') || str_contains($js, '(00) 0 0000-0000'), 'máscara força o formato do WhatsApp');
 expect(!str_contains($flow, '📅') && !str_contains($flow, '👋'), 'menu sem emojis');
 expect(str_contains($flow, 'Como navegar no calendário?') && str_contains($flow, 'Como autorizar o site?'), 'perguntas das áreas do painel');
-expect(str_contains($flow, 'AUTO BACKUP') && str_contains($flow, 'WhatsApp') && str_contains($flow, 'Contas a receber'), 'cobertura de backup, WhatsApp e financeiro');
+expect(str_contains($flow, 'Envios automáticos') && str_contains($flow, 'Configurações → Comunicar'), 'chat explica automação do Comunicar');
 expect(!str_contains($flow, 'UAZAPI') && !str_contains($flow, 'uazapi'), 'chat não cita o provedor do WhatsApp');
 expect(str_contains($layoutStart, 'fonts.googleapis.com') && str_contains($helpers, 'fonts.gstatic.com'), 'Poppins liberada no layout e na CSP');
 expect(str_contains($helpers, 'https://api.mapbox.com') && str_contains($helpers, "style-src 'self' 'unsafe-inline' https://api.mapbox.com"), 'CSP ainda libera Mapbox');

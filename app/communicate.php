@@ -250,6 +250,11 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
         return ['ok' => false, 'message' => 'Escreva uma mensagem ou selecione pelo menos uma variável.'];
     }
     communicate_template_save((string)$tenant['id'], $tenant, $kind, $intro, $outro, $selected);
+    return communicate_dispatch($tenant, $row, $message);
+}
+
+function communicate_dispatch(array $tenant, array $row, string $message): array
+{
     $number = uazapi_wa_number(communicate_phone($row));
     if ($number === '') {
         return ['ok' => false, 'message' => 'O destinatário não possui WhatsApp ou telefone válido.'];
@@ -262,4 +267,246 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
     return !empty($sent['ok'])
         ? ['ok' => true, 'message' => 'Mensagem enviada com sucesso para o WhatsApp de '.$row['name'].'.']
         : ['ok' => false, 'message' => (string)($sent['message'] ?? 'Não foi possível enviar a mensagem.')];
+}
+
+function communicate_automation_catalog(): array
+{
+    return [
+        'appointment_created' => [
+            'event' => 'appointment.created',
+            'kind' => 'appointment',
+            'label' => 'Novo agendamento',
+            'hint' => 'Quando um horário é criado no painel ou pelo site.',
+            'intro' => 'Olá! Seu agendamento foi registrado.',
+            'outro' => 'Qualquer dúvida, responda esta mensagem.',
+        ],
+        'appointment_confirmed' => [
+            'event' => 'appointment.confirmed',
+            'kind' => 'appointment',
+            'label' => 'Agendamento confirmado',
+            'hint' => 'Quando o status muda para Confirmado.',
+            'intro' => 'Olá! Confirmamos o seu horário.',
+            'outro' => 'Até breve.',
+        ],
+        'appointment_cancelled' => [
+            'event' => 'appointment.cancelled',
+            'kind' => 'appointment',
+            'label' => 'Agendamento cancelado',
+            'hint' => 'Quando o horário é cancelado.',
+            'intro' => 'Olá! Seu agendamento foi cancelado.',
+            'outro' => 'Se quiser remarcar, fale conosco.',
+        ],
+        'appointment_reminder' => [
+            'event' => 'appointment.reminder',
+            'kind' => 'appointment',
+            'label' => 'Lembrete do horário',
+            'hint' => 'Antes do início, no WhatsApp do cliente.',
+            'intro' => 'Lembrete: você tem um horário marcado.',
+            'outro' => 'Esperamos você.',
+            'hours_before' => 24,
+        ],
+        'request_created' => [
+            'event' => 'request.created',
+            'kind' => 'request',
+            'label' => 'Nova solicitação',
+            'hint' => 'Quando um pedido entra pelo site ou webhook.',
+            'intro' => 'Olá! Recebemos a sua solicitação.',
+            'outro' => 'Em breve retornamos.',
+        ],
+    ];
+}
+
+function communicate_automations_ensure_schema(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        if (is_pgsql()) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS communicate_automations jsonb NOT NULL DEFAULT '{}'::jsonb");
+            db()->exec("CREATE TABLE IF NOT EXISTS communicate_auto_log (
+                id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
+                rule_id TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                sent_at TIMESTAMPTZ NOT NULL
+            )");
+            db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS communicate_auto_log_uniq ON communicate_auto_log(tenant_id, rule_id, record_id)');
+            return;
+        }
+        $cols = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
+        if (!in_array('communicate_automations', $cols, true)) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN communicate_automations TEXT DEFAULT '{}'");
+        }
+        db()->exec("CREATE TABLE IF NOT EXISTS communicate_auto_log (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            rule_id TEXT NOT NULL,
+            record_id TEXT NOT NULL,
+            sent_at TEXT NOT NULL
+        )");
+        db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS communicate_auto_log_uniq ON communicate_auto_log(tenant_id, rule_id, record_id)');
+    } catch (Throwable $e) {
+        $done = false;
+    }
+}
+
+function communicate_automations_of(array $tenant): array
+{
+    communicate_automations_ensure_schema();
+    $raw = $tenant['communicate_automations'] ?? '{}';
+    $saved = is_array($raw) ? $raw : json_arr($raw);
+    $enabled = !empty($saved['enabled']);
+    $rulesIn = is_array($saved['rules'] ?? null) ? $saved['rules'] : [];
+    $rules = [];
+    foreach (communicate_automation_catalog() as $id => $meta) {
+        $row = is_array($rulesIn[$id] ?? null) ? $rulesIn[$id] : [];
+        $hours = (int)($row['hours_before'] ?? ($meta['hours_before'] ?? 24));
+        if ($hours < 1) {
+            $hours = 1;
+        }
+        if ($hours > 72) {
+            $hours = 72;
+        }
+        $rules[$id] = [
+            'enabled' => !empty($row['enabled']),
+            'use_template' => array_key_exists('use_template', $row) ? !empty($row['use_template']) : true,
+            'intro' => (string)($row['intro'] ?? $meta['intro']),
+            'outro' => (string)($row['outro'] ?? $meta['outro']),
+            'hours_before' => $hours,
+        ];
+    }
+    return ['enabled' => $enabled, 'rules' => $rules];
+}
+
+function communicate_automations_save(string $tenantId, array $data): void
+{
+    communicate_automations_ensure_schema();
+    $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
+    try {
+        if (is_pgsql()) {
+            q('UPDATE tenants SET communicate_automations=CAST(? AS jsonb), updated_at=? WHERE id=?', [$encoded, now(), $tenantId]);
+        } else {
+            q('UPDATE tenants SET communicate_automations=?, updated_at=? WHERE id=?', [$encoded, now(), $tenantId]);
+        }
+    } catch (Throwable) {
+    }
+}
+
+function communicate_automations_from_post(): array
+{
+    $saved = ['enabled' => post('auto_enabled') === '1', 'rules' => []];
+    foreach (communicate_automation_catalog() as $id => $meta) {
+        $hours = (int)post('hours_'.$id, (string)($meta['hours_before'] ?? 24));
+        $saved['rules'][$id] = [
+            'enabled' => post('on_'.$id) === '1',
+            'use_template' => post('tpl_'.$id) === '1',
+            'intro' => trim((string)post('intro_'.$id, $meta['intro'])),
+            'outro' => trim((string)post('outro_'.$id, $meta['outro'])),
+            'hours_before' => $hours,
+        ];
+    }
+    return communicate_automations_of(['communicate_automations' => $saved]);
+}
+
+function communicate_auto_logged(string $tenantId, string $ruleId, string $recordId): bool
+{
+    communicate_automations_ensure_schema();
+    try {
+        return (bool)one('SELECT id FROM communicate_auto_log WHERE tenant_id=? AND rule_id=? AND record_id=?', [$tenantId, $ruleId, $recordId]);
+    } catch (Throwable) {
+        return false;
+    }
+}
+
+function communicate_auto_mark(string $tenantId, string $ruleId, string $recordId): void
+{
+    communicate_automations_ensure_schema();
+    try {
+        q('INSERT INTO communicate_auto_log(id, tenant_id, rule_id, record_id, sent_at) VALUES(?,?,?,?,?)', [
+            uid(), $tenantId, $ruleId, $recordId, now(),
+        ]);
+    } catch (Throwable) {
+    }
+}
+
+function communicate_automation_fire(array $tenant, string $event, string $kind, string $id): array
+{
+    try {
+        $fresh = one('SELECT * FROM tenants WHERE id=?', [(string)$tenant['id']]) ?: $tenant;
+        $cfg = communicate_automations_of($fresh);
+        if (empty($cfg['enabled'])) {
+            return ['ok' => false, 'skip' => 'off'];
+        }
+        $ruleId = '';
+        foreach (communicate_automation_catalog() as $rid => $meta) {
+            if ($meta['event'] === $event && $meta['kind'] === $kind) {
+                $ruleId = $rid;
+                break;
+            }
+        }
+        if ($ruleId === '' || empty($cfg['rules'][$ruleId]['enabled'])) {
+            return ['ok' => false, 'skip' => 'rule'];
+        }
+        if (communicate_auto_logged((string)$fresh['id'], $ruleId, $id)) {
+            return ['ok' => false, 'skip' => 'sent'];
+        }
+        $rule = $cfg['rules'][$ruleId];
+        $payload = communicate_payload($kind, communicate_load((string)$fresh['id'], $kind, $id) ?? ['id' => $id], $fresh);
+        $intro = !empty($rule['use_template']) ? (string)$payload['intro'] : (string)$rule['intro'];
+        $outro = !empty($rule['use_template']) ? (string)$payload['outro'] : (string)$rule['outro'];
+        if (trim($intro.$outro) === '') {
+            $intro = (string)($rule['intro'] ?: $payload['intro']);
+        }
+        $row = communicate_load((string)$fresh['id'], $kind, $id);
+        if (!$row) {
+            return ['ok' => false, 'skip' => 'missing'];
+        }
+        $message = communicate_message($intro, $payload['selected'] ?? [], communicate_variables($kind, $row, $fresh), $outro);
+        if ($message === '') {
+            return ['ok' => false, 'skip' => 'empty'];
+        }
+        $sent = communicate_dispatch($fresh, $row, $message);
+        if (!empty($sent['ok'])) {
+            communicate_auto_mark((string)$fresh['id'], $ruleId, $id);
+        }
+        return $sent;
+    } catch (Throwable $e) {
+        return ['ok' => false, 'skip' => 'error'];
+    }
+}
+
+function communicate_automation_reminders(): array
+{
+    communicate_automations_ensure_schema();
+    $out = ['sent' => 0, 'tenants' => 0];
+    try {
+        $tenants = all('SELECT * FROM tenants WHERE status=?', ['ACTIVE']);
+    } catch (Throwable) {
+        return $out;
+    }
+    $now = time();
+    foreach ($tenants as $tenant) {
+        $cfg = communicate_automations_of($tenant);
+        if (empty($cfg['enabled']) || empty($cfg['rules']['appointment_reminder']['enabled'])) {
+            continue;
+        }
+        $out['tenants']++;
+        $hours = (int)$cfg['rules']['appointment_reminder']['hours_before'];
+        $from = date('Y-m-d H:i:s', $now);
+        $to = date('Y-m-d H:i:s', $now + $hours * 3600);
+        $rows = all(
+            "SELECT id FROM appointments WHERE tenant_id=? AND starts_at>=? AND starts_at<=? AND status NOT IN ('CANCELLED','DONE','NO_SHOW')",
+            [(string)$tenant['id'], $from, $to]
+        );
+        foreach ($rows as $row) {
+            $res = communicate_automation_fire($tenant, 'appointment.reminder', 'appointment', (string)$row['id']);
+            if (!empty($res['ok'])) {
+                $out['sent']++;
+            }
+        }
+    }
+    return $out;
 }

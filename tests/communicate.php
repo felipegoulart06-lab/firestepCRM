@@ -99,6 +99,26 @@ expect(str_contains($index, 'communicate_template_save') || str_contains(file_ge
 expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
 $ui = file_get_contents(dirname(__DIR__).'/views/app/config.php').file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');
 expect(!str_contains($ui, 'UAZAPI') && !str_contains($ui, 'uazapi.com'), 'configuração e Comunicar não mostram o provedor');
+expect(str_contains($ui, 'tab=comunicar') && str_contains($ui, 'Automatizar Comunicar'), 'Configurações tem aba de automação do Comunicar');
+expect(str_contains($index, '/app/configuracoes/comunicar') && str_contains($index, '/cron/comunicar-auto'), 'salvar automação e cron de lembrete');
+
+$tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'firestep-com-'.bin2hex(random_bytes(4)).'.sqlite';
+putenv('FIRESTEP_SQLITE='.$tmp);
+$_ENV['FIRESTEP_SQLITE'] = $tmp;
+putenv('DATABASE_URL');
+unset($_ENV['DATABASE_URL'], $_SERVER['DATABASE_URL']);
+db()->exec(file_get_contents(dirname(__DIR__).'/app/schema.sql'));
+
+$catalog = communicate_automation_catalog();
+expect(count($catalog) === 5 && isset($catalog['appointment_reminder'], $catalog['request_created']), 'catálogo cobre agenda, status, lembrete e solicitação');
+$defaults = communicate_automations_of(['communicate_automations' => '{}']);
+expect(empty($defaults['enabled']) && empty($defaults['rules']['appointment_created']['enabled']), 'automação nasce desligada');
+$on = communicate_automations_of(['communicate_automations' => ['enabled' => true, 'rules' => ['appointment_created' => ['enabled' => true, 'hours_before' => 3]]]]);
+expect(!empty($on['enabled']) && !empty($on['rules']['appointment_created']['enabled']), 'liga regra de novo agendamento');
+expect((int)$on['rules']['appointment_reminder']['hours_before'] === 24, 'lembrete padrão 24 horas');
+$skip = communicate_automation_fire(['id' => 'ten-off', 'communicate_automations' => '{}', 'uazapi_config' => '{}'], 'appointment.created', 'appointment', 'ap-x');
+expect(($skip['skip'] ?? '') === 'off', 'não dispara com automação desligada');
+@unlink($tmp);
 
 if ($fail) {
     fwrite(STDERR, "{$fail} teste(s) de comunicação falharam.\n");
