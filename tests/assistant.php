@@ -31,7 +31,11 @@ expect(!str_contains($css, '#075e54') && !str_contains($css, '#d9fdd3') && !str_
 expect(str_contains($css, '.fs-assist.is-open .fs-assist-fab{display:none'), 'ícone some quando o chat abre');
 expect(str_contains($js, 'setOpen(true)') && str_contains($js, 'CHOICE_MAX = 5'), 'abre só pelo ícone e limita 5 botões');
 expect(!str_contains($js, 'class="overlay"') && !str_contains($css, '.fs-assist.overlay'), 'chat não usa overlay que trava o painel');
-expect(str_contains($flow, 'Minha dúvida não está aqui') && str_contains($flow, 'duvida'), 'fluxo tem dúvida livre');
+expect(str_contains($flow, 'Falar com atendimento') && str_contains($flow, 'atendimento') && str_contains($flow, '(00) 0 0000-0000'), 'fluxo transfere para atendimento com WhatsApp');
+expect(str_contains($flow, 'Felipe') && str_contains($js, 'maskWa') && str_contains($js, '/app/assistente/atendimento'), 'Priscila pede WhatsApp e dispara para o Felipe');
+expect(str_contains($index, '/app/assistente/atendimento') && str_contains($index, '/master/configuracoes/whatsapp'), 'rotas de transferência e instância do Master');
+expect(str_contains(file_get_contents($root.'/views/master/config.php'), 'WhatsApp de atendimento'), 'Admin Master configura a instância de atendimento');
+expect(str_contains($js, '/^\\(\\d{2}\\) \\d \\d{4}-\\d{4}$/') || str_contains($js, '(00) 0 0000-0000'), 'máscara força o formato do WhatsApp');
 expect(!str_contains($flow, '📅') && !str_contains($flow, '👋'), 'menu sem emojis');
 expect(str_contains($flow, 'Como navegar no calendário?') && str_contains($flow, 'Como autorizar o site?'), 'perguntas das áreas do painel');
 expect(str_contains($flow, 'AUTO BACKUP') && str_contains($flow, 'WhatsApp') && str_contains($flow, 'Contas a receber'), 'cobertura de backup, WhatsApp e financeiro');
@@ -44,6 +48,7 @@ expect(str_contains($masterNav, '/master/assistente'), 'menu do Admin Master abr
 expect(str_contains($appJs, 'fsAssistMount'), 'soft-nav não descarta o widget');
 expect(is_file($root.'/app/assistant.php') && is_file($root.'/views/master/assistente.php'), 'módulo e tela do Admin Master');
 expect(is_file($root.'/public/assets/priscila.jpg'), 'foto da Priscila nos assets');
+expect(str_contains(file_get_contents($root.'/app/assistant.php'), 'assistant_handoff') && str_contains(file_get_contents($root.'/app/uazapi.php'), 'uazapi_platform_config'), 'transferência usa a instância da plataforma');
 
 preg_match_all('/choices:\s*\[(.*?)\]/s', $flow, $blocks);
 $maxChoices = 0;

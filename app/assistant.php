@@ -93,6 +93,58 @@ function assistant_reply(string $threadId, string $masterId, string $answer): bo
     return true;
 }
 
+function assistant_wa_digits(?string $raw): string
+{
+    return preg_replace('/\D+/', '', (string)$raw) ?? '';
+}
+
+function assistant_wa_format(?string $raw): string
+{
+    $d = assistant_wa_digits($raw);
+    if (strlen($d) !== 11) {
+        return '';
+    }
+    return sprintf('(%s) %s %s-%s', substr($d, 0, 2), substr($d, 2, 1), substr($d, 3, 4), substr($d, 7, 4));
+}
+
+function assistant_wa_valid(?string $raw): bool
+{
+    return assistant_wa_format($raw) !== '';
+}
+
+function assistant_handoff(array $tenant, array $user, string $phone): array
+{
+    assistant_ensure_schema();
+    $formatted = assistant_wa_format($phone);
+    if ($formatted === '') {
+        return ['ok' => false, 'error' => 'Informe o WhatsApp no formato (00) 0 0000-0000.'];
+    }
+    $number = uazapi_wa_number($formatted);
+    if ($number === '') {
+        return ['ok' => false, 'error' => 'Informe o WhatsApp no formato (00) 0 0000-0000.'];
+    }
+    $cfg = uazapi_platform_config();
+    if (!uazapi_ready($cfg)) {
+        return ['ok' => false, 'error' => 'O atendimento está indisponível no momento. Tente de novo em instantes.'];
+    }
+    $who = trim((string)($user['name'] ?? $user['username'] ?? 'Cliente'));
+    $company = trim((string)($tenant['display_name'] ?: $tenant['business_name'] ?: 'FirestepCRM'));
+    $attendant = trim((string)($cfg['attendant'] ?? 'Felipe')) ?: 'Felipe';
+    $text = "Olá! Sou o {$attendant}, do atendimento FirestepCRM.\n\nA Priscila me transferiu o seu atendimento ({$who} · {$company}). Pode me dizer como posso ajudar?";
+    $sent = uazapi_send_text($cfg, $number, $text);
+    $question = 'Atendimento WhatsApp: '.$formatted;
+    $id = uid();
+    q(
+        'INSERT INTO assistant_threads(id, tenant_id, user_id, question, status, created_at) VALUES(?,?,?,?,?,?)',
+        [$id, (string)$tenant['id'], (string)$user['id'], $question, 'open', now()]
+    );
+    audit((string)$tenant['id'], (string)$user['id'], 'assistant.handoff', 'assistant_thread', $id);
+    if (empty($sent['ok'])) {
+        return ['ok' => false, 'error' => 'Não consegui disparar o WhatsApp agora. Confira o número e tente de novo.'];
+    }
+    return ['ok' => true, 'id' => $id, 'attendant' => $attendant];
+}
+
 function assistant_master_list(): array
 {
     assistant_ensure_schema();

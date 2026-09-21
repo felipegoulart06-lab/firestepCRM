@@ -61,7 +61,7 @@ window.FS_ASSIST_FLOW = {
         { label: "Conta, senha e busca", next: "conta" },
         { label: "Backup automático", next: "backup" },
         { label: "Quem vê o quê no painel", next: "permissoes" },
-        { label: "Minha dúvida não está aqui", next: "duvida" },
+        { label: "Falar com atendimento", next: "atendimento" },
         { label: "Voltar ao início", next: "menu" }
       ]
     },
@@ -87,7 +87,7 @@ window.FS_ASSIST_FLOW = {
       choices: [
         { label: "Mais sobre a Agenda", next: "agenda" },
         { label: "Voltar ao início", next: "menu" },
-        { label: "Falar com o suporte", next: "duvida" }
+        { label: "Falar com atendimento", next: "atendimento" }
       ]
     },
     agenda_criar: {
@@ -109,7 +109,7 @@ window.FS_ASSIST_FLOW = {
       choices: [
         { label: "Mais sobre a Agenda", next: "agenda" },
         { label: "Voltar ao início", next: "menu" },
-        { label: "Falar com o suporte", next: "duvida" }
+        { label: "Falar com atendimento", next: "atendimento" }
       ]
     },
 
@@ -610,7 +610,7 @@ window.FS_ASSIST_FLOW = {
       ],
       choices: [
         { label: "Voltar a Conta", next: "hub_conta" },
-        { label: "Falar com o suporte", next: "duvida" },
+        { label: "Falar com atendimento", next: "atendimento" },
         { label: "Voltar ao início", next: "menu" }
       ]
     },
@@ -627,21 +627,27 @@ window.FS_ASSIST_FLOW = {
       ]
     },
 
+    atendimento: {
+      texts: [
+        "Certo. Vou transferir o atendimento para o **Felipe**, nosso atendente.",
+        "Para ele te chamar agora, digite seu WhatsApp no formato **(00) 0 0000-0000**."
+      ],
+      input: { placeholder: "(00) 0 0000-0000", button: "Enviar", next: "atendimento_ok", kind: "whatsapp" }
+    },
     duvida: {
       texts: [
-        "Sem problema. Escreva a dúvida com o máximo de contexto (tela, o que tentou, o que esperava).",
-        "Eu envio para o suporte. A resposta aparece neste chat, na aba **Dúvidas**."
+        "Certo. Vou transferir o atendimento para o **Felipe**, nosso atendente.",
+        "Para ele te chamar agora, digite seu WhatsApp no formato **(00) 0 0000-0000**."
       ],
-      input: { placeholder: "Descreva sua dúvida…", button: "Enviar", next: "encerrar" }
+      input: { placeholder: "(00) 0 0000-0000", button: "Enviar", next: "atendimento_ok", kind: "whatsapp" }
     },
-    encerrar: {
+    atendimento_ok: {
       texts: [
-        "Recebi e enviei ao suporte. Quando houver resposta, o aviso aparece no ícone e na aba Dúvidas.",
-        "Quer olhar outra área do painel?"
+        "Pronto. Passei você para o Felipe. Ele já dispara no WhatsApp que você informou."
       ],
       choices: [
         { label: "Voltar ao início", next: "menu" },
-        { label: "Enviar outra dúvida", next: "duvida" }
+        { label: "Enviar outro número", next: "atendimento" }
       ]
     }
   }

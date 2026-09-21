@@ -380,6 +380,20 @@ if (str_starts_with($path, '/master')) {
             }
             redirect('/master/segmentos');
         }
+        if ($path === '/master/configuracoes/whatsapp') {
+            $url = rtrim(trim((string)post('whatsapp_url', '')), '/');
+            if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+                flash('A URL da instância deve começar com http:// ou https://.', 'error');
+                redirect('/master/configuracoes');
+            }
+            uazapi_platform_save([
+                'url' => $url,
+                'token' => trim((string)post('whatsapp_token', '')),
+                'attendant' => trim((string)post('whatsapp_attendant', 'Felipe')),
+            ]);
+            flash('WhatsApp de atendimento atualizado.');
+            redirect('/master/configuracoes');
+        }
         if ($path === '/master/assistente/responder') {
             $id = (string)post('id', '');
             $answer = (string)post('answer', '');
@@ -508,7 +522,7 @@ if (str_starts_with($path, '/app')) {
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
         redirect('/app/senha');
     }
-    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding', '/app/assistente/duvida', '/app/assistente/conversas'], true)) {
+    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding', '/app/assistente/duvida', '/app/assistente/conversas', '/app/assistente/atendimento'], true)) {
         redirect('/app/onboarding');
     }
     if (is_user_agent($user) && agent_route_forbidden($path)) {
@@ -521,6 +535,17 @@ if (str_starts_with($path, '/app')) {
         $tid = $tenant['id'];
         if ($path === '/app/assistente/duvida') {
             $out = assistant_submit($tid, (string)$user['id'], (string)post('question', ''));
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($out, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        if ($path === '/app/assistente/atendimento') {
+            if (!rate_ok('assist-wa:'.(string)$user['id'], 8, 3600)) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['ok' => false, 'error' => 'Aguarde um pouco antes de pedir outro atendimento.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            $out = assistant_handoff($tenant, $user, (string)post('whatsapp', ''));
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($out, JSON_UNESCAPED_UNICODE);
             exit;

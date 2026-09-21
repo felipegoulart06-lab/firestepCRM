@@ -203,3 +203,52 @@ function uazapi_send_charge(array $tenant, array $card): array
     }
     return ['ok' => false, 'message' => (string)($res['message'] ?? 'Não foi possível enviar a cobrança.')];
 }
+
+function uazapi_platform_config(): array
+{
+    $cfg = [];
+    try {
+        $row = one("SELECT value FROM platform_settings WHERE key='whatsapp'");
+        $raw = is_array($row) ? ($row['value'] ?? '{}') : '{}';
+        $cfg = is_array($raw) ? $raw : json_arr($raw);
+    } catch (Throwable $e) {
+        $cfg = [];
+    }
+    $url = trim((string)($cfg['url'] ?? ''));
+    $token = trim((string)($cfg['token'] ?? ''));
+    if ($url === '') {
+        $url = (string)env_str('UAZAPI_URL', '');
+    }
+    if ($token === '') {
+        $token = (string)env_str('UAZAPI_TOKEN', '');
+    }
+    $name = trim((string)($cfg['attendant'] ?? ''));
+    if ($name === '') {
+        $name = 'Felipe';
+    }
+    return [
+        'url' => rtrim($url, '/'),
+        'token' => $token,
+        'attendant' => $name,
+    ];
+}
+
+function uazapi_platform_save(array $cfg): void
+{
+    $cur = uazapi_platform_config();
+    $token = trim((string)($cfg['token'] ?? ''));
+    if ($token === '') {
+        $token = $cur['token'];
+    }
+    $encoded = json_encode([
+        'url' => rtrim(trim((string)($cfg['url'] ?? '')), '/'),
+        'token' => $token,
+        'attendant' => trim((string)($cfg['attendant'] ?? 'Felipe')) ?: 'Felipe',
+    ], JSON_UNESCAPED_UNICODE);
+    $now = now();
+    if (is_pgsql()) {
+        q("INSERT INTO platform_settings(key,value,updated_at) VALUES('whatsapp', CAST(? AS jsonb), ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at", [$encoded, $now]);
+        return;
+    }
+    q("INSERT OR REPLACE INTO platform_settings(key,value,updated_at) VALUES('whatsapp',?,?)", [$encoded, $now]);
+}

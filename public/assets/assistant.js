@@ -163,6 +163,17 @@
     renderChoicePage();
   }
 
+  function maskWa(v) {
+    const d = String(v || "").replace(/\D/g, "").slice(0, 11);
+    let o = "";
+    if (d.length > 0) o = "(" + d.slice(0, Math.min(2, d.length));
+    if (d.length >= 2) o += ") ";
+    if (d.length >= 3) o += d.slice(2, 3);
+    if (d.length >= 4) o += " " + d.slice(3, 7);
+    if (d.length >= 7) o += "-" + d.slice(7, 11);
+    return o;
+  }
+
   function showInput(cfg) {
     const box = root()?.querySelector(".fs-assist-choices");
     const form = root()?.querySelector(".fs-assist-form");
@@ -172,10 +183,14 @@
     }
     if (!form) return;
     form.hidden = false;
+    form.dataset.kind = cfg.kind || "";
     const input = form.querySelector("input");
     if (input) {
       input.placeholder = cfg.placeholder || "Escreva aqui…";
       input.value = "";
+      input.maxLength = cfg.kind === "whatsapp" ? 16 : 2000;
+      input.setAttribute("inputmode", cfg.kind === "whatsapp" ? "numeric" : "text");
+      input.setAttribute("autocomplete", cfg.kind === "whatsapp" ? "tel" : "off");
       setTimeout(function () {
         input.focus();
       }, 80);
@@ -245,6 +260,21 @@
       setBadge(data.answered || 0);
       if (root()?.dataset.tab === "inbox") renderInbox(data.threads || []);
     } catch (_) {}
+  }
+
+  async function sendHandoff(phone) {
+    const body = new URLSearchParams();
+    body.set("_csrf", csrf());
+    body.set("whatsapp", phone);
+    const res = await fetch("/app/assistente/atendimento", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    return res.json().catch(function () {
+      return { ok: false };
+    });
   }
 
   async function sendQuestion(text) {
@@ -332,26 +362,47 @@
         }
       });
     });
+    wrap.querySelector(".fs-assist-form input").addEventListener("input", function () {
+      const form = wrap.querySelector(".fs-assist-form");
+      if (form?.dataset.kind !== "whatsapp") return;
+      this.value = maskWa(this.value);
+    });
     wrap.querySelector(".fs-assist-form").addEventListener("submit", function (e) {
       e.preventDefault();
       if (wrap.dataset.busy === "1") return;
-      const input = wrap.querySelector(".fs-assist-form input");
-      const text = (input?.value || "").trim();
+      const form = wrap.querySelector(".fs-assist-form");
+      const input = form.querySelector("input");
+      const kind = form.dataset.kind || "";
+      let text = (input?.value || "").trim();
+      if (kind === "whatsapp") {
+        text = maskWa(text);
+        input.value = text;
+        if (!/^\(\d{2}\) \d \d{4}-\d{4}$/.test(text)) {
+          appendMsg("sys", "Use o formato (00) 0 0000-0000.");
+          showInput({ placeholder: "(00) 0 0000-0000", next: "atendimento_ok", kind: "whatsapp" });
+          return;
+        }
+      }
       if (!text) return;
       appendMsg("me", text);
       input.value = "";
-      wrap.querySelector(".fs-assist-form").hidden = true;
+      form.hidden = true;
       wrap.dataset.busy = "1";
       const typing = showTyping();
-      sendQuestion(text).then(function (data) {
+      const req = kind === "whatsapp" ? sendHandoff(text) : sendQuestion(text);
+      req.then(function (data) {
         typing?.remove();
         wrap.dataset.busy = "0";
         if (!data || !data.ok) {
           appendMsg("sys", data?.error || "Não deu para enviar. Tenta de novo.");
-          showInput({ placeholder: "Escreva aqui…", button: "Enviar", next: "encerrar" });
+          if (kind === "whatsapp") {
+            showInput({ placeholder: "(00) 0 0000-0000", next: "atendimento_ok", kind: "whatsapp" });
+          } else {
+            showInput({ placeholder: "Escreva aqui…", button: "Enviar", next: "encerrar" });
+          }
           return;
         }
-        go("encerrar");
+        go(kind === "whatsapp" ? "atendimento_ok" : "encerrar");
       });
     });
     document.addEventListener("keydown", function (e) {

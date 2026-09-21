@@ -81,3 +81,32 @@ $editFolha = ($_GET['edit'] ?? '') === 'folha';
     </form>
   <?php endif; ?>
 </div>
+
+<?php $wa = uazapi_platform_config(); $waTok = (string)($wa['token'] ?? ''); ?>
+<div class="card settings-panel" style="max-width:720px;margin-top:16px">
+  <div class="settings-panel-head">
+    <div>
+      <h2>WhatsApp de atendimento</h2>
+      <p>Instância usada quando a Priscila transfere o cliente para o Felipe.</p>
+    </div>
+  </div>
+  <form method="post" action="/master/configuracoes/whatsapp">
+    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+    <label class="label">Atendente</label>
+    <input class="input" name="whatsapp_attendant" maxlength="80" value="<?= e($wa['attendant'] ?? 'Felipe') ?>">
+    <div class="grid g2" style="margin-top:10px">
+      <div>
+        <label class="label">URL da instância</label>
+        <input class="input" name="whatsapp_url" value="<?= e($wa['url'] ?? '') ?>" placeholder="https://servidor.exemplo.com">
+      </div>
+      <div>
+        <label class="label">Token da instância</label>
+        <input class="input" name="whatsapp_token" type="password" autocomplete="new-password" placeholder="<?= $waTok !== '' ? 'Deixe em branco para manter' : 'token' ?>">
+      </div>
+    </div>
+    <p class="settings-hint">Com a instância conectada, o disparo sai automaticamente para o WhatsApp informado no chat.</p>
+    <div class="settings-actions">
+      <button class="btn btn-primary">Salvar WhatsApp</button>
+    </div>
+  </form>
+</div>
