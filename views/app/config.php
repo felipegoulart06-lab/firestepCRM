@@ -493,8 +493,8 @@ $hourLine = static function (array $h) {
 <div class="card settings-panel" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
-      <h2>UAZAPI · WhatsApp</h2>
-      <p>Instância usada para enviar o card de cobrança das contas a receber.</p>
+      <h2>WhatsApp</h2>
+      <p>Conexão usada para Comunicar e para enviar o card de cobrança das contas a receber.</p>
     </div>
     <?php if (!$edit): ?>
       <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes&amp;edit=1">Editar</a>
@@ -507,32 +507,32 @@ $hourLine = static function (array $h) {
       <div><dt>Chave PIX</dt><dd><?= $dash($uaz['pix_key'] ?? '') ?></dd></div>
     </dl>
   <?php else: ?>
-    <form method="post" action="/app/configuracoes/uazapi" onsubmit="return confirm('Salvar a instância UAZAPI?')">
+    <form method="post" action="/app/configuracoes/whatsapp" onsubmit="return confirm('Salvar a conexão de WhatsApp?')">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <div class="grid g2">
         <div>
           <label class="label">URL da instância</label>
-          <input class="input" name="uazapi_url" value="<?= e($uaz['url'] ?? '') ?>" placeholder="https://seu-servidor.uazapi.com">
+          <input class="input" name="whatsapp_url" value="<?= e($uaz['url'] ?? '') ?>" placeholder="https://servidor.exemplo.com">
         </div>
         <div>
           <label class="label">Token da instância</label>
-          <input class="input" name="uazapi_token" type="password" autocomplete="new-password" placeholder="<?= $uazTok !== '' ? 'Deixe em branco para manter' : 'token' ?>">
+          <input class="input" name="whatsapp_token" type="password" autocomplete="new-password" placeholder="<?= $uazTok !== '' ? 'Deixe em branco para manter' : 'token' ?>">
         </div>
       </div>
       <div class="grid g2" style="margin-top:10px">
         <div>
           <label class="label">Chave PIX (opcional)</label>
-          <input class="input" name="uazapi_pix" value="<?= e($uaz['pix_key'] ?? '') ?>" placeholder="Para o botão Copiar PIX no card">
+          <input class="input" name="whatsapp_pix" value="<?= e($uaz['pix_key'] ?? '') ?>" placeholder="Para o botão Copiar PIX no card">
         </div>
         <div>
           <label class="label">Imagem do card (URL ou data URI)</label>
-          <input class="input" name="uazapi_image" value="<?= e($uaz['image'] ?? '') ?>" placeholder="Vazio usa a logo do papel timbrado">
+          <input class="input" name="whatsapp_image" value="<?= e($uaz['image'] ?? '') ?>" placeholder="Vazio usa a logo do papel timbrado">
         </div>
       </div>
-      <p class="settings-hint">O header da API é <b>token</b>. Sem a instância conectada, o botão Enviar cobrança avisa para configurar aqui.</p>
+      <p class="settings-hint">Sem a conexão ativa, Comunicar e Enviar cobrança pedem para configurar aqui.</p>
       <div class="settings-actions">
         <a class="btn btn-ghost" href="/app/configuracoes?tab=integracoes">Cancelar</a>
-        <button class="btn btn-primary">Salvar UAZAPI</button>
+        <button class="btn btn-primary">Salvar WhatsApp</button>
       </div>
     </form>
   <?php endif; ?>

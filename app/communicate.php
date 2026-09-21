@@ -256,7 +256,7 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
     }
     $cfg = uazapi_config($tenant);
     if (!uazapi_ready($cfg)) {
-        return ['ok' => false, 'message' => 'Configure a UAZAPI em Configurações → Integrações.'];
+        return ['ok' => false, 'message' => 'Configure o WhatsApp em Configurações → Integrações.'];
     }
     $sent = uazapi_send_text($cfg, $number, $message);
     return !empty($sent['ok'])

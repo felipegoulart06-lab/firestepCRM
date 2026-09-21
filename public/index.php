@@ -1346,25 +1346,25 @@ if (str_starts_with($path, '/app')) {
             flash($sent['message'], empty($sent['ok']) ? 'error' : 'ok');
             redirect(finance_back(post('back')));
         }
-        if ($path === '/app/configuracoes/uazapi') {
+        if ($path === '/app/configuracoes/whatsapp' || $path === '/app/configuracoes/uazapi') {
             uazapi_ensure_schema();
             $cur = uazapi_config($tenant);
-            $url = rtrim(trim((string)post('uazapi_url', '')), '/');
-            $token = trim((string)post('uazapi_token', ''));
+            $url = rtrim(trim((string)post('whatsapp_url', post('uazapi_url', ''))), '/');
+            $token = trim((string)post('whatsapp_token', post('uazapi_token', '')));
             if ($token === '') {
                 $token = $cur['token'];
             }
             if ($url !== '' && !preg_match('#^https?://#i', $url)) {
-                flash('A URL da UAZAPI deve começar com http:// ou https://.', 'error');
+                flash('A URL do WhatsApp deve começar com http:// ou https://.', 'error');
                 redirect('/app/configuracoes?tab=integracoes');
             }
             uazapi_save($tid, [
                 'url' => $url,
                 'token' => $token,
-                'pix_key' => trim((string)post('uazapi_pix', '')),
-                'image' => trim((string)post('uazapi_image', '')),
+                'pix_key' => trim((string)post('whatsapp_pix', post('uazapi_pix', ''))),
+                'image' => trim((string)post('whatsapp_image', post('uazapi_image', ''))),
             ]);
-            flash('Integração UAZAPI atualizada.');
+            flash('Conexão de WhatsApp atualizada.');
             redirect('/app/configuracoes?tab=integracoes');
         }
         if ($path === '/app/onboarding') {

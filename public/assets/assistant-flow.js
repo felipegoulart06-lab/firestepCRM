@@ -519,7 +519,7 @@ window.FS_ASSIST_FLOW = {
       choices: [
         { label: "Negócio e horários", next: "config_negocio" },
         { label: "Avançado (folha, campos)", next: "config_avancado" },
-        { label: "Integrações (GTM e UAZAPI)", next: "config_integ" },
+        { label: "Integrações (GTM e WhatsApp)", next: "config_integ" },
         { label: "Voltar a conexões", next: "hub_conexoes" },
         { label: "Voltar ao início", next: "menu" }
       ]
@@ -559,7 +559,7 @@ window.FS_ASSIST_FLOW = {
     config_integ: {
       texts: [
         "**Tag Manager**: ID no formato GTM-XXXXXXX, opcional. Informe também os endereços do site (separados por vírgula), sem o domínio do CRM.",
-        "**UAZAPI**: instância de WhatsApp usada pelo botão **Comunicar**. Sem isso configurado, o envio de mensagem não sai."
+        "**WhatsApp**: conexão usada pelo botão **Comunicar**. Sem isso configurado, o envio de mensagem não sai."
       ],
       choices: [
         { label: "Como usar Comunicar?", next: "comunicar" },
@@ -570,7 +570,7 @@ window.FS_ASSIST_FLOW = {
 
     comunicar: {
       texts: [
-        "**Comunicar** envia WhatsApp ao destinatário pela UAZAPI da empresa.",
+        "**Comunicar** envia WhatsApp ao destinatário pela conexão da empresa.",
         "Você monta mensagem inicial, variáveis do registro (nome, data, reserva…) e um fechamento. A prévia aparece antes de enviar. O último envio vira modelo."
       ],
       choices: [

@@ -11,7 +11,7 @@ if ($communicateItems):
       </div>
       <button class="btn btn-ghost js-communicate-close communicate-close" type="button" aria-label="Fechar"><?= icon('x') ?></button>
     </div>
-    <p class="communicate-notice">A mensagem será enviada ao WhatsApp do destinatário pela UAZAPI configurada nesta empresa.</p>
+    <p class="communicate-notice">A mensagem será enviada ao WhatsApp do destinatário pela conexão configurada nesta empresa.</p>
     <form method="post" action="/app/comunicar/enviar" id="communicate-form">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="kind" id="communicate-kind">

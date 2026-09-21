@@ -83,7 +83,7 @@ function uazapi_wa_number(?string $raw): string
 function uazapi_http(array $cfg, string $path, array $body): array
 {
     if (!uazapi_ready($cfg)) {
-        return ['ok' => false, 'code' => 0, 'json' => [], 'raw' => '', 'message' => 'Instância UAZAPI não configurada.'];
+        return ['ok' => false, 'code' => 0, 'json' => [], 'raw' => '', 'message' => 'WhatsApp não configurado.'];
     }
     $url = $cfg['url'].'/'.ltrim($path, '/');
     $headers = [
@@ -107,7 +107,7 @@ function uazapi_http(array $cfg, string $path, array $body): array
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($raw === '' && $err !== '') {
-            return ['ok' => false, 'code' => $code, 'json' => [], 'raw' => $err, 'message' => 'Falha ao falar com a UAZAPI.'];
+            return ['ok' => false, 'code' => $code, 'json' => [], 'raw' => $err, 'message' => 'Não foi possível enviar pelo WhatsApp.'];
         }
     } else {
         $ctx = stream_context_create(['http' => [
@@ -131,7 +131,7 @@ function uazapi_http(array $cfg, string $path, array $body): array
         'code' => $code,
         'json' => is_array($json) ? $json : [],
         'raw' => $raw,
-        'message' => $ok ? 'ok' : ($msg !== '' ? $msg : 'A UAZAPI recusou o envio.'),
+        'message' => $ok ? 'ok' : ($msg !== '' ? $msg : 'O WhatsApp recusou o envio.'),
     ];
 }
 
@@ -182,7 +182,7 @@ function uazapi_send_charge(array $tenant, array $card): array
         return ['ok' => false, 'message' => 'O cliente não tem WhatsApp ou telefone válido.'];
     }
     if (!uazapi_ready($cfg)) {
-        return ['ok' => false, 'message' => 'Configure a UAZAPI em Configurações → Integrações.'];
+        return ['ok' => false, 'message' => 'Configure o WhatsApp em Configurações → Integrações.'];
     }
     $carousel = [[
         'text' => '*'.$card['title']."*\n".$card['description'],

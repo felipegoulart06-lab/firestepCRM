@@ -94,12 +94,14 @@ foreach ($views as $file => $key) {
 }
 
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
-expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pela UAZAPI');
+expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pelo WhatsApp');
 expect(str_contains($index, 'communicate_template_save') || str_contains(file_get_contents(dirname(__DIR__).'/app/communicate.php'), 'communicate_template_save'), 'enviar grava o modelo do menu');
 expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
+$ui = file_get_contents(dirname(__DIR__).'/views/app/config.php').file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');
+expect(!str_contains($ui, 'UAZAPI') && !str_contains($ui, 'uazapi.com'), 'configuração e Comunicar não mostram o provedor');
 
 if ($fail) {
     fwrite(STDERR, "{$fail} teste(s) de comunicação falharam.\n");
     exit(1);
 }
-echo "Comunicação UAZAPI disponível nas cinco tabelas.\n";
+echo "Comunicação WhatsApp disponível nas cinco tabelas.\n";

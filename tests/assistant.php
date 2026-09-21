@@ -34,7 +34,8 @@ expect(!str_contains($js, 'class="overlay"') && !str_contains($css, '.fs-assist.
 expect(str_contains($flow, 'Minha dúvida não está aqui') && str_contains($flow, 'duvida'), 'fluxo tem dúvida livre');
 expect(!str_contains($flow, '📅') && !str_contains($flow, '👋'), 'menu sem emojis');
 expect(str_contains($flow, 'Como navegar no calendário?') && str_contains($flow, 'Como autorizar o site?'), 'perguntas das áreas do painel');
-expect(str_contains($flow, 'AUTO BACKUP') && str_contains($flow, 'UAZAPI') && str_contains($flow, 'Contas a receber'), 'cobertura de backup, WhatsApp e financeiro');
+expect(str_contains($flow, 'AUTO BACKUP') && str_contains($flow, 'WhatsApp') && str_contains($flow, 'Contas a receber'), 'cobertura de backup, WhatsApp e financeiro');
+expect(!str_contains($flow, 'UAZAPI') && !str_contains($flow, 'uazapi'), 'chat não cita o provedor do WhatsApp');
 expect(str_contains($layoutStart, 'fonts.googleapis.com') && str_contains($helpers, 'fonts.gstatic.com'), 'Poppins liberada no layout e na CSP');
 expect(str_contains($helpers, 'https://api.mapbox.com') && str_contains($helpers, "style-src 'self' 'unsafe-inline' https://api.mapbox.com"), 'CSP ainda libera Mapbox');
 expect(str_contains($layoutEnd, 'assistant-flow.js') && str_contains($layoutEnd, 'assistant.js'), 'scripts do assistente no layout do CRM');
