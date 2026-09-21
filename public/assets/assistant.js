@@ -1,10 +1,16 @@
 (function () {
   const FLOW = () => window.FS_ASSIST_FLOW;
-  const csrf = () => document.querySelector('meta[name="csrf"]')?.getAttribute("content") || "";
-  const iconChat =
-    '<svg class="ico" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>';
+  const csrf = () => document.querySelector("meta[name=csrf]")?.getAttribute("content") || "";
+  const iconBubble =
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2.2 6.9 2.2 11.6c0 2.7 1.4 5.1 3.6 6.7l-.9 3.3c-.1.5.4.9.8.7l3.7-1.6c.8.2 1.7.3 2.6.3 5.5 0 9.8-3.9 9.8-8.6C21.8 6.9 17.5 3 12 3z"/></svg>';
+  const iconPerson =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/></svg>';
   const iconX =
-    '<svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const iconSend =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.4 20.6 21 12 3.4 3.4 3 10.2 15 12 3 13.8z"/></svg>';
+
+  let playId = 0;
 
   function md(s) {
     return String(s)
@@ -16,6 +22,16 @@
 
   function root() {
     return document.getElementById("fs-assist");
+  }
+
+  function logEl() {
+    return root()?.querySelector(".fs-assist-log");
+  }
+
+  function wait(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
   }
 
   function setBadge(n) {
@@ -30,14 +46,45 @@
     b.textContent = n > 9 ? "9+" : String(n);
   }
 
-  function appendMsg(kind, text) {
-    const log = root()?.querySelector(".fs-assist-log");
-    if (!log) return;
+  function scrollLog() {
+    const log = logEl();
+    if (log) log.scrollTop = log.scrollHeight;
+  }
+
+  function appendMsg(kind, text, animate) {
+    const log = logEl();
+    if (!log) return null;
+    const row = document.createElement("div");
+    row.className = "fs-assist-row " + kind;
     const el = document.createElement("div");
-    el.className = "fs-assist-msg " + kind;
+    el.className = "fs-assist-msg " + kind + (animate === false ? "" : " is-in");
     el.innerHTML = md(text);
-    log.appendChild(el);
-    log.scrollTop = log.scrollHeight;
+    row.appendChild(el);
+    log.appendChild(row);
+    scrollLog();
+    return el;
+  }
+
+  function showTyping() {
+    const log = logEl();
+    if (!log) return null;
+    const row = document.createElement("div");
+    row.className = "fs-assist-row bot fs-assist-typing-row";
+    row.innerHTML = '<div class="fs-assist-msg bot fs-assist-typing" aria-label="Digitando"><i></i><i></i><i></i></div>';
+    log.appendChild(row);
+    scrollLog();
+    return row;
+  }
+
+  function hideTyping() {
+    root()?.querySelectorAll(".fs-assist-typing-row").forEach(function (el) {
+      el.remove();
+    });
+  }
+
+  function typeDelay(text) {
+    const n = String(text || "").length;
+    return Math.min(1400, Math.max(420, 280 + n * 12));
   }
 
   function showChoices(items) {
@@ -47,13 +94,16 @@
     box.innerHTML = "";
     box.hidden = !items || !items.length;
     if (form) form.hidden = true;
-    (items || []).forEach(function (item) {
+    (items || []).forEach(function (item, i) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "btn btn-ghost";
       btn.textContent = item.label;
+      btn.style.animationDelay = i * 45 + "ms";
       btn.addEventListener("click", function () {
+        if (root()?.dataset.busy === "1") return;
         appendMsg("me", item.label);
+        box.hidden = true;
+        box.innerHTML = "";
         go(item.next);
       });
       box.appendChild(btn);
@@ -70,40 +120,64 @@
     if (!form) return;
     form.hidden = false;
     const input = form.querySelector("input");
-    const btn = form.querySelector("button");
     if (input) {
-      input.placeholder = cfg.placeholder || "Digite sua dúvida...";
+      input.placeholder = cfg.placeholder || "Escreva aqui…";
       input.value = "";
-      input.focus();
+      setTimeout(function () {
+        input.focus();
+      }, 80);
     }
-    if (btn) btn.textContent = cfg.button || "Enviar";
     form.dataset.next = cfg.next || "encerrar";
   }
 
-  function go(id) {
+  async function go(id) {
     const flow = FLOW();
     const g = flow && flow.groups ? flow.groups[id] : null;
     if (!g) return;
-    root().dataset.group = id;
-    (g.texts || []).forEach(function (t) {
-      appendMsg("bot", t);
-    });
+    const token = ++playId;
+    const el = root();
+    if (el) {
+      el.dataset.group = id;
+      el.dataset.busy = "1";
+    }
+    const box = el?.querySelector(".fs-assist-choices");
+    const form = el?.querySelector(".fs-assist-form");
+    if (box) {
+      box.hidden = true;
+      box.innerHTML = "";
+    }
+    if (form) form.hidden = true;
+    const texts = g.texts || [];
+    for (let i = 0; i < texts.length; i++) {
+      if (token !== playId) return;
+      const typing = showTyping();
+      await wait(typeDelay(texts[i]));
+      if (token !== playId) {
+        typing?.remove();
+        return;
+      }
+      hideTyping();
+      appendMsg("bot", texts[i]);
+      await wait(i === texts.length - 1 ? 120 : 220);
+    }
+    if (token !== playId) return;
+    if (el) el.dataset.busy = "0";
     if (g.input) showInput(g.input);
     else showChoices(g.choices || []);
   }
 
   function renderInbox(threads) {
-    const log = root()?.querySelector(".fs-assist-log");
+    const log = logEl();
     if (!log) return;
     log.innerHTML = "";
     if (!threads || !threads.length) {
-      appendMsg("sys", "Nenhuma dúvida enviada ainda. Use o menu do assistente e a opção “Minha dúvida não está aqui”.");
+      appendMsg("sys", "Quando você mandar uma dúvida, ela aparece aqui — e a resposta também.", false);
       return;
     }
-    threads.forEach(function (t) {
-      appendMsg("me", t.question || "");
-      if (t.answer) appendMsg("bot", "Admin Master:\n" + t.answer);
-      else appendMsg("sys", "Aguardando resposta do Admin Master.");
+    threads.slice().reverse().forEach(function (t) {
+      appendMsg("me", t.question || "", false);
+      if (t.answer) appendMsg("bot", t.answer, false);
+      else appendMsg("sys", "Ainda sem resposta. Assim que o suporte responder, chega aqui.", false);
     });
   }
 
@@ -130,10 +204,9 @@
       headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
       body,
     });
-    const data = await res.json().catch(function () {
+    return res.json().catch(function () {
       return { ok: false };
     });
-    return data;
   }
 
   function setOpen(on) {
@@ -144,7 +217,7 @@
     if (panel) panel.hidden = !on;
     const fab = el.querySelector(".fs-assist-fab");
     if (fab) fab.setAttribute("aria-expanded", on ? "true" : "false");
-    if (on && el.dataset.tab !== "inbox" && !el.querySelector(".fs-assist-log")?.childElementCount) {
+    if (on && el.dataset.tab !== "inbox" && !logEl()?.childElementCount) {
       go(FLOW().start || "menu");
     }
   }
@@ -157,26 +230,25 @@
     wrap.id = "fs-assist";
     wrap.className = "fs-assist";
     wrap.innerHTML =
-      '<button type="button" class="fs-assist-fab" aria-label="Abrir assistente" aria-expanded="false">' +
-      '<span class="fs-assist-ping" aria-hidden="true"></span>' +
+      '<button type="button" class="fs-assist-fab" aria-label="Abrir conversa" aria-expanded="false">' +
       '<span class="fs-assist-badge" hidden></span>' +
-      iconChat +
+      iconBubble +
       "</button>" +
-      '<div class="fs-assist-panel card" hidden role="dialog" aria-label="Assistente do sistema">' +
+      '<div class="fs-assist-panel" hidden role="dialog" aria-label="Conversa de ajuda">' +
       '<div class="fs-assist-head">' +
-      "<div><b>Assistente</b><span>FirestepCRM</span></div>" +
+      '<div class="fs-assist-ava">' + iconPerson + "</div>" +
+      '<div class="fs-assist-who"><b>Suporte</b><span>online agora</span></div>' +
       '<div class="fs-assist-tabs">' +
-      '<button type="button" data-tab="guide" class="is-on">Guia</button>' +
+      '<button type="button" data-tab="guide" class="is-on">Chat</button>' +
       '<button type="button" data-tab="inbox">Dúvidas</button>' +
       "</div>" +
-      '<button type="button" class="fs-assist-x" aria-label="Fechar">' +
-      iconX +
-      "</button></div>" +
+      '<button type="button" class="fs-assist-x" aria-label="Fechar">' + iconX + "</button>" +
+      "</div>" +
       '<div class="fs-assist-log"></div>' +
       '<div class="fs-assist-choices"></div>' +
       '<form class="fs-assist-form" hidden>' +
-      '<input class="input" name="question" maxlength="2000" autocomplete="off">' +
-      '<button class="btn btn-primary" type="submit">Enviar</button>' +
+      '<input class="input" name="question" maxlength="2000" autocomplete="off" placeholder="Escreva aqui…">' +
+      '<button class="btn btn-primary" type="submit" aria-label="Enviar">' + iconSend + "</button>" +
       "</form></div>";
     document.body.appendChild(wrap);
 
@@ -193,30 +265,37 @@
           b.classList.toggle("is-on", b === btn);
         });
         wrap.dataset.tab = btn.dataset.tab;
+        playId += 1;
+        hideTyping();
         const log = wrap.querySelector(".fs-assist-log");
         if (btn.dataset.tab === "inbox") {
           wrap.querySelector(".fs-assist-choices").hidden = true;
           wrap.querySelector(".fs-assist-form").hidden = true;
           setBadge(0);
           loadInbox();
-        } else {
-          if (log) log.innerHTML = "";
+        } else if (log) {
+          log.innerHTML = "";
           go(FLOW().start || "menu");
         }
       });
     });
     wrap.querySelector(".fs-assist-form").addEventListener("submit", function (e) {
       e.preventDefault();
+      if (wrap.dataset.busy === "1") return;
       const input = wrap.querySelector(".fs-assist-form input");
       const text = (input?.value || "").trim();
       if (!text) return;
       appendMsg("me", text);
       input.value = "";
       wrap.querySelector(".fs-assist-form").hidden = true;
+      wrap.dataset.busy = "1";
+      const typing = showTyping();
       sendQuestion(text).then(function (data) {
+        typing?.remove();
+        wrap.dataset.busy = "0";
         if (!data || !data.ok) {
-          appendMsg("sys", data?.error || "Não foi possível enviar. Tente de novo.");
-          showInput({ placeholder: "Digite sua dúvida...", button: "Enviar", next: "encerrar" });
+          appendMsg("sys", data?.error || "Não deu para enviar. Tenta de novo.");
+          showInput({ placeholder: "Escreva aqui…", button: "Enviar", next: "encerrar" });
           return;
         }
         go("encerrar");
