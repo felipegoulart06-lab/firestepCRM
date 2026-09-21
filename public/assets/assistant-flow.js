@@ -3,333 +3,646 @@ window.FS_ASSIST_FLOW = {
   groups: {
     menu: {
       texts: [
-        "Olá! 👋 Sou o assistente do FirestepCRM.\n\nPosso te orientar sobre as áreas do seu painel e explicar onde cada recurso é usado.",
-        "Escolha uma opção abaixo:"
+        "Olá. Sou a Priscila, do FirestepCRM.\n\nPosso explicar cada área do painel e onde usar cada recurso.",
+        "Por onde você quer começar?"
       ],
       choices: [
-        { label: "📅 Agenda", next: "agenda" },
-        { label: "📝 Anotações", next: "anotacoes" },
-        { label: "📊 Métricas", next: "metricas" },
-        { label: "🔄 Pipeline", next: "pipeline" },
-        { label: "📋 Agendamentos", next: "agendamentos" },
-        { label: "📥 Solicitações", next: "solicitacoes" },
-        { label: "👥 Clientes", next: "clientes" },
-        { label: "👤 Agentes", next: "agentes" },
-        { label: "🗺️ Abrangência", next: "abrangencia" },
-        { label: "🏢 Fornecedores", next: "fornecedores" },
-        { label: "🛠️ Serviços", next: "servicos" },
-        { label: "📄 Relatórios", next: "relatorios" },
-        { label: "💰 Financeiro", next: "financeiro" },
-        { label: "🔗 Webhooks", next: "webhooks" },
-        { label: "⚙️ Configurações", next: "config" },
-        { label: "❓ Minha dúvida não está aqui", next: "duvida" }
+        { label: "Atendimento", next: "hub_atendimento" },
+        { label: "Relacionamento", next: "hub_relacionamento" },
+        { label: "Gestão e mapa", next: "hub_gestao" },
+        { label: "Financeiro e conexões", next: "hub_conexoes" },
+        { label: "Conta e outras dúvidas", next: "hub_conta" }
       ]
     },
+
+    hub_atendimento: {
+      texts: ["Atendimento reúne o calendário, a lista de horários, as solicitações que entram e o Pipeline de status."],
+      choices: [
+        { label: "Agenda", next: "agenda" },
+        { label: "Agendamentos", next: "agendamentos" },
+        { label: "Solicitações", next: "solicitacoes" },
+        { label: "Pipeline", next: "pipeline" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    hub_relacionamento: {
+      texts: ["Relacionamento cuida de quem você atende, de quem atende com você e de serviços e fornecedores."],
+      choices: [
+        { label: "Clientes", next: "clientes" },
+        { label: "Agentes", next: "agentes" },
+        { label: "Fornecedores", next: "fornecedores" },
+        { label: "Serviços", next: "servicos" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    hub_gestao: {
+      texts: ["Gestão concentra anotações da equipe, indicadores, PDFs e o mapa de abrangência."],
+      choices: [
+        { label: "Anotações", next: "anotacoes" },
+        { label: "Métricas", next: "metricas" },
+        { label: "Relatórios", next: "relatorios" },
+        { label: "Abrangência", next: "abrangencia" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    hub_conexoes: {
+      texts: ["Aqui entram caixa, site/webhook e as configurações do painel."],
+      choices: [
+        { label: "Financeiro", next: "financeiro" },
+        { label: "Webhooks", next: "webhooks" },
+        { label: "Configurações", next: "config" },
+        { label: "Comunicar (WhatsApp)", next: "comunicar" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    hub_conta: {
+      texts: ["Conta, senha, backup e o que não aparece em um menu específico."],
+      choices: [
+        { label: "Conta, senha e busca", next: "conta" },
+        { label: "Backup automático", next: "backup" },
+        { label: "Quem vê o quê no painel", next: "permissoes" },
+        { label: "Minha dúvida não está aqui", next: "duvida" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     agenda: {
       texts: [
-        "Você está em **Agenda e calendário**.",
-        "📅 **Agenda**\nA Agenda organiza horários, solicitações e anotações salvas no calendário. Na visualização semanal, você consegue consultar os dias e horários em um único painel.",
-        "**Criar um agendamento:** use o botão **Novo agendamento** no canto superior direito. Depois, preencha as informações solicitadas pelo sistema.",
-        "**Navegação:** use **Hoje**, as setas de anterior/próximo e os modos **Dia, Semana e Mês** para mudar a visualização."
+        "A **Agenda** mostra horários, solicitações e anotações marcadas para o calendário.",
+        "Em cima: **Hoje**, setas e os modos **Dia**, **Semana** e **Mês**. **Novo agendamento** abre o cadastro no horário escolhido."
       ],
       choices: [
-        { label: "Como usar a Agenda?", next: "agenda_usar" },
-        { label: "Como criar um agendamento?", next: "agenda_criar" },
-        { label: "Como consultar a semana?", next: "agenda_semana" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Como navegar no calendário?", next: "agenda_nav" },
+        { label: "Como criar um horário?", next: "agenda_criar" },
+        { label: "O que cada cor significa?", next: "agenda_cores" },
+        { label: "Voltar a Atendimento", next: "hub_atendimento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    agenda_usar: {
+    agenda_nav: {
       texts: [
-        "Na **Agenda**, você visualiza horários no calendário e pode alternar entre **Dia, Semana e Mês**. A tela também permite voltar para **Hoje** e navegar entre períodos.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Use **Dia** para um horário de cada vez, **Semana** para os sete dias lado a lado e **Mês** para o panorama.",
+        "As setas avançam o período (um dia, uma semana ou um mês). **Hoje** volta para a data atual."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre a Agenda", next: "agenda" },
+        { label: "Voltar ao início", next: "menu" },
+        { label: "Falar com o suporte", next: "duvida" }
+      ]
     },
     agenda_criar: {
       texts: [
-        "Clique em **Novo agendamento**. O sistema abrirá o fluxo para cadastrar o novo agendamento com as informações necessárias.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    agenda_semana: {
-      texts: [
-        "Na Agenda, selecione **Semana** para visualizar os dias lado a lado. Use as setas para avançar ou voltar uma semana.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    anotacoes: {
-      texts: [
-        "Você está em **Anotações**.",
-        "📝 **Anotações**\nÉ a área destinada às anotações que você precisa manter organizadas dentro do CRM, evitando deixar informações importantes espalhadas em conversas ou arquivos."
+        "Clique em **Novo agendamento** (canto superior direito) ou em um horário vazio, quando a tela permitir.",
+        "Preencha cliente, serviço, data e hora. O mesmo cadastro existe em **Agendamentos**."
       ],
       choices: [
-        { label: "Para que servem as Anotações?", next: "anotacoes_para" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Mais sobre a Agenda", next: "agenda" },
+        { label: "Ir para Agendamentos", next: "agendamentos" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    anotacoes_para: {
+    agenda_cores: {
       texts: [
-        "Use as **Anotações** para registrar informações que precisam permanecer organizadas dentro do CRM.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    metricas: {
-      texts: [
-        "Você está em **Métricas**.",
-        "📊 **Métricas**\nA área de Métricas concentra informações para acompanhar a operação e consultar indicadores do CRM."
+        "Agendamentos mudam de cor conforme o status (aguardando, confirmado, cancelado, concluído).",
+        "Solicitações, anotações no calendário e bloqueios de horário usam cores próprias para não misturar com um atendimento comum."
       ],
       choices: [
-        { label: "O que encontro em Métricas?", next: "metricas_oque" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Mais sobre a Agenda", next: "agenda" },
+        { label: "Voltar ao início", next: "menu" },
+        { label: "Falar com o suporte", next: "duvida" }
       ]
     },
-    metricas_oque: {
-      texts: [
-        "A área de **Métricas** é usada para consultar indicadores e informações da operação. Os dados exibidos dependem dos registros existentes no seu painel.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    pipeline: {
-      texts: [
-        "Você está em **Pipeline**.",
-        "🔄 **Pipeline**\nO Pipeline ajuda a visualizar o andamento dos contatos e atendimentos, permitindo acompanhar quem acabou de entrar, quem está em atendimento e quem já fechou."
-      ],
-      choices: [
-        { label: "Como funciona o Pipeline?", next: "pipeline_como" },
-        { label: "Voltar ao menu", next: "menu" }
-      ]
-    },
-    pipeline_como: {
-      texts: [
-        "O Pipeline apresenta o andamento dos contatos e atendimentos. A ideia é enxergar em que etapa cada oportunidade está, desde a entrada até o fechamento.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
+
     agendamentos: {
       texts: [
-        "Você está em **Agendamentos**.",
-        "📋 **Agendamentos**\nÉ a área de atendimento dedicada aos agendamentos cadastrados no CRM. Ela complementa a visão de calendário da Agenda.",
-        "Use **Agenda** quando quiser visualizar horários no calendário. Use **Agendamentos** quando precisar trabalhar diretamente com os registros de agendamento."
+        "Em **Agendamentos** está a lista completa: cadastro manual, site, webhook e outros canais.",
+        "Dá para buscar pelo número da reserva, cliente, agente ou serviço, e filtrar por status e origem."
       ],
       choices: [
-        { label: "Qual a diferença entre Agenda e Agendamentos?", next: "agendamentos_diff" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Abrir ou editar um horário", next: "agendamentos_ver" },
+        { label: "Filtros e número de reserva", next: "agendamentos_filtro" },
+        { label: "Enviar mensagem ao cliente", next: "comunicar" },
+        { label: "Voltar a Atendimento", next: "hub_atendimento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    agendamentos_diff: {
+    agendamentos_ver: {
       texts: [
-        "A **Agenda** mostra os horários no calendário; **Agendamentos** é a área para consultar e trabalhar com os registros de agendamento.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Clique no registro para ver os detalhes. Em edição você altera cliente, horário, serviço e status.",
+        "O Pipeline também muda o status, com confirmação **Sim** / **Não**."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Agendamentos", next: "agendamentos" },
+        { label: "Ir para o Pipeline", next: "pipeline" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+    agendamentos_filtro: {
+      texts: [
+        "A busca cobre número de reserva, nome, agente e serviço. Os seletore de status e origem recortam a lista.",
+        "O número da reserva aparece no card e também na vista compacta do Pipeline."
+      ],
+      choices: [
+        { label: "Mais sobre Agendamentos", next: "agendamentos" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     solicitacoes: {
       texts: [
-        "Você está em **Solicitações**.",
-        "📥 **Solicitações**\nAs solicitações representam novos pedidos ou contatos que precisam ser acompanhados pela empresa.",
-        "Um novo contato pode entrar no painel como uma solicitação para a equipe acompanhar até o atendimento e, conforme o processo da empresa, avançar no fechamento."
+        "As **Solicitações** são pedidos que ainda não viraram horário confirmado — em geral do site ou de um webhook.",
+        "Elas também podem aparecer na Agenda. O nome do menu segue o termo do seu segmento (pedidos, leads, etc.)."
       ],
       choices: [
-        { label: "O que são Solicitações?", next: "solicitacoes_oque" },
-        { label: "Como acompanhar uma solicitação?", next: "solicitacoes_como" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "De onde elas vêm?", next: "solicitacoes_origem" },
+        { label: "Como tratar um pedido?", next: "solicitacoes_tratar" },
+        { label: "Voltar a Atendimento", next: "hub_atendimento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    solicitacoes_oque: {
+    solicitacoes_origem: {
       texts: [
-        "Solicitações são registros de novos pedidos ou contatos que precisam de acompanhamento pela equipe.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    solicitacoes_como: {
-      texts: [
-        "Abra **Solicitações** para consultar os pedidos recebidos e acompanhar cada atendimento. A descrição do sistema indica que novos contatos podem entrar como solicitações para a equipe acompanhar.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    clientes: {
-      texts: [
-        "Você está em **Clientes**.",
-        "👥 **Clientes**\nCentraliza os dados dos clientes em um só lugar.",
-        "O FirestepCRM foi pensado para manter o histórico e os dados de atendimento organizados, reduzindo a dependência de informações espalhadas pelo WhatsApp e por planilhas."
+        "Pedidos do site só entram se o domínio estiver em **Origens autorizadas** em Webhooks e o endpoint estiver ativo.",
+        "Campos mínimos: nome e telefone ou e-mail. Data desejada, serviço e UTM são opcionais."
       ],
       choices: [
-        { label: "Como funciona o cadastro de clientes?", next: "clientes_cadastro" },
-        { label: "O que fica organizado no histórico?", next: "clientes_historico" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Ir para Webhooks", next: "webhooks" },
+        { label: "Mais sobre Solicitações", next: "solicitacoes" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    solicitacoes_tratar: {
+      texts: [
+        "Abra a solicitação, confira os dados e transforme em agendamento quando o horário existir.",
+        "Se o pedido for inválido, recuse ou arquive conforme as ações da tela — não deixe fila parada sem olhar a origem."
+      ],
+      choices: [
+        { label: "Mais sobre Solicitações", next: "solicitacoes" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    pipeline: {
+      texts: [
+        "O **Pipeline** é o kanban de todos os agendamentos, de qualquer origem.",
+        "Há duas vistas: **Cards** (dados completos) e **Nº reserva** (mais compacta). A última vista fica lembrada."
+      ],
+      choices: [
+        { label: "Como mudar o status?", next: "pipeline_status" },
+        { label: "Cards ou número de reserva", next: "pipeline_vista" },
+        { label: "Voltar a Atendimento", next: "hub_atendimento" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    pipeline_status: {
+      texts: [
+        "No card, escolha o novo status. O sistema pede confirmação: **Sim** grava, **Não** cancela.",
+        "O mesmo status aparece na lista de Agendamentos e nas cores da Agenda."
+      ],
+      choices: [
+        { label: "Mais sobre o Pipeline", next: "pipeline" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    pipeline_vista: {
+      texts: [
+        "**Cards** mostra cliente, serviço, origem, telefone e data. **Nº reserva** destaca o número e o status, útil quando a coluna está cheia.",
+        "Troque no canto superior direito. Ao voltar ao menu Pipeline, a vista escolhida permanece."
+      ],
+      choices: [
+        { label: "Mais sobre o Pipeline", next: "pipeline" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    clientes: {
+      texts: [
+        "Em **Clientes** (ou o nome do seu segmento) fica o cadastro: busca por nome, telefone ou e-mail no topo do painel também leva para cá.",
+        "A ficha reúne dados, campos extras, agendamentos ligados e ações de comunicação."
+      ],
+      choices: [
+        { label: "Cadastrar ou buscar", next: "clientes_cadastro" },
+        { label: "Ficha e campos extras", next: "clientes_ficha" },
+        { label: "Voltar a Relacionamento", next: "hub_relacionamento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
     clientes_cadastro: {
       texts: [
-        "Na área **Clientes**, mantenha os dados dos seus clientes organizados dentro do painel, em vez de depender de informações espalhadas.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Use **Novo** na lista ou a busca do cabeçalho. Telefone e e-mail ajudam a evitar duplicata na hora de agendar.",
+        "Clientes com CNPJ e endereço geocodificado também entram no mapa de Abrangência."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Clientes", next: "clientes" },
+        { label: "Ir para Abrangência", next: "abrangencia" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
-    clientes_historico: {
+    clientes_ficha: {
       texts: [
-        "O CRM centraliza dados e histórico dos clientes, permitindo consultar as informações em um único lugar.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Abra o cadastro para ver histórico e marcar um novo horário já vinculado à pessoa.",
+        "Campos extras se definem em **Configurações → Avançado**. Só aparecem se o administrador os cadastrou."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Ir para Configurações", next: "config" },
+        { label: "Mais sobre Clientes", next: "clientes" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+
     agentes: {
       texts: [
-        "Você está em **Agentes**.",
-        "👤 **Agentes**\nÁrea relacionada às pessoas/agentes que participam da operação de atendimento da empresa."
+        "**Agentes** são as pessoas que atendem. Só o perfil CRM (administrador da empresa) gerencia esta lista.",
+        "Um agente vê a agenda e os atendimentos do próprio trabalho; não acessa financeiro, métricas, webhooks nem configurações."
       ],
       choices: [
-        { label: "O que são Agentes?", next: "agentes_oque" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Como cadastrar um agente?", next: "agentes_cadastro" },
+        { label: "Diferença entre agente e CRM", next: "permissoes" },
+        { label: "Voltar a Relacionamento", next: "hub_relacionamento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    agentes_oque: {
+    agentes_cadastro: {
       texts: [
-        "**Agentes** é a área destinada à organização dos agentes/pessoas que participam do atendimento e da operação da empresa.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
-    abrangencia: {
-      texts: [
-        "Você está em **Abrangência**.",
-        "🗺️ **Abrangência**\nÁrea para organizar a abrangência de atuação da empresa dentro do CRM."
+        "Em Agentes, crie o acesso com nome e contato. No primeiro login a pessoa define a senha (mínimo 10 caracteres, letras e números).",
+        "Repasses e comissões ligados ao agente aparecem no Financeiro, em contas a pagar quando houver valor em aberto."
       ],
       choices: [
-        { label: "Para que serve Abrangência?", next: "abrangencia_para" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Mais sobre Agentes", next: "agentes" },
+        { label: "Ir para Financeiro", next: "financeiro" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    abrangencia_para: {
-      texts: [
-        "**Abrangência** é a área para organizar a atuação da empresa. Use-a conforme a estrutura de regiões ou áreas atendidas pelo seu negócio.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
-      ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
-    },
+
     fornecedores: {
       texts: [
-        "Você está em **Fornecedores**.",
-        "🏢 **Fornecedores**\nÁrea destinada ao cadastro e organização dos fornecedores utilizados pela empresa."
+        "**Fornecedores** guarda empresas (em geral CNPJ) que você usa no operação.",
+        "Com endereço válido, eles entram no mapa de Abrangência junto com clientes CNPJ e visitas externas."
       ],
       choices: [
-        { label: "Como organizar fornecedores?", next: "fornecedores_como" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Cadastro e mapa", next: "fornecedores_mapa" },
+        { label: "Voltar a Relacionamento", next: "hub_relacionamento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    fornecedores_como: {
+    fornecedores_mapa: {
       texts: [
-        "Cadastre e organize os fornecedores da empresa na área **Fornecedores**, mantendo essas informações dentro do CRM.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Preencha endereço com cuidado: o mapa usa geocodificação. Sem coordenadas, o pin não aparece em Abrangência.",
+        "Você também cadastra atendimentos externos manuais nesse mapa, além de fornecedor e cliente CNPJ."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Ir para Abrangência", next: "abrangencia" },
+        { label: "Mais sobre Fornecedores", next: "fornecedores" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+
     servicos: {
       texts: [
-        "Você está em **Serviços**.",
-        "🛠️ **Serviços**\nÁrea para cadastrar e organizar os serviços que a empresa oferece. Esses serviços podem fazer parte da rotina de atendimento e agendamento."
+        "**Serviços** é o catálogo que aparece no agendamento. Sem serviço cadastrado, o horário fica como “serviço a definir”.",
+        "Nome, duração e valores usados no financeiro dependem do que você configurar aqui."
       ],
       choices: [
-        { label: "Como cadastrar serviços?", next: "servicos_como" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Como usar no agendamento?", next: "servicos_uso" },
+        { label: "Voltar a Relacionamento", next: "hub_relacionamento" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    servicos_como: {
+    servicos_uso: {
       texts: [
-        "Em **Serviços**, cadastre os serviços oferecidos pela empresa. Esses registros ajudam a estruturar a rotina de atendimento e agendamento.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Ao criar um agendamento, escolha o serviço da lista. Isso amarra cliente, profissional e, quando houver, lançamento financeiro.",
+        "Mantenha o catálogo enxuto: nomes claros evitam duplicar o mesmo atendimento com títulos diferentes."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Serviços", next: "servicos" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+
+    anotacoes: {
+      texts: [
+        "**Anotações** é o livro de plantão: o que aconteceu no turno fica salvo até alguém excluir.",
+        "Dá para marcar a nota para aparecer na **Agenda**, útil para recados do dia."
+      ],
+      choices: [
+        { label: "Criar e editar notas", next: "anotacoes_criar" },
+        { label: "Mostrar na Agenda", next: "anotacoes_agenda" },
+        { label: "Voltar a Gestão", next: "hub_gestao" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    anotacoes_criar: {
+      texts: [
+        "Clique em **Nova anotação**, escreva o recado e salve. Quem criou (e o perfil CRM) costuma poder editar ou apagar.",
+        "Não use anotações no lugar da ficha do cliente: dados permanentes ficam melhor no cadastro da pessoa."
+      ],
+      choices: [
+        { label: "Mais sobre Anotações", next: "anotacoes" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    anotacoes_agenda: {
+      texts: [
+        "No formulário da nota, marque a opção de mostrar na Agenda. Ela aparece no calendário na data da anotação.",
+        "Assim o plantão seguinte vê o recado sem abrir a lista de notas."
+      ],
+      choices: [
+        { label: "Mais sobre Anotações", next: "anotacoes" },
+        { label: "Ir para a Agenda", next: "agenda" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    metricas: {
+      texts: [
+        "**Métricas** resume o negócio: novos clientes, agenda, solicitações e variação em relação ao período anterior.",
+        "O recorte fica na barra: Hoje, 7 dias, 30 dias, 90 dias ou 12 meses. Agentes não veem esta tela."
+      ],
+      choices: [
+        { label: "Como ler os indicadores?", next: "metricas_ler" },
+        { label: "Voltar a Gestão", next: "hub_gestao" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    metricas_ler: {
+      texts: [
+        "Cada cartão mostra o total do recorte e a variação (para cima ou para baixo) contra o período imediatamente anterior.",
+        "Use o botão de atualizar se você acabou de lançar muitos horários e o número parecer defasado."
+      ],
+      choices: [
+        { label: "Mais sobre Métricas", next: "metricas" },
+        { label: "Ir para Relatórios", next: "relatorios" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     relatorios: {
       texts: [
-        "Você está em **Relatórios**.",
-        "📄 **Relatórios**\nPermite consultar informações da operação e gerar relatórios para acompanhamento da empresa."
+        "Em **Relatórios** os PDFs ficam em pastas. Dois cliques na pasta ou no nome abrem os filtros. O + só expande a árvore.",
+        "Não há ícone de PDF na lista: o arquivo é gerado depois que você confirma o filtro."
       ],
       choices: [
-        { label: "O que posso consultar em Relatórios?", next: "relatorios_oque" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Como gerar um PDF?", next: "relatorios_pdf" },
+        { label: "Relatório de caixa", next: "relatorios_caixa" },
+        { label: "Voltar a Gestão", next: "hub_gestao" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    relatorios_oque: {
+    relatorios_pdf: {
       texts: [
-        "Em **Relatórios**, consulte informações da operação e gere relatórios para acompanhamento.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Abra a pasta, dê dois cliques no relatório, preencha o período ou o filtro pedido e confirme.",
+        "Cabeçalho de folha e assinatura, se ativos em Configurações → Avançado, entram nos documentos que usam folha oficial."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Folha e assinatura", next: "config_avancado" },
+        { label: "Mais sobre Relatórios", next: "relatorios" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+    relatorios_caixa: {
+      texts: [
+        "O relatório de caixa também pode ser aberto a partir do Dashboard financeiro. Ele usa os lançamentos do período, não só o que está em tela."
+      ],
+      choices: [
+        { label: "Ir para Financeiro", next: "financeiro" },
+        { label: "Mais sobre Relatórios", next: "relatorios" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    abrangencia: {
+      texts: [
+        "**Abrangência** é o mapa: fornecedores CNPJ, clientes CNPJ e atendimentos externos lançados à mão.",
+        "O mapa carrega o endereço com o serviço de geocodificação. Sem coordenadas, o pin não entra."
+      ],
+      choices: [
+        { label: "O que aparece no mapa?", next: "abrangencia_pins" },
+        { label: "Voltar a Gestão", next: "hub_gestao" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    abrangencia_pins: {
+      texts: [
+        "Há três tipos de pin: fornecedor, cliente CNPJ e visita/agendamento externo. Cada um tem cor e ficha próprias.",
+        "Atualize o endereço no cadastro se o ponto caiu longe: o mapa segue a geocodificação, não um arraste livre."
+      ],
+      choices: [
+        { label: "Mais sobre Abrangência", next: "abrangencia" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     financeiro: {
       texts: [
-        "Você está em **Financeiro**.",
-        "💰 **Financeiro**\nO CRM reúne informações financeiras junto da operação de atendimento, incluindo valores a receber, pagamentos, faturamento e despesas."
+        "O menu **Financeiro** tem Dashboard, Lançamentos, Contas a receber, Faturado e Contas a pagar.",
+        "O dashboard mostra previsto, recebido, a pagar, saldo, lucro presumido e repasses."
       ],
       choices: [
-        { label: "O que posso acompanhar no Financeiro?", next: "financeiro_oque" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Lançamentos", next: "fin_lanc" },
+        { label: "Receber e faturar", next: "fin_receber" },
+        { label: "Contas a pagar e repasse", next: "fin_pagar" },
+        { label: "Voltar a conexões", next: "hub_conexoes" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    financeiro_oque: {
+    fin_lanc: {
       texts: [
-        "O **Financeiro** reúne informações como valores a receber, pagamentos, faturamento e despesas, mantendo o acompanhamento financeiro próximo da rotina de atendimento.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "**Lançamentos** é o livro-caixa: entradas e saídas. Use **Novo lançamento** no dashboard ou na própria lista.",
+        "Cancelar um lançamento tira o valor dos totais; não apague histórico só para “corrigir” — prefira um lançamento inverso quando fizer sentido."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Financeiro", next: "financeiro" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+    fin_receber: {
+      texts: [
+        "**Contas a receber** fica em aberto até o pagamento. A fatura só sai quando você usa **Faturar**.",
+        "**Faturado** lista o que já foi confirmado na data acordada. O dashboard soma previsto (abertos + recebidos) e recebido no mês."
+      ],
+      choices: [
+        { label: "Mais sobre Financeiro", next: "financeiro" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    fin_pagar: {
+      texts: [
+        "**Contas a pagar** junta despesas, boletos e repasses de comissão ainda em aberto.",
+        "Lucro presumido = previsto menos repasse aos agentes. Lucro líquido = recebido menos saídas (incluindo repasses já pagos)."
+      ],
+      choices: [
+        { label: "Mais sobre Financeiro", next: "financeiro" },
+        { label: "Ir para Agentes", next: "agentes" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     webhooks: {
       texts: [
-        "Você está em **Webhooks e integrações**.",
-        "🔗 **Webhooks**\nÁrea de integrações para conectar o FirestepCRM a formulários, websites e automações externas.",
-        "Se você utiliza uma automação externa, os webhooks podem servir como ponto de comunicação entre o CRM e outros serviços."
+        "**Webhooks** recebe solicitações do seu site. Sem domínio em **Origens autorizadas**, qualquer origem é recusada.",
+        "O endereço fica oculto. Só mostre o endpoint neste painel quando for colar no código. Não publique o link em página aberta."
       ],
       choices: [
-        { label: "Para que servem os Webhooks?", next: "webhooks_para" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Como autorizar o site?", next: "webhooks_origem" },
+        { label: "Endpoint, token e teste", next: "webhooks_token" },
+        { label: "Voltar a conexões", next: "hub_conexoes" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    webhooks_para: {
+    webhooks_origem: {
       texts: [
-        "Em **Webhooks**, você configura pontos de integração para comunicação com formulários, websites e automações externas. Os detalhes dependem da integração que você pretende fazer.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "Abra Origens autorizadas e cadastre o domínio do site. www e subdomínios entram juntos. Não use o domínio do CRM.",
+        "Enquanto a lista estiver vazia, o webhook recusa tudo. Chamadas de outro domínio aparecem em Últimas requisições como origem bloqueada."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Webhooks", next: "webhooks" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+    webhooks_token: {
+      texts: [
+        "Com origem pronta, use **Mostrar endpoint**. Envie JSON via fetch: name e phone ou email são obrigatórios.",
+        "Pode incluir service, desired_date, desired_time, message, source e UTMs. **Gerar novo token** invalida o segredo antigo. Ative ou desative o endpoint no mesmo card."
+      ],
+      choices: [
+        { label: "Ir para Solicitações", next: "solicitacoes" },
+        { label: "Mais sobre Webhooks", next: "webhooks" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     config: {
       texts: [
-        "Você está em **Configurações**.",
-        "⚙️ **Configurações**\nÁrea destinada aos ajustes do sistema e da empresa dentro do CRM."
+        "**Configurações** se divide em abas. Nada grava até você confirmar naquela aba.",
+        "Visão geral é só leitura. Negócio, Horários, Avançado, Integrações e Conta se editam à parte."
       ],
       choices: [
-        { label: "O que encontro em Configurações?", next: "config_oque" },
-        { label: "Voltar ao menu", next: "menu" }
+        { label: "Negócio e horários", next: "config_negocio" },
+        { label: "Avançado (folha, campos)", next: "config_avancado" },
+        { label: "Integrações (GTM e UAZAPI)", next: "config_integ" },
+        { label: "Voltar a conexões", next: "hub_conexoes" },
+        { label: "Voltar ao início", next: "menu" }
       ]
     },
-    config_oque: {
+    config_negocio: {
       texts: [
-        "Em **Configurações**, ficam os ajustes do sistema e da empresa. As opções disponíveis podem variar conforme a configuração do seu painel.",
-        "Posso te levar de volta ao menu principal para consultar outra área."
+        "**Negócio**: nome, contato, cidade e fuso. Clique em Editar, altere e salve.",
+        "**Horários**: abertura, fechamento, intervalo e dias fechados. A Agenda usa essa grade para o dia útil."
       ],
-      choices: [{ label: "⬅️ Voltar ao menu", next: "menu" }]
+      choices: [
+        { label: "Mais sobre Configurações", next: "config" },
+        { label: "Tela inicial do menu", next: "conta" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
     },
+    config_avancado: {
+      texts: [
+        "Em **Avançado**: cor/aparência, **menu principal** (para onde o logo leva), campos extras, cabeçalho de folha, assinatura de contratos e cláusulas.",
+        "Folha e assinatura só entram nos PDFs/contratos quando estão ativas. A assinatura não aparece no restante do CRM."
+      ],
+      choices: [
+        { label: "Contratos e cláusulas", next: "config_contratos" },
+        { label: "Mais sobre Configurações", next: "config" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    config_contratos: {
+      texts: [
+        "Em cláusulas você cria contratos, marca os agendamentos envolvidos e edita o texto. Salve na própria tela de contratos.",
+        "Ative a assinatura só quando o arquivo estiver certo: ela é aplicada aos contratos, não à lista do dia a dia."
+      ],
+      choices: [
+        { label: "Mais sobre Avançado", next: "config_avancado" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    config_integ: {
+      texts: [
+        "**Tag Manager**: ID no formato GTM-XXXXXXX, opcional. Informe também os endereços do site (separados por vírgula), sem o domínio do CRM.",
+        "**UAZAPI**: instância de WhatsApp usada pelo botão **Comunicar**. Sem isso configurado, o envio de mensagem não sai."
+      ],
+      choices: [
+        { label: "Como usar Comunicar?", next: "comunicar" },
+        { label: "Mais sobre Configurações", next: "config" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    comunicar: {
+      texts: [
+        "**Comunicar** envia WhatsApp ao destinatário pela UAZAPI da empresa.",
+        "Você monta mensagem inicial, variáveis do registro (nome, data, reserva…) e um fechamento. A prévia aparece antes de enviar. O último envio vira modelo."
+      ],
+      choices: [
+        { label: "Onde configurar o WhatsApp?", next: "config_integ" },
+        { label: "Voltar a Agendamentos", next: "agendamentos" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    conta: {
+      texts: [
+        "A aba **Conta** em Configurações trata do acesso da empresa. A busca do topo procura cliente por nome, telefone ou e-mail.",
+        "No primeiro acesso cada usuário define senha (mínimo 10 caracteres, letras e números). O sino do cabeçalho mostra avisos não lidos."
+      ],
+      choices: [
+        { label: "Menu principal e aparência", next: "conta_home" },
+        { label: "Backup automático", next: "backup" },
+        { label: "Voltar a Conta", next: "hub_conta" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+    conta_home: {
+      texts: [
+        "Em Avançado, **Menu principal** define para qual tela o logo do FirestepCRM leva (Agenda, Pipeline, etc.).",
+        "A cor primária do painel também fica nas configurações da empresa."
+      ],
+      choices: [
+        { label: "Ir para Configurações", next: "config" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    backup: {
+      texts: [
+        "Na aba **Conta**, o botão **AUTO BACKUP** liga a cópia diária às 03:00 (horário de Brasília).",
+        "Pastas sem mudança ou sem dados são puladas. Conta nova nasce com o backup desligado. Ao ligar, o sistema tenta uma cópia na hora."
+      ],
+      choices: [
+        { label: "Voltar a Conta", next: "hub_conta" },
+        { label: "Falar com o suporte", next: "duvida" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
+    permissoes: {
+      texts: [
+        "Quem entra como **CRM** vê o painel completo: financeiro, métricas, agentes, webhooks e configurações.",
+        "Quem entra como **agente** fica no atendimento (agenda, horários, clientes da operação) e não altera a conta da empresa."
+      ],
+      choices: [
+        { label: "Mais sobre Agentes", next: "agentes" },
+        { label: "Voltar a Conta", next: "hub_conta" },
+        { label: "Voltar ao início", next: "menu" }
+      ]
+    },
+
     duvida: {
       texts: [
-        "Sem problema. Escreva sua dúvida no campo abaixo. Ela será enviada ao Admin Master no painel da plataforma. Este assistente não consulta automaticamente os dados internos do seu CRM."
+        "Sem problema. Escreva a dúvida com o máximo de contexto (tela, o que tentou, o que esperava).",
+        "Eu envio para o suporte. A resposta aparece neste chat, na aba **Dúvidas**."
       ],
-      input: { placeholder: "Digite sua dúvida...", button: "Enviar", next: "encerrar" }
+      input: { placeholder: "Descreva sua dúvida…", button: "Enviar", next: "encerrar" }
     },
     encerrar: {
       texts: [
-        "Obrigado! Sua dúvida foi registrada e enviada ao Admin Master.",
-        "Se quiser continuar consultando o CRM, volte ao menu principal."
+        "Recebi e enviei ao suporte. Quando houver resposta, o aviso aparece no ícone e na aba Dúvidas.",
+        "Quer olhar outra área do painel?"
       ],
-      choices: [{ label: "🏠 Menu principal", next: "menu" }]
+      choices: [
+        { label: "Voltar ao início", next: "menu" },
+        { label: "Enviar outra dúvida", next: "duvida" }
+      ]
     }
   }
 };

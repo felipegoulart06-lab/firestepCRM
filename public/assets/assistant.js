@@ -84,27 +84,83 @@
     return Math.min(1400, Math.max(420, 280 + n * 12));
   }
 
+  const CHOICE_MAX = 5;
+
+  function addChoiceBtn(box, item, i, isNav) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = item.label;
+    btn.style.animationDelay = i * 45 + "ms";
+    if (isNav) btn.className = "is-nav";
+    btn.addEventListener("click", function () {
+      if (root()?.dataset.busy === "1") return;
+      if (item.pageDelta) {
+        box._page = Math.max(0, (box._page || 0) + item.pageDelta);
+        renderChoicePage();
+        return;
+      }
+      appendMsg("me", item.label);
+      box.hidden = true;
+      box.innerHTML = "";
+      go(item.next);
+    });
+    box.appendChild(btn);
+  }
+
+  function choiceSlice(all, page) {
+    let i = 0;
+    let p = 0;
+    while (i < all.length) {
+      const prev = p > 0;
+      const left = all.length - i;
+      const slots = CHOICE_MAX - (prev ? 1 : 0);
+      let take = left;
+      if (left > slots) take = Math.max(1, slots - 1);
+      if (p === page) {
+        return { start: i, take: take, prev: prev, next: i + take < all.length };
+      }
+      i += take;
+      p += 1;
+    }
+    return { start: 0, take: Math.min(CHOICE_MAX, all.length), prev: false, next: false };
+  }
+
+  function renderChoicePage() {
+    const box = root()?.querySelector(".fs-assist-choices");
+    if (!box) return;
+    const all = box._all || [];
+    box.innerHTML = "";
+    if (all.length <= CHOICE_MAX) {
+      all.forEach(function (item, i) {
+        addChoiceBtn(box, item, i, false);
+      });
+      return;
+    }
+    const slice = choiceSlice(all, box._page || 0);
+    let i = 0;
+    if (slice.prev) {
+      addChoiceBtn(box, { label: "Opções anteriores", pageDelta: -1 }, i++, true);
+    }
+    all.slice(slice.start, slice.start + slice.take).forEach(function (item) {
+      addChoiceBtn(box, item, i++, false);
+    });
+    if (slice.next) {
+      addChoiceBtn(box, { label: "Mais opções", pageDelta: 1 }, i++, true);
+    }
+  }
+
   function showChoices(items) {
     const box = root()?.querySelector(".fs-assist-choices");
     const form = root()?.querySelector(".fs-assist-form");
     if (!box) return;
     box.innerHTML = "";
-    box.hidden = !items || !items.length;
+    const all = items || [];
+    box.hidden = !all.length;
     if (form) form.hidden = true;
-    (items || []).forEach(function (item, i) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = item.label;
-      btn.style.animationDelay = i * 45 + "ms";
-      btn.addEventListener("click", function () {
-        if (root()?.dataset.busy === "1") return;
-        appendMsg("me", item.label);
-        box.hidden = true;
-        box.innerHTML = "";
-        go(item.next);
-      });
-      box.appendChild(btn);
-    });
+    if (!all.length) return;
+    box._all = all;
+    box._page = 0;
+    renderChoicePage();
   }
 
   function showInput(cfg) {
@@ -251,7 +307,7 @@
 
     wrap.querySelector(".fs-assist-fab").addEventListener("click", function (e) {
       e.stopPropagation();
-      setOpen(!wrap.classList.contains("is-open"));
+      setOpen(true);
     });
     wrap.querySelector(".fs-assist-x").addEventListener("click", function () {
       setOpen(false);
