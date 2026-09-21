@@ -1341,7 +1341,7 @@ if (str_starts_with($path, '/app')) {
                 redirect(finance_back(post('back')));
             }
             $fresh = one('SELECT * FROM tenants WHERE id=?', [$tid]) ?: $tenant;
-            $card = finance_charge_card($fresh, $entry);
+            $card = finance_charge_apply_edits(finance_charge_card($fresh, $entry), $_POST);
             $sent = uazapi_send_charge($fresh, $card);
             flash($sent['message'], empty($sent['ok']) ? 'error' : 'ok');
             redirect(finance_back(post('back')));

@@ -195,23 +195,31 @@ $listPath = finance_pages()[$page][1];
   </form>
 </div>
 <div class="overlay" id="fin-charge" hidden>
-  <div class="card overlay-panel" style="max-width:420px;padding:18px" onclick="event.stopPropagation()">
+  <div class="card overlay-panel" style="max-width:460px;padding:18px" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:17px">Cobrar no WhatsApp</h2>
       <button type="button" class="btn btn-ghost js-fin-close" data-close="fin-charge">Fechar</button>
     </div>
     <p class="muted" id="fin-charge-who" style="margin:8px 0 12px"></p>
-    <article class="wa-card" id="fin-charge-card">
-      <div class="wa-card-img" id="fin-charge-img" hidden></div>
-      <b id="fin-charge-title">Cobrança</b>
-      <p id="fin-charge-desc"></p>
-      <div class="wa-card-btns" id="fin-charge-btns"></div>
-    </article>
-    <form method="post" action="/app/financeiro/cobrar" style="margin-top:14px">
+    <form method="post" action="/app/financeiro/cobrar" id="fin-charge-form">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" id="fin-charge-id" value="">
       <input type="hidden" name="back" value="<?= e($listPath) ?>">
-      <button class="btn btn-primary" style="width:100%">Enviar cobrança</button>
+      <input type="hidden" name="charge_edited" value="1">
+      <article class="wa-card wa-card-edit" id="fin-charge-card">
+        <div class="wa-card-img" id="fin-charge-img" hidden></div>
+        <label class="label" for="fin-charge-image">Imagem (URL https)</label>
+        <input class="input" name="charge_image" id="fin-charge-image" maxlength="2000" placeholder="https://…">
+        <label class="label" for="fin-charge-title">Título</label>
+        <input class="input" name="charge_title" id="fin-charge-title" maxlength="120" required>
+        <label class="label" for="fin-charge-desc">Descrição</label>
+        <textarea class="textarea" name="charge_description" id="fin-charge-desc" rows="4" maxlength="700"></textarea>
+        <p class="label" style="margin-top:12px">Botões (até 3)</p>
+        <div class="wa-card-btns" id="fin-charge-btns"></div>
+        <button type="button" class="btn btn-ghost" id="fin-charge-add" style="width:100%;margin-top:8px">Adicionar botão</button>
+      </article>
+      <p class="settings-hint" style="margin:10px 0 0">O cliente recebe o título, a descrição, a imagem e os botões exatamente como estão neste card.</p>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px">Enviar cobrança</button>
     </form>
   </div>
 </div>

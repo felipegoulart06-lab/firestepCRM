@@ -822,11 +822,14 @@ function bindFinanceReceive(){
   const receive = document.getElementById('fin-receive');
   const charge = document.getElementById('fin-charge');
   if (!receive && !charge) return;
-  if ((receive && receive.dataset.finBound) || (charge && charge.dataset.finBound)) return;
-  if (receive) receive.dataset.finBound = '1';
-  if (charge) charge.dataset.finBound = '1';
-  if (receive) hoistModal(receive);
-  if (charge) hoistModal(charge);
+  if (receive && !receive.dataset.finBound) {
+    receive.dataset.finBound = '1';
+    hoistModal(receive);
+  }
+  if (charge && !charge.dataset.finBound) {
+    charge.dataset.finBound = '1';
+    hoistModal(charge);
+  }
   const extra = document.getElementById('fin-receive-extra');
   const method = document.getElementById('fin-receive-method');
   const doc = document.getElementById('fin-receive-doc');
@@ -841,7 +844,9 @@ function bindFinanceReceive(){
   };
   const close = (el)=>{
     if (el) el.hidden = true;
-    if ((!receive || receive.hidden) && (!charge || charge.hidden)) {
+    const rec = document.getElementById('fin-receive');
+    const ch = document.getElementById('fin-charge');
+    if ((!rec || rec.hidden) && (!ch || ch.hidden)) {
       document.documentElement.classList.remove('is-modal-open');
       document.body.classList.remove('is-modal-open');
     }
@@ -852,45 +857,128 @@ function bindFinanceReceive(){
     extra?.querySelectorAll('input').forEach(i=>{ i.disabled = !on; });
     if (doc) doc.required = on;
   };
-  method?.addEventListener('change', syncExtra);
+  if (method && !method.dataset.finSync) {
+    method.dataset.finSync = '1';
+    method.addEventListener('change', syncExtra);
+  }
   document.querySelectorAll('.js-fin-receive').forEach(btn=>{
+    if (btn.dataset.finBound) return;
+    btn.dataset.finBound = '1';
     btn.addEventListener('click', ()=>{
+      const rec = document.getElementById('fin-receive');
       const id = document.getElementById('fin-receive-id');
       if (id) id.value = btn.dataset.id || '';
-      if (amount) amount.value = btn.dataset.amount || '';
-      if (method) method.value = btn.dataset.method || '';
-      if (inst) inst.value = '1';
+      const amountEl = document.getElementById('fin-receive-amount');
+      const methodEl = document.getElementById('fin-receive-method');
+      const instEl = document.getElementById('fin-receive-inst');
+      if (amountEl) amountEl.value = btn.dataset.amount || '';
+      if (methodEl) methodEl.value = btn.dataset.method || '';
+      if (instEl) instEl.value = '1';
       syncExtra();
-      open(receive);
+      open(rec);
     });
   });
-  let cards = {};
-  try { cards = JSON.parse(document.getElementById('fin-charge-data')?.textContent || '{}'); } catch (e) { cards = {}; }
+  const imgWrap = document.getElementById('fin-charge-img');
+  const imgInput = document.getElementById('fin-charge-image');
+  const title = document.getElementById('fin-charge-title');
+  const desc = document.getElementById('fin-charge-desc');
+  const btns = document.getElementById('fin-charge-btns');
+  const addBtn = document.getElementById('fin-charge-add');
+  const typeOpts = [
+    ['REPLY', 'Resposta'],
+    ['URL', 'Link'],
+    ['CALL', 'Ligar'],
+    ['COPY', 'Copiar']
+  ];
+  const ph = { REPLY: 'Texto enviado ao clicar', URL: 'https://…', CALL: 'Telefone', COPY: 'Texto a copiar' };
+  const paintImg = (src)=>{
+    if (!imgWrap) return;
+    const ok = src && /^(https:\/\/|data:image\/)/i.test(src);
+    imgWrap.hidden = !ok;
+    imgWrap.innerHTML = ok ? '<img alt="" src="'+String(src).replace(/"/g,'')+'">' : '';
+  };
+  const syncAdd = ()=>{
+    if (addBtn) addBtn.hidden = !!(btns && btns.children.length >= 3);
+  };
+  const addChargeRow = (btn)=>{
+    if (!btns || btns.children.length >= 3) return;
+    const row = document.createElement('div');
+    row.className = 'wa-btn-row';
+    const lab = document.createElement('input');
+    lab.className = 'input';
+    lab.name = 'charge_btn_text[]';
+    lab.maxLength = 20;
+    lab.required = true;
+    lab.placeholder = 'Texto do botão';
+    lab.value = btn?.label || btn?.text || '';
+    const sel = document.createElement('select');
+    sel.className = 'select';
+    sel.name = 'charge_btn_type[]';
+    const cur = String(btn?.type || 'REPLY').toUpperCase();
+    typeOpts.forEach(([v, l])=>{
+      const o = document.createElement('option');
+      o.value = v; o.textContent = l;
+      if (v === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+    const val = document.createElement('input');
+    val.className = 'input';
+    val.name = 'charge_btn_value[]';
+    val.maxLength = 500;
+    val.placeholder = ph[cur] || '';
+    val.value = btn?.value || btn?.id || '';
+    sel.addEventListener('change', ()=>{ val.placeholder = ph[sel.value] || ''; });
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'btn btn-ghost';
+    rm.setAttribute('aria-label', 'Remover botão');
+    rm.textContent = '×';
+    rm.addEventListener('click', ()=>{ row.remove(); syncAdd(); });
+    row.appendChild(lab);
+    row.appendChild(sel);
+    row.appendChild(val);
+    row.appendChild(rm);
+    btns.appendChild(row);
+    syncAdd();
+  };
+  if (imgInput && !imgInput.dataset.finBound) {
+    imgInput.dataset.finBound = '1';
+    imgInput.addEventListener('input', ()=> paintImg(imgInput.value.trim()));
+  }
+  if (addBtn && !addBtn.dataset.finBound) {
+    addBtn.dataset.finBound = '1';
+    addBtn.addEventListener('click', ()=> addChargeRow({ type: 'REPLY', label: '' }));
+  }
   document.querySelectorAll('.js-fin-charge').forEach(btn=>{
+    if (btn.dataset.finBound) return;
+    btn.dataset.finBound = '1';
     btn.addEventListener('click', ()=>{
+      let cards = {};
+      try { cards = JSON.parse(document.getElementById('fin-charge-data')?.textContent || '{}'); } catch (e) { cards = {}; }
       const card = cards[btn.dataset.id] || {};
       const id = document.getElementById('fin-charge-id');
       if (id) id.value = btn.dataset.id || '';
       const who = document.getElementById('fin-charge-who');
       if (who) who.textContent = (card.name || btn.dataset.name || 'Cliente') + ' · ' + (card.phone || btn.dataset.phone || '') + ' · ' + (card.amount || btn.dataset.amount || '');
-      const title = document.getElementById('fin-charge-title');
-      if (title) title.textContent = card.title || 'Cobrança';
-      const desc = document.getElementById('fin-charge-desc');
-      if (desc) desc.textContent = card.description || '';
-      const imgWrap = document.getElementById('fin-charge-img');
-      if (imgWrap) {
-        const src = card.image || '';
-        imgWrap.hidden = !src;
-        imgWrap.innerHTML = src && /^(https?:|data:image\/)/i.test(src) ? '<img alt="" src="'+String(src).replace(/"/g,'')+'">' : '';
+      const titleEl = document.getElementById('fin-charge-title');
+      const descEl = document.getElementById('fin-charge-desc');
+      const imgEl = document.getElementById('fin-charge-image');
+      if (titleEl) titleEl.value = card.title || 'Cobrança';
+      if (descEl) descEl.value = card.description || '';
+      if (imgEl) imgEl.value = card.image || '';
+      paintImg(card.image || '');
+      const box = document.getElementById('fin-charge-btns');
+      if (box) {
+        box.innerHTML = '';
+        (card.buttons && card.buttons.length ? card.buttons : []).forEach(addChargeRow);
+        if (!box.children.length) addChargeRow({ type: 'REPLY', label: 'Já paguei', value: 'ja_paguei' });
       }
-      const btns = document.getElementById('fin-charge-btns');
-      if (btns) {
-        btns.innerHTML = (card.buttons || []).map(b=> '<span>'+String(b.label||'').replace(/[<>]/g,'')+'</span>').join('');
-      }
-      open(charge);
+      open(document.getElementById('fin-charge'));
     });
   });
   document.querySelectorAll('.js-fin-close').forEach(btn=>{
+    if (btn.dataset.finBound) return;
+    btn.dataset.finBound = '1';
     btn.addEventListener('click', ()=> close(document.getElementById(btn.dataset.close || '')));
   });
   syncExtra();

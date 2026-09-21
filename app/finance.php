@@ -627,21 +627,25 @@ function finance_charge_card(array $tenant, array $entry): array
     $buttons = [];
     $buttonsApi = [];
     if ($cfg['pix_key'] !== '') {
-        $buttons[] = ['label' => 'Copiar PIX', 'hint' => 'copy'];
+        $buttons[] = ['label' => 'Copiar PIX', 'hint' => 'copy', 'type' => 'COPY', 'value' => $cfg['pix_key']];
         $buttonsApi[] = ['id' => $cfg['pix_key'], 'text' => 'Copiar PIX', 'type' => 'COPY'];
     }
     $call = uazapi_wa_number((string)($tenant['whatsapp'] ?: $tenant['phone'] ?: ($lh['phone'] ?? '')));
     if ($call !== '') {
-        $buttons[] = ['label' => 'Ligar', 'hint' => 'call'];
+        $buttons[] = ['label' => 'Ligar', 'hint' => 'call', 'type' => 'CALL', 'value' => '+'.$call];
         $buttonsApi[] = ['id' => '+'.$call, 'text' => 'Ligar', 'type' => 'CALL'];
     }
     $site = trim((string)($tenant['website'] ?? ''));
     if ($site !== '' && preg_match('#^https?://#i', $site)) {
-        $buttons[] = ['label' => 'Site', 'hint' => 'url'];
+        $buttons[] = ['label' => 'Site', 'hint' => 'url', 'type' => 'URL', 'value' => $site];
         $buttonsApi[] = ['id' => $site, 'text' => 'Site', 'type' => 'URL'];
     }
-    $buttons[] = ['label' => 'Já paguei', 'hint' => 'reply'];
+    $buttons[] = ['label' => 'Já paguei', 'hint' => 'reply', 'type' => 'REPLY', 'value' => 'ja_paguei'];
     $buttonsApi[] = ['id' => 'ja_paguei', 'text' => 'Já paguei', 'type' => 'REPLY'];
+    if (count($buttons) > 3) {
+        $buttons = array_values(array_merge(array_slice($buttons, 0, 2), [end($buttons)]));
+        $buttonsApi = array_values(array_merge(array_slice($buttonsApi, 0, 2), [end($buttonsApi)]));
+    }
     return [
         'title' => $title,
         'description' => $desc,
@@ -654,5 +658,100 @@ function finance_charge_card(array $tenant, array $entry): array
         'buttons_api' => $buttonsApi,
         'can_send' => uazapi_wa_number($phoneRaw) !== '',
     ];
+}
+
+function finance_charge_clip(string $s, int $max): string
+{
+    $s = trim($s);
+    if (function_exists('mb_substr')) {
+        return (string)mb_substr($s, 0, $max);
+    }
+    return substr($s, 0, $max);
+}
+
+function finance_charge_sanitize_image(string $src): string
+{
+    $src = trim($src);
+    if ($src === '') {
+        return '';
+    }
+    if (preg_match('#^https://#i', $src)) {
+        return finance_charge_clip($src, 2000);
+    }
+    if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$#i', $src)) {
+        return $src;
+    }
+    return '';
+}
+
+function finance_charge_normalize_buttons(array $texts, array $types, array $values): array
+{
+    $out = [];
+    $api = [];
+    $n = max(count($texts), count($types), count($values));
+    for ($i = 0; $i < $n && count($out) < 3; $i++) {
+        $label = finance_charge_clip((string)($texts[$i] ?? ''), 20);
+        if ($label === '') {
+            continue;
+        }
+        $type = strtoupper(trim((string)($types[$i] ?? 'REPLY')));
+        if (!in_array($type, ['URL', 'CALL', 'COPY', 'REPLY'], true)) {
+            $type = 'REPLY';
+        }
+        $raw = trim((string)($values[$i] ?? ''));
+        $id = $raw;
+        if ($type === 'URL') {
+            if ($id !== '' && !preg_match('#^https?://#i', $id)) {
+                $id = 'https://'.$id;
+            }
+            if ($id === '' || !preg_match('#^https?://[^\s]+$#i', $id)) {
+                continue;
+            }
+            $id = finance_charge_clip($id, 500);
+        } elseif ($type === 'CALL') {
+            $num = uazapi_wa_number($id);
+            if ($num === '') {
+                continue;
+            }
+            $id = '+'.$num;
+        } elseif ($type === 'COPY') {
+            $id = finance_charge_clip($id !== '' ? $id : $label, 400);
+        } else {
+            $id = finance_charge_clip($id !== '' ? $id : $label, 80);
+        }
+        $hint = match ($type) {
+            'URL' => 'url',
+            'CALL' => 'call',
+            'COPY' => 'copy',
+            default => 'reply',
+        };
+        $out[] = ['label' => $label, 'type' => $type, 'value' => $id, 'hint' => $hint];
+        $api[] = ['id' => $id, 'text' => $label, 'type' => $type];
+    }
+    return ['buttons' => $out, 'buttons_api' => $api];
+}
+
+function finance_charge_apply_edits(array $card, array $in): array
+{
+    if (trim((string)($in['charge_edited'] ?? '')) !== '1') {
+        return $card;
+    }
+    $title = finance_charge_clip((string)($in['charge_title'] ?? ''), 120);
+    if ($title !== '') {
+        $card['title'] = $title;
+    }
+    $desc = finance_charge_clip((string)($in['charge_description'] ?? ''), 700);
+    if ($desc !== '') {
+        $card['description'] = $desc;
+    }
+    $card['image'] = finance_charge_sanitize_image((string)($in['charge_image'] ?? ''));
+    $norm = finance_charge_normalize_buttons(
+        is_array($in['charge_btn_text'] ?? null) ? $in['charge_btn_text'] : [],
+        is_array($in['charge_btn_type'] ?? null) ? $in['charge_btn_type'] : [],
+        is_array($in['charge_btn_value'] ?? null) ? $in['charge_btn_value'] : []
+    );
+    $card['buttons'] = $norm['buttons'];
+    $card['buttons_api'] = $norm['buttons_api'];
+    return $card;
 }
 

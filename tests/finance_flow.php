@@ -144,6 +144,23 @@ $card = finance_charge_card(['id'=>'ten-a','display_name'=>'Empresa A','business
     'client_name' => 'Ana', 'client_phone' => '11999999991', 'client_whatsapp' => '', 'amount' => 50, 'description' => 'Avulso PIX', 'due_date' => $now,
 ]);
 expect($card['can_send'] && str_contains($card['description'], 'Ana') && str_contains($card['description'], '50'), 'card de cobrança com nome e valor');
+$edited = finance_charge_apply_edits($card, [
+    'charge_edited' => '1',
+    'charge_title' => 'Título livre',
+    'charge_description' => 'Texto do card',
+    'charge_image' => 'https://exemplo.com/card.png',
+    'charge_btn_text' => ['Pagar agora', 'Ligar'],
+    'charge_btn_type' => ['URL', 'CALL'],
+    'charge_btn_value' => ['exemplo.com/pagar', '11988887777'],
+]);
+expect($edited['title'] === 'Título livre' && $edited['description'] === 'Texto do card', 'Cobrar aceita título e descrição editados');
+expect($edited['image'] === 'https://exemplo.com/card.png', 'Cobrar aceita imagem por URL');
+expect(($edited['buttons_api'][0]['type'] ?? '') === 'URL' && str_starts_with((string)($edited['buttons_api'][0]['id'] ?? ''), 'https://'), 'botão de link guarda a URL');
+expect(($edited['buttons_api'][1]['type'] ?? '') === 'CALL' && ($edited['buttons_api'][1]['text'] ?? '') === 'Ligar', 'botão de ligar usa o texto editado');
+$badImg = finance_charge_apply_edits($card, ['charge_edited'=>'1','charge_title'=>'X','charge_description'=>'Y','charge_image'=>'javascript:alert(1)','charge_btn_text'=>[],'charge_btn_type'=>[],'charge_btn_value'=>[]]);
+expect($badImg['image'] === '', 'imagem inválida é ignorada');
+$js = file_get_contents(dirname(__DIR__).'/public/assets/app.js');
+expect(str_contains($src, 'charge_title') && str_contains($src, 'Adicionar botão') && str_contains($js, 'charge_btn_text[]'), 'card de cobrança tem campos editáveis');
 
 @unlink($tmp);
 if ($fail) {

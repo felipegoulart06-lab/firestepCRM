@@ -114,8 +114,13 @@ table.data tbody tr:hover td.row-actions-cell{background:#fcfcfd}
 .wa-card-img img{display:block;width:100%;height:140px;object-fit:cover}
 .wa-card b{display:block;font-size:15px;margin-bottom:6px}
 .wa-card p{margin:0;color:#667085;font-size:13px;line-height:1.45}
-.wa-card-btns{display:grid;gap:6px;margin-top:12px}
+.wa-card-btns{display:grid;gap:8px;margin-top:8px}
 .wa-card-btns span{display:block;text-align:center;border:1px solid #d0d5dd;border-radius:8px;padding:8px;font-size:13px;font-weight:650;color:#175cd3;background:#f8fafc}
+.wa-card-edit .label{margin-top:8px}
+.wa-card-edit .input,.wa-card-edit .textarea,.wa-card-edit .select{width:100%}
+.wa-btn-row{display:grid;grid-template-columns:1fr 110px 1fr auto;gap:6px;align-items:end}
+.wa-btn-row .btn{min-height:38px;padding:0 10px}
+@media(max-width:560px){.wa-btn-row{grid-template-columns:1fr 1fr;}}
 html.is-modal-open,body.is-modal-open,
 html:has(.overlay:not([hidden])),body:has(.overlay:not([hidden])),
 html:has(.fx-overlay:not([hidden])),body:has(.fx-overlay:not([hidden])),
