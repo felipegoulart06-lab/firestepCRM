@@ -299,11 +299,11 @@ function communicate_automation_catalog(): array
         'appointment_reminder' => [
             'event' => 'appointment.reminder',
             'kind' => 'appointment',
-            'label' => 'Lembrete do horário',
-            'hint' => 'Antes do início, no WhatsApp do cliente.',
-            'intro' => 'Lembrete: você tem um horário marcado.',
+            'label' => '1 dia antes do agendamento',
+            'hint' => 'Dispara sozinho no dia anterior ao horário, no WhatsApp do cliente. Conferido de manhã.',
+            'intro' => 'Olá! Lembrete: amanhã você tem um horário marcado.',
             'outro' => 'Esperamos você.',
-            'hours_before' => 24,
+            'days_before' => 1,
         ],
         'request_created' => [
             'event' => 'request.created',
@@ -363,19 +363,24 @@ function communicate_automations_of(array $tenant): array
     $rules = [];
     foreach (communicate_automation_catalog() as $id => $meta) {
         $row = is_array($rulesIn[$id] ?? null) ? $rulesIn[$id] : [];
-        $hours = (int)($row['hours_before'] ?? ($meta['hours_before'] ?? 24));
-        if ($hours < 1) {
-            $hours = 1;
+        $days = (int)($row['days_before'] ?? 0);
+        if ($days < 1) {
+            $hoursLegacy = (int)($row['hours_before'] ?? ($meta['hours_before'] ?? 24));
+            $days = (int)($meta['days_before'] ?? max(1, (int)round($hoursLegacy / 24)));
         }
-        if ($hours > 72) {
-            $hours = 72;
+        if ($days < 1) {
+            $days = 1;
+        }
+        if ($days > 3) {
+            $days = 3;
         }
         $rules[$id] = [
             'enabled' => !empty($row['enabled']),
             'use_template' => array_key_exists('use_template', $row) ? !empty($row['use_template']) : true,
             'intro' => (string)($row['intro'] ?? $meta['intro']),
             'outro' => (string)($row['outro'] ?? $meta['outro']),
-            'hours_before' => $hours,
+            'days_before' => $days,
+            'hours_before' => $days * 24,
         ];
     }
     return ['enabled' => $enabled, 'rules' => $rules];
@@ -399,13 +404,13 @@ function communicate_automations_from_post(): array
 {
     $saved = ['enabled' => post('auto_enabled') === '1', 'rules' => []];
     foreach (communicate_automation_catalog() as $id => $meta) {
-        $hours = (int)post('hours_'.$id, (string)($meta['hours_before'] ?? 24));
+        $days = (int)post('days_'.$id, (string)($meta['days_before'] ?? 1));
         $saved['rules'][$id] = [
             'enabled' => post('on_'.$id) === '1',
             'use_template' => post('tpl_'.$id) === '1',
             'intro' => trim((string)post('intro_'.$id, $meta['intro'])),
             'outro' => trim((string)post('outro_'.$id, $meta['outro'])),
-            'hours_before' => $hours,
+            'days_before' => $days,
         ];
     }
     return communicate_automations_of(['communicate_automations' => $saved]);
@@ -478,6 +483,20 @@ function communicate_automation_fire(array $tenant, string $event, string $kind,
     }
 }
 
+function communicate_automation_reminder_window(int $daysBefore = 1): array
+{
+    if ($daysBefore < 1) {
+        $daysBefore = 1;
+    }
+    if ($daysBefore > 3) {
+        $daysBefore = 3;
+    }
+    $day = (new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo')))
+        ->modify('+'.$daysBefore.' day')
+        ->format('Y-m-d');
+    return ['from' => $day.' 00:00:00', 'to' => $day.' 23:59:59', 'day' => $day];
+}
+
 function communicate_automation_reminders(): array
 {
     communicate_automations_ensure_schema();
@@ -487,19 +506,17 @@ function communicate_automation_reminders(): array
     } catch (Throwable) {
         return $out;
     }
-    $now = time();
     foreach ($tenants as $tenant) {
         $cfg = communicate_automations_of($tenant);
         if (empty($cfg['enabled']) || empty($cfg['rules']['appointment_reminder']['enabled'])) {
             continue;
         }
         $out['tenants']++;
-        $hours = (int)$cfg['rules']['appointment_reminder']['hours_before'];
-        $from = date('Y-m-d H:i:s', $now);
-        $to = date('Y-m-d H:i:s', $now + $hours * 3600);
+        $days = (int)($cfg['rules']['appointment_reminder']['days_before'] ?? 1);
+        $window = communicate_automation_reminder_window($days);
         $rows = all(
             "SELECT id FROM appointments WHERE tenant_id=? AND starts_at>=? AND starts_at<=? AND status NOT IN ('CANCELLED','DONE','NO_SHOW')",
-            [(string)$tenant['id'], $from, $to]
+            [(string)$tenant['id'], $window['from'], $window['to']]
         );
         foreach ($rows as $row) {
             $res = communicate_automation_fire($tenant, 'appointment.reminder', 'appointment', (string)$row['id']);

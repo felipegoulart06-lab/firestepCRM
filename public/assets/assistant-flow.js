@@ -571,7 +571,7 @@ window.FS_ASSIST_FLOW = {
     comunicar: {
       texts: [
         "**Comunicar** envia WhatsApp ao destinatário pela conexão da empresa.",
-        "Em **Configurações → Comunicar** você liga envios automáticos: novo horário, confirmação, cancelamento, lembrete e nova solicitação."
+        "Em **Configurações → Comunicar** você liga envios automáticos: novo horário, confirmação, cancelamento, 1 dia antes e nova solicitação."
       ],
       choices: [
         { label: "Envios automáticos", next: "comunicar_auto" },
@@ -583,7 +583,7 @@ window.FS_ASSIST_FLOW = {
     comunicar_auto: {
       texts: [
         "A aba **Comunicar** nas Configurações liga a automação. Cada regra liga à parte e pode usar o último modelo do botão Comunicar.",
-        "O lembrete usa as horas que você definir antes do horário e é conferido uma vez por dia. Sem a conexão de WhatsApp em Integrações, nada é enviado."
+        "A regra **1 dia antes do agendamento** dispara sozinha no dia anterior, de manhã. Dá para escolher 2 ou 3 dias. Sem a conexão de WhatsApp em Integrações, nada é enviado."
       ],
       choices: [
         { label: "Voltar a Comunicar", next: "comunicar" },

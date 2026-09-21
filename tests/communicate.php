@@ -113,11 +113,15 @@ db()->exec(file_get_contents(dirname(__DIR__).'/app/schema.sql'));
 
 $catalog = communicate_automation_catalog();
 expect(count($catalog) === 5 && isset($catalog['appointment_reminder'], $catalog['request_created']), 'catálogo cobre agenda, status, lembrete e solicitação');
+expect(($catalog['appointment_reminder']['label'] ?? '') === '1 dia antes do agendamento', 'regra de 1 dia antes');
+expect(str_contains($ui, '1 dia antes do agendamento') && str_contains($ui, 'name="days_'), 'tipo 1 dia antes no formulário');
 $defaults = communicate_automations_of(['communicate_automations' => '{}']);
 expect(empty($defaults['enabled']) && empty($defaults['rules']['appointment_created']['enabled']), 'automação nasce desligada');
 $on = communicate_automations_of(['communicate_automations' => ['enabled' => true, 'rules' => ['appointment_created' => ['enabled' => true, 'hours_before' => 3]]]]);
 expect(!empty($on['enabled']) && !empty($on['rules']['appointment_created']['enabled']), 'liga regra de novo agendamento');
-expect((int)$on['rules']['appointment_reminder']['hours_before'] === 24, 'lembrete padrão 24 horas');
+expect((int)$on['rules']['appointment_reminder']['days_before'] === 1, 'lembrete padrão 1 dia antes');
+$win = communicate_automation_reminder_window(1);
+expect(preg_match('/^\d{4}-\d{2}-\d{2} 00:00:00$/', $win['from']) && str_contains($win['to'], '23:59:59'), 'janela do lembrete é o dia seguinte inteiro');
 $skip = communicate_automation_fire(['id' => 'ten-off', 'communicate_automations' => '{}', 'uazapi_config' => '{}'], 'appointment.created', 'appointment', 'ap-x');
 expect(($skip['skip'] ?? '') === 'off', 'não dispara com automação desligada');
 @unlink($tmp);

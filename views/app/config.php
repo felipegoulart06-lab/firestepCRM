@@ -560,11 +560,11 @@ $hourLine = static function (array $h) {
       <?php foreach ($catalog as $rid => $meta): $rule = $auto['rules'][$rid]; ?>
       <div>
         <dt><?= e($meta['label']) ?></dt>
-        <dd><?= !empty($rule['enabled']) ? 'Ativa'.(isset($meta['hours_before']) ? ' · '.$rule['hours_before'].'h antes' : '') : 'Off' ?></dd>
+        <dd><?= !empty($rule['enabled']) ? 'Ativa'.(isset($meta['days_before']) ? ' · '.(int)$rule['days_before'].' dia'.((int)$rule['days_before'] === 1 ? '' : 's').' antes' : '') : 'Off' ?></dd>
       </div>
       <?php endforeach; ?>
     </dl>
-    <p class="settings-hint">Nada sai até você ligar a automação e ao menos uma regra. O lembrete é conferido uma vez por dia, de manhã. Sem WhatsApp em Integrações, os envios ficam parados.</p>
+    <p class="settings-hint">Nada sai até você ligar a automação e ao menos uma regra. A mensagem de 1 dia antes é conferida de manhã. Sem WhatsApp em Integrações, os envios ficam parados.</p>
   <?php else: ?>
     <form method="post" action="/app/configuracoes/comunicar">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
@@ -580,9 +580,13 @@ $hourLine = static function (array $h) {
           <input type="checkbox" name="on_<?= e($rid) ?>" value="1" <?= !empty($rule['enabled']) ? 'checked' : '' ?>>
           Ativar esta regra
         </label>
-        <?php if (isset($meta['hours_before'])): ?>
-        <label class="label">Horas antes do horário</label>
-        <input class="input" type="number" min="1" max="72" name="hours_<?= e($rid) ?>" value="<?= (int)$rule['hours_before'] ?>">
+        <?php if (isset($meta['days_before'])): ?>
+        <label class="label">Tipo</label>
+        <select class="input" name="days_<?= e($rid) ?>">
+          <option value="1" <?= (int)$rule['days_before'] === 1 ? 'selected' : '' ?>>1 dia antes do agendamento</option>
+          <option value="2" <?= (int)$rule['days_before'] === 2 ? 'selected' : '' ?>>2 dias antes do agendamento</option>
+          <option value="3" <?= (int)$rule['days_before'] === 3 ? 'selected' : '' ?>>3 dias antes do agendamento</option>
+        </select>
         <?php endif; ?>
         <label class="check-row">
           <input type="checkbox" name="tpl_<?= e($rid) ?>" value="1" <?= !empty($rule['use_template']) ? 'checked' : '' ?>>
