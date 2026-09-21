@@ -46,6 +46,20 @@ expect($key === 'backups/felipe-goulart/2026-09-20/Agendamentos/agendamentos.csv
 expect(str_contains($key, 'backups/') && str_contains(r2_csv_key('x', '2026-09-20', 'financeiro', 'lancamentos.csv'), 'financeiro/lancamentos.csv'), 'financeiro tem CSV por lista');
 $vercel = file_get_contents($root.'/vercel.json');
 expect(str_contains($vercel, '"0 6 * * *"'), 'cron R2 dispara às 03:00 de Brasília (06:00 UTC)');
+$emptyCsv = r2_csv(['Nome'], []);
+$fullCsv = r2_csv(['Nome'], [['Ana']]);
+expect(!r2_csv_has_data($emptyCsv) && r2_csv_has_data($fullCsv), 'CSV só com cabeçalho não conta como alteração');
+expect(r2_csv_id('backups/felipe/2026-09-21/Clientes/clientes.csv') === 'Clientes/clientes.csv', 'id do CSV ignora data e usuário');
+expect(!r2_should_put_csv($emptyCsv, 'Clientes/clientes.csv', []), 'pasta Clientes não sobe sem cliente');
+expect(r2_should_put_csv($fullCsv, 'Clientes/clientes.csv', []), 'primeira lista com dados sobe');
+$fp = r2_csv_fingerprint($fullCsv);
+expect(!r2_should_put_csv($fullCsv, 'Clientes/clientes.csv', ['Clientes/clientes.csv' => $fp]), 'mesmo CSV do dia anterior não sobe de novo');
+$core = file_get_contents($root.'/app/core.php');
+expect(!str_contains($core, "foreach (\$preset['services']") && !str_contains($core, "foreach (\$preset['fields']"), 'conta do Admin Master nasce sem serviços nem campos de demo');
+expect(str_contains($core, 'SET auto_backup='), 'conta nova nasce com AUTO BACKUP desligado');
+$_SERVER['HTTP_X_VERCEL_CRON'] = '1';
+expect(r2_cron_secret_ok(), 'job da Vercel às 03:00 passa na autorização');
+unset($_SERVER['HTTP_X_VERCEL_CRON']);
 
 if ($fail) {
     fwrite(STDERR, "$fail verificação(ões) R2 falharam.\n");

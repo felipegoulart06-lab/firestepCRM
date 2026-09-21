@@ -346,6 +346,7 @@ function migrate_database(PDO $pdo): void
             'home_path' => "TEXT DEFAULT '/app/agenda'",
             'auto_backup' => 'INTEGER DEFAULT 0',
             'auto_backup_at' => 'TEXT',
+            'auto_backup_hashes' => "TEXT DEFAULT '{}'",
         ],
         'users' => [
             'last_login_at' => 'TEXT',

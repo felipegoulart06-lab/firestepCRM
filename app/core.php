@@ -29,6 +29,9 @@ function create_tenant_panel(array $in, ?string $actor = null): array
     $tid = uid();
     $uid = uid();
     $tnow = now();
+    if (function_exists('r2_ensure_schema')) {
+        r2_ensure_schema();
+    }
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -41,22 +44,12 @@ function create_tenant_panel(array $in, ?string $actor = null): array
             'America/Sao_Paulo', json_encode($preset['terms'] + ['request'=>'Solicitação','requests'=>'Solicitações'], JSON_UNESCAPED_UNICODE),
             json_encode(default_hours()), $tnow, $tnow,
         ]);
+        q('UPDATE tenants SET auto_backup='.sql_lit_bool(false).' WHERE id=?', [$tid]);
         q('INSERT INTO users(id,tenant_id,name,email,username,password_hash,role,phone,must_change_password,active,created_at)
            VALUES(?,?,?,?,?,?,?,?,'.sql_lit_bool(true).','.sql_lit_bool(true).',?)', [
             $uid, $tid, $in['name'], $email, $username,
             password_hash($password, PASSWORD_DEFAULT), 'user_crm', $in['phone'] ?? null, $tnow,
         ]);
-        foreach ($preset['services'] as $s) {
-            q('INSERT INTO services(id,tenant_id,name,category,duration_minutes,price,status,created_at) VALUES(?,?,?,?,?,?,?,?)', [
-                uid(), $tid, $s['name'], $s['category'] ?? null, $s['duration'], $s['price'], 'ACTIVE', $tnow,
-            ]);
-        }
-        $ord = 0;
-        foreach ($preset['fields'] as $f) {
-            q('INSERT INTO custom_fields(id,tenant_id,label,key,type,options,sort_order) VALUES(?,?,?,?,?,?,?)', [
-                uid(), $tid, $f['label'], $f['key'], $f['type'], isset($f['options']) ? json_encode($f['options']) : null, $ord++,
-            ]);
-        }
         q('INSERT INTO webhooks(id,tenant_id,name,direction,token,secret,events,active,created_at) VALUES(?,?,?,?,?,?,?,'.sql_lit_bool(true).',?)', [
             uid(), $tid, 'Entrada do site', 'INBOUND', bin2hex(random_bytes(16)), bin2hex(random_bytes(24)),
             json_encode(['request','appointment']), $tnow,

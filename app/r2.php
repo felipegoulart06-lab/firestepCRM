@@ -12,6 +12,7 @@ function r2_ensure_schema(): void
         if (is_pgsql()) {
             db()->exec('ALTER TABLE tenants ADD COLUMN IF NOT EXISTS auto_backup boolean NOT NULL DEFAULT false');
             db()->exec('ALTER TABLE tenants ADD COLUMN IF NOT EXISTS auto_backup_at timestamptz');
+            db()->exec("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS auto_backup_hashes jsonb NOT NULL DEFAULT '{}'::jsonb");
             return;
         }
         $existing = array_column(db()->query('PRAGMA table_info(tenants)')->fetchAll(), 'name');
@@ -20,6 +21,9 @@ function r2_ensure_schema(): void
         }
         if (!in_array('auto_backup_at', $existing, true)) {
             db()->exec('ALTER TABLE tenants ADD COLUMN auto_backup_at TEXT');
+        }
+        if (!in_array('auto_backup_hashes', $existing, true)) {
+            db()->exec("ALTER TABLE tenants ADD COLUMN auto_backup_hashes TEXT DEFAULT '{}'");
         }
     } catch (Throwable $e) {
         $done = false;
@@ -58,9 +62,6 @@ function r2_enabled(array $tenant): bool
 function r2_cron_secret_ok(): bool
 {
     $secret = env_str('CRON_SECRET');
-    if ($secret === null || $secret === '') {
-        return false;
-    }
     $got = request_header('Authorization');
     if (str_starts_with(strtolower($got), 'bearer ')) {
         $got = trim(substr($got, 7));
@@ -68,7 +69,63 @@ function r2_cron_secret_ok(): bool
     if ($got === '') {
         $got = request_header('X-Cron-Secret');
     }
-    return $got !== '' && hash_equals($secret, $got);
+    if ($secret !== null && $secret !== '' && $got !== '' && hash_equals($secret, $got)) {
+        return true;
+    }
+    // Job da Vercel (03:00 Brasília = 06:00 UTC) envia este header.
+    return request_header('x-vercel-cron') === '1';
+}
+
+function r2_csv_id(string $key): string
+{
+    $parts = explode('/', str_replace('\\', '/', $key));
+    $n = count($parts);
+    if ($n >= 2) {
+        return $parts[$n - 2].'/'.$parts[$n - 1];
+    }
+    return $key;
+}
+
+function r2_csv_fingerprint(string $csv): string
+{
+    return hash('sha256', $csv);
+}
+
+function r2_csv_has_data(string $csv): bool
+{
+    $raw = (string)preg_replace('/^\xEF\xBB\xBF/', '', $csv);
+    $nl = strpos($raw, "\r\n");
+    $skip = 2;
+    if ($nl === false) {
+        $nl = strpos($raw, "\n");
+        $skip = 1;
+    }
+    if ($nl === false) {
+        return false;
+    }
+    return trim(substr($raw, $nl + $skip)) !== '';
+}
+
+function r2_hashes_of(array $tenant): array
+{
+    $raw = $tenant['auto_backup_hashes'] ?? [];
+    if (is_array($raw)) {
+        return $raw;
+    }
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+    return [];
+}
+
+function r2_should_put_csv(string $csv, string $id, array $prevHashes): bool
+{
+    if (!r2_csv_has_data($csv)) {
+        return false;
+    }
+    $fp = r2_csv_fingerprint($csv);
+    return ($prevHashes[$id] ?? '') !== $fp;
 }
 
 function r2_redact(array $row): array
@@ -517,17 +574,31 @@ function r2_backup_tenant(string $tenantId): array
         return ['ok' => false, 'error' => 'Conta não encontrada.'];
     }
     $files = r2_backup_files($tenant);
+    $hashes = r2_hashes_of($tenant);
     $uploaded = [];
+    $skipped = [];
     $errors = [];
     foreach ($files as [$key, $csv]) {
+        $id = r2_csv_id($key);
+        if (!r2_should_put_csv($csv, $id, $hashes)) {
+            $skipped[] = $id;
+            continue;
+        }
         [$code, $body] = r2_put_csv($key, $csv);
         if ($code >= 200 && $code < 300) {
             $uploaded[] = $key;
+            $hashes[$id] = r2_csv_fingerprint($csv);
             continue;
         }
         $errors[] = ['key' => $key, 'code' => $code, 'error' => trim(strip_tags((string)$body))];
     }
-    if ($errors === []) {
+    try {
+        q('UPDATE tenants SET auto_backup_at=?, auto_backup_hashes=? WHERE id=?', [
+            now(),
+            json_encode($hashes, JSON_UNESCAPED_UNICODE),
+            $tenantId,
+        ]);
+    } catch (Throwable $e) {
         q('UPDATE tenants SET auto_backup_at=? WHERE id=?', [now(), $tenantId]);
     }
     return [
@@ -535,6 +606,7 @@ function r2_backup_tenant(string $tenantId): array
         'folder' => 'backups/'.r2_tenant_folder($tenant).'/'.r2_backup_date(),
         'files' => count($uploaded),
         'uploaded' => $uploaded,
+        'skipped' => $skipped,
         'errors' => $errors,
     ];
 }
