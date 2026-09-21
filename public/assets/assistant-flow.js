@@ -629,26 +629,23 @@ window.FS_ASSIST_FLOW = {
 
     atendimento: {
       texts: [
-        "Certo. Vou transferir o atendimento para o **Felipe**, nosso atendente.",
-        "Para ele te chamar agora, digite seu WhatsApp no formato **(00) 0 0000-0000**."
+        "Certo. Vou te chamar no WhatsApp.",
+        "Digite seu número no formato **(00) 0 0000-0000**."
       ],
       input: { placeholder: "(00) 0 0000-0000", button: "Enviar", next: "atendimento_ok", kind: "whatsapp" }
     },
     duvida: {
       texts: [
-        "Certo. Vou transferir o atendimento para o **Felipe**, nosso atendente.",
-        "Para ele te chamar agora, digite seu WhatsApp no formato **(00) 0 0000-0000**."
+        "Certo. Vou te chamar no WhatsApp.",
+        "Digite seu número no formato **(00) 0 0000-0000**."
       ],
       input: { placeholder: "(00) 0 0000-0000", button: "Enviar", next: "atendimento_ok", kind: "whatsapp" }
     },
     atendimento_ok: {
       texts: [
-        "Pronto. Passei você para o Felipe. Ele já dispara no WhatsApp que você informou."
+        "Enviei a mensagem no seu WhatsApp. Estou encerrando o atendimento por aqui."
       ],
-      choices: [
-        { label: "Voltar ao início", next: "menu" },
-        { label: "Enviar outro número", next: "atendimento" }
-      ]
+      end: true
     }
   }
 };

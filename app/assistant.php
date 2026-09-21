@@ -129,8 +129,7 @@ function assistant_handoff(array $tenant, array $user, string $phone): array
     }
     $who = trim((string)($user['name'] ?? $user['username'] ?? 'Cliente'));
     $company = trim((string)($tenant['display_name'] ?: $tenant['business_name'] ?: 'FirestepCRM'));
-    $attendant = trim((string)($cfg['attendant'] ?? 'Felipe')) ?: 'Felipe';
-    $text = "Olá! Sou o {$attendant}, do atendimento FirestepCRM.\n\nA Priscila me transferiu o seu atendimento ({$who} · {$company}). Pode me dizer como posso ajudar?";
+    $text = "Olá! Sou a Priscila, do FirestepCRM.\n\nRecebi seu pedido de atendimento ({$who} · {$company}). Como posso ajudar?";
     $sent = uazapi_send_text($cfg, $number, $text);
     $question = 'Atendimento WhatsApp: '.$formatted;
     $id = uid();
@@ -142,7 +141,7 @@ function assistant_handoff(array $tenant, array $user, string $phone): array
     if (empty($sent['ok'])) {
         return ['ok' => false, 'error' => 'Não consegui disparar o WhatsApp agora. Confira o número e tente de novo.'];
     }
-    return ['ok' => true, 'id' => $id, 'attendant' => $attendant];
+    return ['ok' => true, 'id' => $id];
 }
 
 function assistant_master_list(): array

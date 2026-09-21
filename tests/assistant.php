@@ -32,7 +32,9 @@ expect(str_contains($css, '.fs-assist.is-open .fs-assist-fab{display:none'), 'í
 expect(str_contains($js, 'setOpen(true)') && str_contains($js, 'CHOICE_MAX = 5'), 'abre só pelo ícone e limita 5 botões');
 expect(!str_contains($js, 'class="overlay"') && !str_contains($css, '.fs-assist.overlay'), 'chat não usa overlay que trava o painel');
 expect(str_contains($flow, 'Falar com atendimento') && str_contains($flow, 'atendimento') && str_contains($flow, '(00) 0 0000-0000'), 'fluxo transfere para atendimento com WhatsApp');
-expect(str_contains($flow, 'Felipe') && str_contains($js, 'maskWa') && str_contains($js, '/app/assistente/atendimento'), 'Priscila pede WhatsApp e dispara para o Felipe');
+expect(str_contains($flow, 'Vou te chamar no WhatsApp') && str_contains($js, 'maskWa') && str_contains($js, '/app/assistente/atendimento'), 'Priscila pede WhatsApp e dispara a mensagem');
+expect(str_contains($flow, 'end: true') && str_contains($js, 'g.end'), 'depois da última mensagem o chat encerra');
+expect(!str_contains($flow, 'Felipe'), 'disparo do chat é da Priscila, não do Felipe');
 expect(str_contains($index, '/app/assistente/atendimento') && str_contains($index, '/master/configuracoes/whatsapp'), 'rotas de transferência e instância do Master');
 expect(str_contains(file_get_contents($root.'/views/master/config.php'), 'WhatsApp de atendimento'), 'Admin Master configura a instância de atendimento');
 expect(str_contains($js, '/^\\(\\d{2}\\) \\d \\d{4}-\\d{4}$/') || str_contains($js, '(00) 0 0000-0000'), 'máscara força o formato do WhatsApp');

@@ -2,7 +2,7 @@
 <div class="page-head">
   <div>
     <h1>Assistente</h1>
-    <p class="subtitle">Quando a Priscila transfere para o Felipe, o pedido aparece aqui. O disparo no WhatsApp usa a instância em Configurações.</p>
+    <p class="subtitle">Pedidos de atendimento pelo chat da Priscila. O disparo no WhatsApp usa a instância em Configurações.</p>
   </div>
 </div>
 

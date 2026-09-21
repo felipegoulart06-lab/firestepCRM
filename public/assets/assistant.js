@@ -230,6 +230,17 @@
     }
     if (token !== playId) return;
     if (el) el.dataset.busy = "0";
+    if (g.end) {
+      if (box) {
+        box.hidden = true;
+        box.innerHTML = "";
+      }
+      if (form) form.hidden = true;
+      await wait(900);
+      if (token !== playId) return;
+      setOpen(false);
+      return;
+    }
     if (g.input) showInput(g.input);
     else showChoices(g.choices || []);
   }

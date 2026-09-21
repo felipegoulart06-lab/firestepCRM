@@ -87,14 +87,12 @@ $editFolha = ($_GET['edit'] ?? '') === 'folha';
   <div class="settings-panel-head">
     <div>
       <h2>WhatsApp de atendimento</h2>
-      <p>Instância usada quando a Priscila transfere o cliente para o Felipe.</p>
+      <p>Instância usada quando a Priscila envia o WhatsApp pelo chat do painel.</p>
     </div>
   </div>
   <form method="post" action="/master/configuracoes/whatsapp">
     <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-    <label class="label">Atendente</label>
-    <input class="input" name="whatsapp_attendant" maxlength="80" value="<?= e($wa['attendant'] ?? 'Felipe') ?>">
-    <div class="grid g2" style="margin-top:10px">
+    <div class="grid g2">
       <div>
         <label class="label">URL da instância</label>
         <input class="input" name="whatsapp_url" value="<?= e($wa['url'] ?? '') ?>" placeholder="https://servidor.exemplo.com">
@@ -104,7 +102,7 @@ $editFolha = ($_GET['edit'] ?? '') === 'folha';
         <input class="input" name="whatsapp_token" type="password" autocomplete="new-password" placeholder="<?= $waTok !== '' ? 'Deixe em branco para manter' : 'token' ?>">
       </div>
     </div>
-    <p class="settings-hint">Com a instância conectada, o disparo sai automaticamente para o WhatsApp informado no chat.</p>
+    <p class="settings-hint">Com a instância conectada, a Priscila dispara sozinha para o WhatsApp informado no chat e encerra a conversa.</p>
     <div class="settings-actions">
       <button class="btn btn-primary">Salvar WhatsApp</button>
     </div>

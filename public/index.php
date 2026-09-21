@@ -389,7 +389,6 @@ if (str_starts_with($path, '/master')) {
             uazapi_platform_save([
                 'url' => $url,
                 'token' => trim((string)post('whatsapp_token', '')),
-                'attendant' => trim((string)post('whatsapp_attendant', 'Felipe')),
             ]);
             flash('WhatsApp de atendimento atualizado.');
             redirect('/master/configuracoes');
