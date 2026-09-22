@@ -26,6 +26,7 @@ $helpers = file_get_contents($root.'/app/helpers.php');
 
 expect(str_contains($css, '.fs-assist{') && str_contains($css, 'pointer-events:none'), 'widget não cobre a tela inteira');
 expect(str_contains($css, 'bottom:max(28px') && str_contains($js, 'priscila.jpg') && str_contains($js, 'Priscila'), 'ícone da Priscila um pouco mais baixo');
+expect(str_contains($css, '.fs-assist-fab{') && str_contains($css, 'width:72px;height:72px'), 'ícone do chat um pouco maior');
 expect(str_contains($css, 'font-family:Poppins') && str_contains($css, 'font-size:15px'), 'fonte Poppins um pouco maior');
 expect(!str_contains($css, '#075e54') && !str_contains($css, '#d9fdd3') && !str_contains($css, '#ece5dd'), 'chat sem cores de WhatsApp');
 expect(str_contains($css, '.fs-assist.is-open .fs-assist-fab{display:none'), 'ícone some quando o chat abre');

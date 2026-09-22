@@ -617,8 +617,8 @@ body.is-soft-nav::before{content:"";position:fixed;top:0;left:0;right:0;height:2
 }
 
 /* Chat — visual Firestep, Poppins, sem overlay */
-.fs-assist{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(28px,calc(env(safe-area-inset-bottom) + 16px));z-index:80;width:58px;height:58px;overflow:visible;pointer-events:none;font-family:Poppins,"Segoe UI",system-ui,sans-serif}
-.fs-assist-fab{position:absolute;right:0;bottom:0;width:58px;height:58px;padding:0;border:2px solid #fff;border-radius:50%;background:#1d2939;overflow:visible;box-shadow:0 8px 20px rgba(16,24,40,.18);cursor:pointer;display:block;pointer-events:auto;isolation:isolate;transition:transform .18s ease,box-shadow .18s ease}
+.fs-assist{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(28px,calc(env(safe-area-inset-bottom) + 16px));z-index:80;width:72px;height:72px;overflow:visible;pointer-events:none;font-family:Poppins,"Segoe UI",system-ui,sans-serif}
+.fs-assist-fab{position:absolute;right:0;bottom:0;width:72px;height:72px;padding:0;border:2px solid #fff;border-radius:50%;background:#1d2939;overflow:visible;box-shadow:0 8px 20px rgba(16,24,40,.18);cursor:pointer;display:block;pointer-events:auto;isolation:isolate;transition:transform .18s ease,box-shadow .18s ease}
 .fs-assist-fab:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 12px 24px rgba(16,24,40,.2)}
 .fs-assist-fab:active{transform:scale(.96)}
 .fs-assist-fab:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
