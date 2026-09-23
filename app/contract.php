@@ -103,12 +103,12 @@ function contract_send_pdf(array $tenant, array $doc): never
         $stream = $body;
         $stream .= contract_pdf_footer($i + 1, $total, (string)$doc['company']);
         if ($sigId && $sigJpeg && $i === $total - 1) {
-            $sh = 38;
-            $sw = $sigJpeg['w'] > 0 ? (int)round($sh * $sigJpeg['w'] / $sigJpeg['h']) : 90;
-            $sw = max(48, min(150, $sw));
+            $sh = 56;
+            $sw = $sigJpeg['w'] > 0 ? (int)round($sh * $sigJpeg['w'] / $sigJpeg['h']) : 110;
+            $sw = max(64, min(180, $sw));
             $sx = 545 - $sw;
-            $stream .= sprintf("q %d 0 0 %d %d 48 cm /ImS Do Q\n", $sw, $sh, $sx);
-            $stream .= "0 0 0 rg BT /F1 7 Tf $sx 40 Td (Assinatura eletronica) Tj ET\n";
+            $stream .= sprintf("q %d 0 0 %d %d 52 cm /ImS Do Q\n", $sw, $sh, $sx);
+            $stream .= "0 0 0 rg BT /F1 7 Tf $sx 42 Td (Assinatura) Tj ET\n";
         }
         $contentId = $next++;
         $pageId = $next++;

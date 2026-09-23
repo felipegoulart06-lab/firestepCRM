@@ -65,13 +65,20 @@ $png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0
 $sigEmpty = signature_config($tenant);
 expect($sigEmpty['active'] === false, 'assinatura inativa por padrão');
 expect(signature_complete($sigEmpty) === false, 'assinatura incompleta sem imagem');
-signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => false]);
+signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => true]);
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(signature_complete(signature_config($tenant)), 'assinatura completa após salvar');
-expect(signature_preview($tenant) === null, 'assinatura oculta até ativar');
+expect(signature_preview($tenant)['image'] === $png, 'upload já entra nos contratos');
+signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => false]);
+$tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
+expect(signature_preview($tenant) === null, 'dá para desligar a assinatura automática');
 signature_save('ten-lh', ['image' => $png, 'saved' => true, 'active' => true]);
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-lh']);
 expect(signature_preview($tenant)['image'] === $png, 'assinatura visível nos contratos quando ativa');
+$cfgUi = file_get_contents(dirname(__DIR__).'/views/app/config.php');
+expect(str_contains($cfgUi, 'name="signature"') && str_contains($cfgUi, 'Usar automaticamente nos contratos'), 'upload de assinatura visível em Avançado');
+$idx = file_get_contents(dirname(__DIR__).'/public/index.php');
+expect(str_contains($idx, 'entra sozinha no rodapé dos contratos'), 'salvar ativa uso automático');
 
 expect(clauses_sanitize('<p>Olá <b>mundo</b><script>x</script></p>') === '<p>Olá <b>mundo</b></p>' || str_contains(clauses_sanitize('<p>Olá <b>mundo</b><script>x</script></p>'), '<b>mundo</b>'), 'sanitiza cláusulas e remove script');
 clauses_save('ten-lh', ['salao' => '<p>Corte com <b>hora marcada</b>.</p>']);

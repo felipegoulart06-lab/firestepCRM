@@ -187,10 +187,11 @@ function signature_from_post(array $current): array
     if ($image === '') {
         throw new RuntimeException('Envie uma imagem da assinatura (JPEG, PNG ou WEBP).');
     }
+    $auto = !isset($_POST['sig_active']) || (string)($_POST['sig_active'] ?? '') === '1';
     return [
         'image' => $image,
         'saved' => true,
-        'active' => !empty($current['active']),
+        'active' => $auto,
     ];
 }
 

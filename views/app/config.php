@@ -336,47 +336,37 @@ $hourLine = static function (array $h) {
 <div class="card settings-panel lh-panel" style="margin-top:14px">
   <div class="settings-panel-head">
     <div>
-      <h2>Assinatura eletrônica</h2>
-      <p>Imagem da assinatura usada só nos contratos, quando estiver ativa. Não aparece no restante do CRM.</p>
+      <h2>Assinatura nos contratos</h2>
+      <p>Envie a imagem da assinatura. Ela aparece sozinha no rodapé de todo contrato gerado neste CRM.</p>
     </div>
-    <?php if (!$editAssinatura): ?>
-      <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado&amp;edit=assinatura">Editar</a>
-    <?php endif; ?>
   </div>
-  <?php if (!$editAssinatura): ?>
-    <p class="settings-hint" style="margin-top:0">O arquivo fica oculto. Abra <b>Editar</b> para enviar ou trocar a imagem.</p>
-    <?php if ($sigReady): ?>
-      <div class="lh-status">
-        <?php if (!empty($sig['active'])): ?>
-          <span class="badge" style="background:#dcfce7;color:#166534">Ativa nos contratos</span>
-        <?php else: ?>
-          <span class="badge" style="background:#fef9c3;color:#854d0e">Salva · desativada</span>
-        <?php endif; ?>
-        <form method="post" action="/app/configuracoes/assinatura/ativar" class="lh-toggle">
-          <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-          <input type="hidden" name="active" value="<?= !empty($sig['active']) ? '0' : '1' ?>">
-          <button class="btn <?= !empty($sig['active']) ? 'btn-danger' : 'btn-primary' ?>">
-            <?= !empty($sig['active']) ? 'Desativar assinatura' : 'Ativar nos contratos' ?>
-          </button>
-        </form>
-      </div>
-    <?php endif; ?>
-  <?php else: ?>
-    <form method="post" action="/app/configuracoes/assinatura" enctype="multipart/form-data">
-      <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
-      <label class="label">Arquivo da assinatura</label>
-      <?php if (!empty($sig['image'])): ?>
-        <div class="lh-logo-preview sig-preview"><img src="<?= e($sig['image']) ?>" alt=""></div>
-        <label class="check-row"><input type="checkbox" name="remove_signature" value="1"> Remover imagem atual</label>
+  <?php if ($sigReady): ?>
+    <div class="lh-status" style="margin-bottom:12px">
+      <?php if (!empty($sig['active'])): ?>
+        <span class="badge" style="background:#dcfce7;color:#166534">Automática nos contratos</span>
+      <?php else: ?>
+        <span class="badge" style="background:#fef9c3;color:#854d0e">Salva · desligada</span>
       <?php endif; ?>
-      <input class="input" type="file" name="signature" accept="image/jpeg,image/png,image/webp" <?= empty($sig['image']) ? 'required' : '' ?>>
-      <p class="settings-hint">Somente imagem: JPEG, PNG ou WEBP · até 200 KB. Depois de salvar, ative para aparecer no rodapé dos contratos.</p>
-      <div class="settings-actions">
-        <a class="btn btn-ghost" href="/app/configuracoes?tab=avancado">Cancelar</a>
-        <button class="btn btn-primary">Salvar assinatura</button>
-      </div>
-    </form>
+    </div>
   <?php endif; ?>
+  <form method="post" action="/app/configuracoes/assinatura" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
+    <input type="hidden" name="sig_active" value="0">
+    <label class="label">Arquivo da assinatura</label>
+    <?php if (!empty($sig['image'])): ?>
+      <div class="lh-logo-preview sig-preview"><img src="<?= e($sig['image']) ?>" alt="Assinatura"></div>
+      <label class="check-row"><input type="checkbox" name="remove_signature" value="1"> Remover imagem atual</label>
+    <?php endif; ?>
+    <input class="input" type="file" name="signature" accept="image/jpeg,image/png,image/webp" <?= empty($sig['image']) ? 'required' : '' ?>>
+    <p class="settings-hint">JPEG, PNG ou WEBP · até 200 KB. Fundo claro funciona melhor no PDF.</p>
+    <label class="check-row" style="margin-top:10px">
+      <input type="checkbox" name="sig_active" value="1" <?= empty($sig['image']) || !empty($sig['active']) ? 'checked' : '' ?>>
+      Usar automaticamente nos contratos
+    </label>
+    <div class="settings-actions">
+      <button class="btn btn-primary">Salvar assinatura</button>
+    </div>
+  </form>
 </div>
 
 <div class="card settings-panel lh-panel" style="margin-top:14px">

@@ -1232,7 +1232,9 @@ if (str_starts_with($path, '/app')) {
                 redirect('/app/configuracoes?tab=avancado&edit=assinatura');
             }
             signature_save($tid, $cfg);
-            flash('Assinatura eletrônica salva. Agora você pode ativá-la nos contratos.');
+            flash(!empty($cfg['active'])
+                ? 'Assinatura salva. Ela entra sozinha no rodapé dos contratos gerados.'
+                : 'Assinatura salva e desligada nos contratos.');
             redirect('/app/configuracoes?tab=avancado');
         }
         if ($path === '/app/configuracoes/assinatura/ativar') {

@@ -537,8 +537,8 @@ window.FS_ASSIST_FLOW = {
     },
     config_avancado: {
       texts: [
-        "Em **Avançado**: cor/aparência, **menu principal** (para onde o logo leva), campos extras, cabeçalho de folha, assinatura de contratos e cláusulas.",
-        "Folha e assinatura só entram nos PDFs/contratos quando estão ativas. A assinatura não aparece no restante do CRM."
+        "Em **Avançado**: cor/aparência, **menu principal** (para onde o logo leva), campos extras, cabeçalho de folha, **assinatura nos contratos** e cláusulas.",
+        "Envie a imagem da assinatura em Configurações → Avançado. Ela entra sozinha no rodapé dos contratos. Dá para desligar no mesmo card."
       ],
       choices: [
         { label: "Contratos e cláusulas", next: "config_contratos" },
@@ -549,7 +549,7 @@ window.FS_ASSIST_FLOW = {
     config_contratos: {
       texts: [
         "Em cláusulas você cria contratos, marca os agendamentos envolvidos e edita o texto. Salve na própria tela de contratos.",
-        "Ative a assinatura só quando o arquivo estiver certo: ela é aplicada aos contratos, não à lista do dia a dia."
+        "Ative a folha quando o cabeçalho estiver certo. A **assinatura** entra sozinha nos contratos depois do upload em Avançado."
       ],
       choices: [
         { label: "Mais sobre Avançado", next: "config_avancado" },

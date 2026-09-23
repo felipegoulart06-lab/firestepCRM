@@ -122,13 +122,13 @@ function build_pdf(string $title, array $lines, ?array $tenant = null): string
         }
         $stream .= "ET";
         if ($sigId && $sigJpeg && $index === $total - 1) {
-            $sh = 40;
-            $sw = $sigJpeg['w'] > 0 ? (int)round($sh * $sigJpeg['w'] / $sigJpeg['h']) : 90;
-            $sw = max(48, min(140, $sw));
+            $sh = 56;
+            $sw = $sigJpeg['w'] > 0 ? (int)round($sh * $sigJpeg['w'] / $sigJpeg['h']) : 110;
+            $sw = max(64, min(180, $sw));
             $sx = 595 - 48 - $sw;
             $stream .= "0 0 0 rg\n";
-            $stream .= sprintf("q %d 0 0 %d %d 42 cm /ImS Do Q\n", $sw, $sh, $sx);
-            $stream .= "BT /F1 7 Tf $sx 32 Td (Assinatura eletronica) Tj ET\n";
+            $stream .= sprintf("q %d 0 0 %d %d 48 cm /ImS Do Q\n", $sw, $sh, $sx);
+            $stream .= "BT /F1 7 Tf $sx 36 Td (Assinatura) Tj ET\n";
         }
         $xparts = [];
         if ($imgId) {
