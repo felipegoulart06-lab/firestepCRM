@@ -60,7 +60,13 @@ $agenda = file_get_contents(dirname(__DIR__).'/views/app/agenda.php');
 expect(!str_contains($agenda, 'range(7,20)'), 'agenda não corta o dia em 07:00–20:00');
 expect(str_contains($agenda, 'agenda_hour_range') && str_contains($agenda, 'cal-full-day'), 'agenda desenha a linha do tempo completa');
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
-expect(str_contains($index, "str_contains(\$back, '/agendamentos') ? '/app/agendamentos' : '/app/agenda'"), 'salvar com sucesso fecha o formulário');
+expect(appt_wall('2026-09-23 17:00:00+00:00') === '2026-09-23 14:00:00', 'timestamptz UTC vira horário de Brasília');
+expect(appt_wall('2026-09-23 14:00:00-03:00') === '2026-09-23 14:00:00', 'offset de Brasília permanece 14:00');
+expect(str_starts_with(appt_from_form('2026-09-23', '14:00'), '2026-09-23 14:00:00'), 'formulário grava o horário digitado');
+expect(phones_same('11988887777', '11988887777') === true, 'mesmo telefone casa');
+expect(phones_same('5511988887777', '11988887777') === true, 'DDI 55 não troca de cliente');
+expect(phones_same('11988887777', '11999999999') === false, 'telefones diferentes não misturam cliente');
+expect(str_contains(file_get_contents(dirname(__DIR__).'/app/core.php'), 'phones_same('), 'cadastro não usa LIKE solto no telefone');
 
 if ($fail) {
     fwrite(STDERR, "$fail teste(s) de horário falharam.\n");

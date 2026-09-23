@@ -65,10 +65,14 @@ function create_tenant_panel(array $in, ?string $actor = null): array
 
 function find_or_create_client(string $tenant, string $name, ?string $phone, ?string $email, string $source = 'Webhook', ?string $whatsapp = null, array $attribution = []): array
 {
-    $digits = $phone ? preg_replace('/\D/', '', $phone) : '';
-    if ($digits) {
-        $c = one('SELECT * FROM clients WHERE tenant_id=? AND (phone LIKE ? OR whatsapp LIKE ?) LIMIT 1', [$tenant, "%$digits%", "%$digits%"]);
-        if ($c) return $c;
+    $digits = $phone ? phone_digits($phone) : '';
+    if (strlen($digits) >= 8) {
+        $candidates = all('SELECT * FROM clients WHERE tenant_id=?', [$tenant]);
+        foreach ($candidates as $c) {
+            if (phones_same($digits, phone_digits($c['phone'] ?? '')) || phones_same($digits, phone_digits($c['whatsapp'] ?? ''))) {
+                return $c;
+            }
+        }
     }
     if ($email) {
         $c = one('SELECT * FROM clients WHERE tenant_id=? AND lower(email)=lower(?) LIMIT 1', [$tenant, $email]);
@@ -287,9 +291,11 @@ function create_appointment(array $tenant, array $in): array
         return ['ok'=>false,'message'=>'Selecione o serviço. A duração cadastrada define quanto tempo o horário precisa ficar livre.'];
     }
     $dur = service_span_minutes($svc);
-    $start = $in['date'] . ' ' . substr((string)$in['start'], 0, 5) . ':00';
-    $end = date('Y-m-d H:i:s', strtotime($start) + $dur * 60);
-    if (outside_hours($tenant, $start, $end) && empty($in['allow_waiting'])) {
+    $start = appt_from_form((string)$in['date'], (string)$in['start'], $tenant);
+    $end = appt_shift($start, $dur, $tenant);
+    $startWall = appt_wall($start, $tenant);
+    $endWall = appt_wall($end, $tenant);
+    if (outside_hours($tenant, $startWall, $endWall) && empty($in['allow_waiting'])) {
         $label = business_hours_label($tenant, $in['date']);
         return ['ok'=>false,'message'=>'Fora do horário de funcionamento ('.$label.'). O término do serviço também precisa caber no expediente.'];
     }

@@ -137,6 +137,10 @@ function db(): PDO
             $options[PDO::ATTR_EMULATE_PREPARES] = true;
         }
         $pdo = new PDO($dsn, urldecode((string)($parts['user'] ?? 'postgres')), urldecode((string)($parts['pass'] ?? '')), $options);
+        try {
+            $pdo->exec("SET TIME ZONE 'America/Sao_Paulo'");
+        } catch (Throwable) {
+        }
         users_ensure_roles($pdo);
         require_once __DIR__ . '/coverage.php';
         coverage_ensure_schema();
@@ -323,6 +327,8 @@ function normalize_row(?array $row): ?array
             $row[$key] = 1;
         } elseif ($value === 'f' || $value === false) {
             $row[$key] = 0;
+        } elseif (is_string($value) && ($key === 'starts_at' || $key === 'ends_at')) {
+            $row[$key] = appt_wall($value);
         }
     }
     return $row;
@@ -782,6 +788,87 @@ function uid(): string
 function now(): string
 {
     return date('Y-m-d H:i:s');
+}
+
+function appt_timezone(?array $tenant = null): DateTimeZone
+{
+    $name = trim((string)($tenant['timezone'] ?? 'America/Sao_Paulo'));
+    if ($name === '') {
+        $name = 'America/Sao_Paulo';
+    }
+    try {
+        return new DateTimeZone($name);
+    } catch (Throwable) {
+        return new DateTimeZone('America/Sao_Paulo');
+    }
+}
+
+function appt_wall(?string $raw, ?array $tenant = null): string
+{
+    $raw = trim((string)$raw);
+    if ($raw === '') {
+        return '';
+    }
+    try {
+        $dt = new DateTimeImmutable($raw);
+        return $dt->setTimezone(appt_timezone($tenant))->format('Y-m-d H:i:s');
+    } catch (Throwable) {
+        $norm = str_replace('T', ' ', $raw);
+        if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/', $norm, $m)) {
+            return $m[1];
+        }
+        return substr($norm, 0, 19);
+    }
+}
+
+function appt_from_form(string $date, string $start, ?array $tenant = null): string
+{
+    $date = substr(trim($date), 0, 10);
+    if (!preg_match('/^\d{2}:\d{2}/', trim($start), $hm)) {
+        $hm = ['09:00'];
+    }
+    $tz = appt_timezone($tenant);
+    $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i', $date.' '.substr($hm[0], 0, 5), $tz);
+    if (!$dt) {
+        return $date.' '.substr($hm[0], 0, 5).':00';
+    }
+    return is_pgsql() ? $dt->format('Y-m-d H:i:sP') : $dt->format('Y-m-d H:i:s');
+}
+
+function appt_shift(string $startSql, int $minutes, ?array $tenant = null): string
+{
+    try {
+        $dt = new DateTimeImmutable($startSql);
+        $end = $dt->modify('+'.max(1, $minutes).' minutes');
+        if (is_pgsql() && preg_match('/[+-]\d{2}:?\d{2}$|[zZ]$/', $startSql)) {
+            return $end->format('Y-m-d H:i:sP');
+        }
+        return $end->setTimezone(appt_timezone($tenant))->format('Y-m-d H:i:s');
+    } catch (Throwable) {
+        return date('Y-m-d H:i:s', (int)strtotime($startSql) + max(1, $minutes) * 60);
+    }
+}
+
+function phone_digits(?string $v): string
+{
+    return preg_replace('/\D+/', '', (string)$v) ?? '';
+}
+
+function phones_same(string $a, string $b): bool
+{
+    if ($a === '' || $b === '') {
+        return false;
+    }
+    if ($a === $b) {
+        return true;
+    }
+    $strip = static function (string $d): string {
+        if (str_starts_with($d, '55') && strlen($d) >= 12) {
+            return substr($d, 2);
+        }
+        return $d;
+    };
+    return $strip($a) === $strip($b);
 }
 
 function e(?string $v): string

@@ -691,9 +691,11 @@ if (str_starts_with($path, '/app')) {
                     flash('Para alterar um agendamento, use Agendamentos > Editar.');
                     redirect('/app/agendamentos?ver='.urlencode((string)$id));
                 }
-                $start = post('date').' '.post('start').':00';
-                $end = date('Y-m-d H:i:s', strtotime($start) + service_span_minutes($svc)*60);
-                if (outside_hours($tenant, $start, $end)) {
+                $start = appt_from_form((string)post('date'), (string)post('start'), $tenant);
+                $end = appt_shift($start, service_span_minutes($svc), $tenant);
+                $startWall = appt_wall($start, $tenant);
+                $endWall = appt_wall($end, $tenant);
+                if (outside_hours($tenant, $startWall, $endWall)) {
                     bounce_form('/app/agendamentos?edit='.urlencode((string)$id), 'Fora do horário de funcionamento ('.business_hours_label($tenant, (string)post('date')).'). O término do serviço também precisa caber no expediente.');
                 }
                 $conflict = find_slot_conflict($tid, $start, $end, $id);
