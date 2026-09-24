@@ -1074,6 +1074,38 @@ function service_price_kind(?array $s): string
     return in_array($k, ['priced', 'convenio', 'cortesia', 'reuniao'], true) ? $k : 'priced';
 }
 
+function service_duration_parts(?array $s): array
+{
+    $total = max(0, (int)($s['duration_minutes'] ?? 60));
+    return [intdiv($total, 60), $total % 60];
+}
+
+function service_duration_label(int $minutes): string
+{
+    $minutes = max(0, $minutes);
+    $h = intdiv($minutes, 60);
+    $m = $minutes % 60;
+    if ($h > 0 && $m > 0) {
+        return $h.' h '.$m.' min';
+    }
+    if ($h > 0) {
+        return $h.' h';
+    }
+    return $m.' min';
+}
+
+function parse_service_duration(): int
+{
+    if (isset($_POST['duration_hours']) || isset($_POST['duration_mins'])) {
+        $hours = max(0, min(24, (int)($_POST['duration_hours'] ?? 0)));
+        $mins = max(0, min(59, (int)($_POST['duration_mins'] ?? 0)));
+        $total = ($hours * 60) + $mins;
+    } else {
+        $total = (int)($_POST['duration_minutes'] ?? 60);
+    }
+    return max(5, min(24 * 60, $total));
+}
+
 function service_price_label(?array $s): string
 {
     $k = service_price_kind($s);

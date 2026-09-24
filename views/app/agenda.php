@@ -76,21 +76,43 @@ foreach ($days ?? [] as $d) {
       <div class="cal-time"><?= sprintf('%02d:00',$h) ?></div>
       <?php foreach ($days as $d):
         $ymd = date('Y-m-d', $d);
-        $cell = array_values(array_filter($events, function($ev) use ($ymd,$h) {
-            return substr($ev['start'],0,10)===$ymd && (int)substr($ev['start'],11,2)===$h;
+        $covering = array_values(array_filter($events, function($ev) use ($ymd,$h) {
+            return function_exists('agenda_event_covers_hour')
+                ? agenda_event_covers_hour($ev, $ymd, $h)
+                : (substr($ev['start'],0,10)===$ymd && (int)substr($ev['start'],11,2)===$h);
         }));
-        $slotN = count($cell);
+        $starting = array_values(array_filter($covering, function($ev) use ($ymd,$h) {
+            return function_exists('agenda_event_starts_in_hour')
+                ? agenda_event_starts_in_hour($ev, $ymd, $h)
+                : true;
+        }));
+        $continuing = array_values(array_filter($covering, function($ev) use ($ymd,$h) {
+            return function_exists('agenda_event_starts_in_hour') && !agenda_event_starts_in_hour($ev, $ymd, $h);
+        }));
+        $slotN = count($covering);
         $level = max(agenda_busy_level($dayCounts[$ymd] ?? 0), $slotN >= 6 ? 4 : ($slotN >= 4 ? 3 : ($slotN >= 2 ? 2 : 1)));
+        $hrefEv = function(array $ev) use ($ymd, $view): string {
+            if ($ev['kind']==='block') return '/app/agenda?delblock='.$ev['id'];
+            if ($ev['kind']==='request') return '/app/solicitacoes?ver='.$ev['id'];
+            if ($ev['kind']==='note') return '/app/anotacoes?ver='.$ev['id'];
+            return '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id'];
+        };
       ?>
-        <div class="slot" data-density="<?= (int)$level ?>" data-n="<?= (int)$slotN ?>">
-          <?php foreach ($cell as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
+        <div class="slot<?= $covering ? ' is-occupied' : '' ?>" data-density="<?= (int)$level ?>" data-n="<?= (int)$slotN ?>">
+          <?php foreach ($starting as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
             <a class="ev <?= $ev['kind']==='request'?'ev-request':'' ?>" style="background:<?= $c[0] ?>;border-left:3px solid <?= $c[1] ?>;color:<?= $c[2] ?>"
-               href="<?= $ev['kind']==='block' ? '/app/agenda?delblock='.$ev['id'] : ($ev['kind']==='request' ? '/app/solicitacoes?ver='.$ev['id'] : ($ev['kind']==='note' ? '/app/anotacoes?ver='.$ev['id'] : '/app/agenda?view='.e($view).'&date='.$ymd.'&ver='.$ev['id'])) ?>">
-              <b><?= e(substr($ev['start'],11,5)) ?> · <?= e($ev['title']) ?></b>
+               href="<?= $hrefEv($ev) ?>">
+              <b><?= e(substr($ev['start'],11,5)) ?><?= !empty($ev['end']) ? '–'.e(substr($ev['end'],11,5)) : '' ?> · <?= e($ev['title']) ?></b>
               <div><?= $ev['kind']==='request'?'Solicitação · ':($ev['kind']==='note'?'Anotação · ':'') ?><?= e($ev['subtitle'] ?? ($ev['kind']==='block'?'Bloqueio':'')) ?><?= !empty($ev['source']) && $ev['kind']!=='note'?' · '.e($ev['source']):'' ?></div>
             </a>
           <?php endforeach; ?>
-          <?php if (!$cell): ?>
+          <?php foreach ($continuing as $ev): $c = ev_color($ev['kind'], $ev['status'] ?? ''); ?>
+            <a class="ev ev-span <?= $ev['kind']==='request'?'ev-request':'' ?>" style="background:<?= $c[0] ?>;border-left:3px solid <?= $c[1] ?>;color:<?= $c[2] ?>"
+               href="<?= $hrefEv($ev) ?>" title="<?= e(substr($ev['start'],11,5).'–'.substr((string)($ev['end'] ?? ''),11,5).' '.$ev['title']) ?>">
+              <b><?= e($ev['title']) ?></b>
+            </a>
+          <?php endforeach; ?>
+          <?php if (!$covering): ?>
             <a class="slot-add" href="/app/agenda?new=1&date=<?= $ymd ?>&start=<?= sprintf('%02d:00',$h) ?>&view=<?= e($view) ?>"></a>
           <?php endif; ?>
         </div>

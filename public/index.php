@@ -1055,7 +1055,7 @@ if (str_starts_with($path, '/app')) {
             }
             $fields = [
                 post('name'), post('category'), post('description'),
-                max(5, (int)post('duration_minutes','60')), max(0, (int)post('buffer_minutes','0')),
+                parse_service_duration(), max(0, (int)post('buffer_minutes','0')),
                 (float)$pricing['price'], (float)$pricing['deposit'], (string)$pricing['price_kind'], post('color','#2563eb'),
                 post('location_type','presencial'), post('location_note'),
                 isset($_POST['bookable_online']) ? db_bool(true) : db_bool(false), isset($_POST['requires_confirmation']) ? db_bool(true) : db_bool(false),

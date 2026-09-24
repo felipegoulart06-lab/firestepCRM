@@ -145,6 +145,12 @@ body.is-modal-open .sidebar{pointer-events:auto;overflow:visible}
 .cal-full-day .slot{min-height:44px}
 .cal-full-day .slot-add{min-height:36px}
 .cal-full-day .cal-time{padding:4px 6px}
+.slot.is-occupied{background:#f8fafc;cursor:default}
+.slot.is-occupied .slot-add{display:none!important;pointer-events:none}
+.ev-span{min-height:calc(100% - 8px);display:flex;align-items:center}
+.duration-inputs{display:flex;gap:10px;align-items:end}
+.duration-inputs label{display:flex;flex-direction:column;gap:4px;flex:1;font-size:12px;color:#667085;font-weight:600}
+.duration-picks{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
 .slot:hover{background:#f8fafc}
 .calendar-month{overflow:hidden;background:#fff;color:var(--text)}
 .cal-month-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#f8fafc;border-bottom:1px solid var(--line)}

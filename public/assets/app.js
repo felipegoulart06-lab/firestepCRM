@@ -233,6 +233,21 @@ function bindServicePrice(){
     sync();
   });
 }
+function bindServiceDuration(){
+  document.querySelectorAll('.js-duration-preset').forEach(function(btn){
+    if (btn.dataset.durationBound) return;
+    btn.dataset.durationBound = '1';
+    btn.addEventListener('click', function(){
+      const form = btn.closest('form');
+      if (!form) return;
+      const total = Number(btn.getAttribute('data-min') || 0);
+      const hours = form.querySelector('[name="duration_hours"]');
+      const mins = form.querySelector('[name="duration_mins"]');
+      if (hours) hours.value = String(Math.floor(total / 60));
+      if (mins) mins.value = String(total % 60);
+    });
+  });
+}
 function bindHoursGuard(){
   document.querySelectorAll('form[data-hours-guard], form[data-hours]').forEach(function(form){
     if (form.dataset.hoursBound) return;
@@ -1195,6 +1210,7 @@ function firestepHydrate(){
   bindHoursGuard();
   bindCommissionBox();
   bindServicePrice();
+  bindServiceDuration();
   bindReportsExplorer();
   bindLetterhead();
   bindFinancePay();

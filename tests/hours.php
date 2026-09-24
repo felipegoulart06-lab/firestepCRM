@@ -49,6 +49,17 @@ $def = ['business_hours' => json_encode(default_hours(), JSON_UNESCAPED_UNICODE)
 expect(outside_hours($def, '2026-09-14 10:00:00', '2026-09-14 11:00:00') === false, 'expediente padrão aceita 10h');
 expect(count(agenda_hour_range($thu, [])) === 24, 'linha do tempo do dia tem 24 horas');
 
+$span = ['start' => '2026-09-24 09:00:00', 'end' => '2026-09-24 17:00:00'];
+expect(agenda_event_covers_hour($span, '2026-09-24', 9) === true, '8h ocupa 09:00');
+expect(agenda_event_covers_hour($span, '2026-09-24', 12) === true, '8h ocupa 12:00');
+expect(agenda_event_covers_hour($span, '2026-09-24', 16) === true, '8h ocupa 16:00');
+expect(agenda_event_covers_hour($span, '2026-09-24', 17) === false, '8h 09–17 não ocupa 17:00');
+expect(agenda_event_starts_in_hour($span, '2026-09-24', 9) === true, 'começa às 09:00');
+expect(agenda_event_starts_in_hour($span, '2026-09-24', 12) === false, '12:00 é continuação');
+$_POST = ['duration_hours' => '8', 'duration_mins' => '0'];
+expect(parse_service_duration() === 480, 'cadastro aceita 8 horas');
+expect(service_duration_label(480) === '8 h', 'rótulo de 8 horas');
+
 $js = file_get_contents(dirname(__DIR__).'/public/assets/app.js');
 expect(!str_contains($js, "t.classList.contains('overlay') || t.classList.contains('token-modal')"), 'clique no fundo do overlay não fecha o formulário');
 expect(str_contains($js, 'bindHoursGuard') && str_contains($js, 'js-hours-json'), 'formulário lê horários sem depender de atributo HTML');
@@ -59,6 +70,9 @@ expect(str_contains($modal, 'data-hours-guard') && str_contains($modal, 'js-hour
 $agenda = file_get_contents(dirname(__DIR__).'/views/app/agenda.php');
 expect(!str_contains($agenda, 'range(7,20)'), 'agenda não corta o dia em 07:00–20:00');
 expect(str_contains($agenda, 'agenda_hour_range') && str_contains($agenda, 'cal-full-day'), 'agenda desenha a linha do tempo completa');
+expect(str_contains($agenda, 'agenda_event_covers_hour') && str_contains($agenda, 'is-occupied'), 'duração longa ocupa os quadrados da agenda');
+$svcUi = file_get_contents(dirname(__DIR__).'/views/app/servicos.php');
+expect(str_contains($svcUi, 'name="duration_hours"') && str_contains($svcUi, '8 h'), 'formulário de serviço tem duração em horas');
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
 expect(appt_wall('2026-09-23 17:00:00+00:00') === '2026-09-23 14:00:00', 'timestamptz UTC vira horário de Brasília');
 expect(appt_wall('2026-09-23 14:00:00-03:00') === '2026-09-23 14:00:00', 'offset de Brasília permanece 14:00');

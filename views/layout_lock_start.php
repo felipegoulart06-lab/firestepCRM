@@ -6,7 +6,7 @@
 <title><?= e($lockTitle ?? 'Definir senha · FirestepCRM') ?></title>
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="/assets/app.css?v=r45">
+<link rel="stylesheet" href="/assets/app.css?v=r46">
 </head>
 <body class="lock-body<?= !empty($billingLock) ? ' billing-lock' : '' ?>">
 <main class="lock-wrap">

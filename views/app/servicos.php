@@ -52,7 +52,7 @@ $flagOn = static fn($v) => !empty($v) && $v !== '0' && $v !== 'f' && $v !== 'fal
         <tr>
           <td><div class="service-name"><i style="background:<?= e($s['color']) ?>"></i><div><strong><?= e($s['name']) ?></strong><small><?= e($s['description'] ?: 'Sem descrição') ?></small></div></div></td>
           <td><?= e($s['category'] ?: '—') ?></td>
-          <td><?= (int)$s['duration_minutes'] ?> min<?= !empty($s['buffer_minutes']) ? ' + '.(int)$s['buffer_minutes'].' int.' : '' ?></td>
+          <td><?= e(service_duration_label((int)$s['duration_minutes'])) ?><?= !empty($s['buffer_minutes']) ? ' + '.(int)$s['buffer_minutes'].' int.' : '' ?></td>
           <td>
             <strong><?= e(service_price_label($s)) ?></strong>
             <?php if (service_price_kind($s)==='priced' && !empty($s['deposit'])): ?><small style="display:block;color:#667085">Sinal <?= e(money((float)$s['deposit'])) ?></small><?php endif; ?>
@@ -86,7 +86,7 @@ $flagOn = static fn($v) => !empty($v) && $v !== '0' && $v !== 'f' && $v !== 'fal
         <h2><?= e($s['name']) ?></h2>
         <div class="service-category"><?= e($s['category'] ?: 'Sem categoria') ?></div>
         <p><?= e($s['description'] ?: 'Nenhuma descrição cadastrada.') ?></p>
-        <div class="service-data"><span><?= (int)$s['duration_minutes'] ?> min · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(service_price_label($s)) ?></strong></div>
+        <div class="service-data"><span><?= e(service_duration_label((int)$s['duration_minutes'])) ?> · <?= e(service_location_label($s['location_type'] ?? null)) ?></span><strong><?= e(service_price_label($s)) ?></strong></div>
         <div class="row-actions" style="justify-content:flex-start;margin-top:8px">
           <a class="btn btn-ghost" href="/app/servicos?ver=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Ver detalhes</a>
           <a class="btn btn-ghost" href="/app/servicos?edit=<?= e($s['id']) ?><?= $listQs !== '' ? '&'.$listQs : '' ?>">Editar</a>
@@ -120,7 +120,7 @@ if ($viewing):
       <div class="detail-item"><small>Status</small><strong><?= ($viewing['status'] ?? '')==='INACTIVE' ? 'Inativo' : 'Ativo' ?></strong></div>
       <div class="detail-item"><small>Categoria</small><strong><?= e($viewing['category'] ?: '—') ?></strong></div>
       <div class="detail-item"><small>Preço</small><strong><?= e(service_price_label($viewing)) ?><?= $vk==='priced' && !empty($viewing['deposit']) ? ' · sinal '.e(money((float)$viewing['deposit'])) : '' ?></strong></div>
-      <div class="detail-item"><small>Duração</small><strong><?= (int)$viewing['duration_minutes'] ?> min<?= !empty($viewing['buffer_minutes']) ? ' + '.(int)$viewing['buffer_minutes'].' int.' : '' ?></strong></div>
+      <div class="detail-item"><small>Duração</small><strong><?= e(service_duration_label((int)$viewing['duration_minutes'])) ?><?= !empty($viewing['buffer_minutes']) ? ' + '.(int)$viewing['buffer_minutes'].' int.' : '' ?></strong></div>
       <div class="detail-item"><small>Local</small><strong><?= e(service_location_label($viewing['location_type'] ?? null)) ?></strong></div>
       <div class="detail-item"><small>Capacidade</small><strong><?= (int)($viewing['capacity'] ?? 1) ?></strong></div>
       <div class="detail-item"><small>Antecedência / agenda</small><strong><?= (int)($viewing['min_notice_hours'] ?? 0) ?> h mín. · até <?= (int)($viewing['max_advance_days'] ?? 60) ?> dias</strong></div>
@@ -186,8 +186,24 @@ if ($viewing):
     <textarea class="textarea" name="description" rows="3"><?= e(old_fill($oldSvc, 'description', $s['description'] ?? '')) ?></textarea>
 
     <h3 class="form-section">Agenda e valor</h3>
+    <?php [$durH, $durM] = service_duration_parts($s ?: ['duration_minutes' => old_fill($oldSvc, 'duration_minutes', '60')]);
+          $durH = (int)old_fill($oldSvc, 'duration_hours', (string)$durH);
+          $durM = (int)old_fill($oldSvc, 'duration_mins', (string)$durM);
+    ?>
     <div class="grid g2">
-      <div><label class="label">Duração (min)</label><input class="input" type="number" min="5" name="duration_minutes" value="<?= e(old_fill($oldSvc, 'duration_minutes', (string)($s['duration_minutes'] ?? 60))) ?>"></div>
+      <div>
+        <label class="label">Duração</label>
+        <div class="duration-inputs">
+          <label><input class="input" type="number" min="0" max="24" name="duration_hours" value="<?= e((string)$durH) ?>" inputmode="numeric"> <span>horas</span></label>
+          <label><input class="input" type="number" min="0" max="59" name="duration_mins" value="<?= e((string)$durM) ?>" inputmode="numeric"> <span>min</span></label>
+        </div>
+        <div class="duration-picks" role="group" aria-label="Durações rápidas">
+          <?php foreach ([30 => '30 min', 60 => '1 h', 120 => '2 h', 240 => '4 h', 480 => '8 h'] as $mins => $lab): ?>
+            <button type="button" class="btn btn-ghost js-duration-preset" data-min="<?= (int)$mins ?>"><?= e($lab) ?></button>
+          <?php endforeach; ?>
+        </div>
+        <p class="settings-hint">Pode ser longo, por exemplo 8 horas. Na agenda do dia esse tempo inteiro fica ocupado.</p>
+      </div>
       <div><label class="label">Intervalo (min)</label><input class="input" type="number" min="0" name="buffer_minutes" value="<?= e(old_fill($oldSvc, 'buffer_minutes', (string)($s['buffer_minutes'] ?? 0))) ?>"></div>
     </div>
     <p class="label" style="margin-top:10px">Este serviço possui preço?</p>

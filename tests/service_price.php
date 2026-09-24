@@ -45,6 +45,7 @@ expect(str_contains($view, 'service_price_label($s)'), 'cards e tabela usam o r�
 expect(str_contains($view, "\$_GET['view'] ?? 'cards'") && str_contains($view, 'service-grid'), 'lista abre em cards');
 expect(str_contains($view, 'Ver detalhes') && str_contains($view, 'Detalhes do serviço'), 'serviço tem visualização só leitura');
 expect(str_contains($js, 'bindServicePrice') && str_contains($js, 'maskReais'), 'máscara força reais x,xx');
+expect(str_contains($js, 'bindServiceDuration') && str_contains($view, 'js-duration-preset'), 'atalhos de duração longa no cadastro');
 
 if ($fail) {
     fwrite(STDERR, "$fail teste(s) de preço de serviço falharam.\n");
