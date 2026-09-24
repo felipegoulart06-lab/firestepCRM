@@ -147,7 +147,7 @@ function communicate_template_of(array $tenant, string $kind): array
 {
     $tpl = communicate_templates_all($tenant)[$kind] ?? null;
     if (!is_array($tpl)) {
-        return ['intro' => null, 'outro' => null, 'selected' => null];
+        return ['intro' => null, 'outro' => null, 'selected' => null, 'attach_pdf' => null, 'send_buttons' => null, 'buttons' => null];
     }
     $selected = $tpl['selected'] ?? null;
     if (is_array($selected)) {
@@ -159,10 +159,13 @@ function communicate_template_of(array $tenant, string $kind): array
         'intro' => array_key_exists('intro', $tpl) ? (string)$tpl['intro'] : null,
         'outro' => array_key_exists('outro', $tpl) ? (string)$tpl['outro'] : null,
         'selected' => $selected,
+        'attach_pdf' => array_key_exists('attach_pdf', $tpl) ? !empty($tpl['attach_pdf']) : null,
+        'send_buttons' => array_key_exists('send_buttons', $tpl) ? !empty($tpl['send_buttons']) : null,
+        'buttons' => is_array($tpl['buttons'] ?? null) ? array_values(array_slice($tpl['buttons'], 0, 3)) : null,
     ];
 }
 
-function communicate_template_save(string $tenantId, array &$tenant, string $kind, string $intro, string $outro, array $selected): void
+function communicate_template_save(string $tenantId, array &$tenant, string $kind, string $intro, string $outro, array $selected, array $extra = []): void
 {
     if (!isset(communicate_kinds()[$kind])) {
         return;
@@ -173,6 +176,9 @@ function communicate_template_save(string $tenantId, array &$tenant, string $kin
         'intro' => $intro,
         'outro' => $outro,
         'selected' => array_values(array_filter(array_map('strval', $selected), static fn(string $key): bool => $key !== '')),
+        'attach_pdf' => !empty($extra['attach_pdf']),
+        'send_buttons' => !empty($extra['send_buttons']),
+        'buttons' => is_array($extra['buttons'] ?? null) ? array_values(array_slice($extra['buttons'], 0, 3)) : [],
     ];
     $encoded = json_encode($all, JSON_UNESCAPED_UNICODE);
     $tenant['communicate_templates'] = $all;
@@ -199,6 +205,10 @@ function communicate_payload(string $kind, array $row, array $tenant): array
         'selected' => array_keys($vars),
         'intro' => 'Olá '.(string)($row['name'] ?? '').', tudo bem?',
         'outro' => '',
+        'can_pdf' => $kind === 'appointment',
+        'attach_pdf' => $kind === 'appointment',
+        'send_buttons' => false,
+        'buttons' => [['text' => '', 'type' => 'REPLY', 'id' => ''], ['text' => '', 'type' => 'URL', 'id' => ''], ['text' => '', 'type' => 'CALL', 'id' => '']],
     ];
     $tpl = communicate_template_of($tenant, $kind);
     if ($tpl['intro'] !== null) {
@@ -209,6 +219,17 @@ function communicate_payload(string $kind, array $row, array $tenant): array
     }
     if ($tpl['selected'] !== null) {
         $payload['selected'] = array_values(array_filter($tpl['selected'], static fn(string $key): bool => isset($vars[$key])));
+    }
+    if ($kind === 'appointment') {
+        if ($tpl['attach_pdf'] !== null) {
+            $payload['attach_pdf'] = !empty($tpl['attach_pdf']);
+        }
+        if ($tpl['send_buttons'] !== null) {
+            $payload['send_buttons'] = !empty($tpl['send_buttons']);
+        }
+        if ($tpl['buttons'] !== null && $tpl['buttons'] !== []) {
+            $payload['buttons'] = array_pad($tpl['buttons'], 3, ['text' => '', 'type' => 'REPLY', 'id' => '']);
+        }
     }
     return $payload;
 }
@@ -239,21 +260,43 @@ function communicate_back(string $kind, ?string $requested = null): string
     return str_starts_with($requested, $fallback) ? $requested : $fallback;
 }
 
-function communicate_send(array $tenant, string $kind, string $id, string $intro, array $selected, string $outro): array
+function communicate_buttons_from_post(): array
+{
+    $texts = is_array($_POST['btn_text'] ?? null) ? $_POST['btn_text'] : [];
+    $types = is_array($_POST['btn_type'] ?? null) ? $_POST['btn_type'] : [];
+    $values = is_array($_POST['btn_value'] ?? null) ? $_POST['btn_value'] : [];
+    if (!function_exists('finance_charge_normalize_buttons')) {
+        return [];
+    }
+    return finance_charge_normalize_buttons($texts, $types, $values);
+}
+
+function communicate_send(array $tenant, string $kind, string $id, string $intro, array $selected, string $outro, array $opts = []): array
 {
     $row = communicate_load((string)$tenant['id'], $kind, $id);
     if (!$row) {
         return ['ok' => false, 'message' => 'Registro não encontrado.'];
     }
     $message = communicate_message($intro, $selected, communicate_variables($kind, $row, $tenant), $outro);
-    if ($message === '') {
-        return ['ok' => false, 'message' => 'Escreva uma mensagem ou selecione pelo menos uma variável.'];
+    $attachPdf = $kind === 'appointment' && !empty($opts['attach_pdf']);
+    $buttonsApi = ($kind === 'appointment' && !empty($opts['send_buttons'])) ? ($opts['buttons_api'] ?? []) : [];
+    if ($message === '' && !$attachPdf) {
+        return ['ok' => false, 'message' => 'Escreva uma mensagem, selecione uma variável ou envie o PDF da reserva.'];
     }
-    communicate_template_save((string)$tenant['id'], $tenant, $kind, $intro, $outro, $selected);
-    return communicate_dispatch($tenant, $row, $message);
+    communicate_template_save((string)$tenant['id'], $tenant, $kind, $intro, $outro, $selected, [
+        'attach_pdf' => $attachPdf,
+        'send_buttons' => $buttonsApi !== [],
+        'buttons' => $opts['buttons'] ?? [],
+    ]);
+    return communicate_dispatch($tenant, $row, $message, [
+        'attach_pdf' => $attachPdf,
+        'buttons_api' => $buttonsApi,
+        'kind' => $kind,
+        'id' => $id,
+    ]);
 }
 
-function communicate_dispatch(array $tenant, array $row, string $message): array
+function communicate_dispatch(array $tenant, array $row, string $message, array $opts = []): array
 {
     $number = uazapi_wa_number(communicate_phone($row));
     if ($number === '') {
@@ -263,10 +306,65 @@ function communicate_dispatch(array $tenant, array $row, string $message): array
     if (!uazapi_ready($cfg)) {
         return ['ok' => false, 'message' => 'Configure o WhatsApp em Configurações → Integrações.'];
     }
-    $sent = uazapi_send_text($cfg, $number, $message);
-    return !empty($sent['ok'])
-        ? ['ok' => true, 'message' => 'Mensagem enviada com sucesso para o WhatsApp de '.$row['name'].'.']
-        : ['ok' => false, 'message' => (string)($sent['message'] ?? 'Não foi possível enviar a mensagem.')];
+    $who = (string)($row['name'] ?? 'destinatário');
+    $buttonsApi = is_array($opts['buttons_api'] ?? null) ? array_values($opts['buttons_api']) : [];
+    $attachPdf = !empty($opts['attach_pdf']);
+    $okAny = false;
+    $lastFail = 'Não foi possível enviar a mensagem.';
+
+    if ($buttonsApi !== [] && $message !== '') {
+        $btn = uazapi_send_buttons($cfg, $number, $message, $buttonsApi);
+        if (!empty($btn['ok'])) {
+            $okAny = true;
+        } else {
+            $lastFail = (string)($btn['message'] ?? $lastFail);
+            $txt = uazapi_send_text($cfg, $number, $message);
+            if (!empty($txt['ok'])) {
+                $okAny = true;
+            } else {
+                $lastFail = (string)($txt['message'] ?? $lastFail);
+            }
+        }
+    } elseif ($message !== '' && !$attachPdf) {
+        $sent = uazapi_send_text($cfg, $number, $message);
+        if (!empty($sent['ok'])) {
+            $okAny = true;
+        } else {
+            $lastFail = (string)($sent['message'] ?? $lastFail);
+        }
+    } elseif ($message !== '' && $attachPdf) {
+        // caption do PDF leva a mensagem; texto extra só se o documento falhar
+    }
+
+    if ($attachPdf) {
+        require_once __DIR__.'/pdf.php';
+        $pack = appointment_pdf_pack($tenant, $row);
+        $caption = $message !== '' && $buttonsApi === [] ? $message : 'Confirmação da reserva em PDF.';
+        $doc = uazapi_send_document($cfg, $number, $pack['bytes'], $pack['filename'], $caption);
+        if (!empty($doc['ok'])) {
+            $okAny = true;
+        } else {
+            $lastFail = (string)($doc['message'] ?? $lastFail);
+            if ($message !== '' && $buttonsApi === []) {
+                $txt = uazapi_send_text($cfg, $number, $message);
+                if (!empty($txt['ok'])) {
+                    $okAny = true;
+                }
+            }
+        }
+    }
+
+    if ($okAny) {
+        $bits = ['Mensagem enviada para o WhatsApp de '.$who];
+        if ($attachPdf) {
+            $bits[] = 'com o PDF de confirmação da reserva';
+        }
+        if ($buttonsApi !== []) {
+            $bits[] = 'e botões';
+        }
+        return ['ok' => true, 'message' => implode(' ', $bits).'.'];
+    }
+    return ['ok' => false, 'message' => $lastFail];
 }
 
 function communicate_automation_catalog(): array

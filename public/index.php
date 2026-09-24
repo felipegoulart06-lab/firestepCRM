@@ -569,13 +569,20 @@ if (str_starts_with($path, '/app')) {
                 redirect('/app');
             }
             $selected = array_values(array_filter(array_map('trim', explode(',', (string)post('selected', '')))));
+            $btnPack = communicate_buttons_from_post();
             $result = communicate_send(
                 $tenant,
                 $kind,
                 $id,
                 (string)post('intro', ''),
                 $selected,
-                (string)post('outro', '')
+                (string)post('outro', ''),
+                [
+                    'attach_pdf' => post('attach_pdf') === '1',
+                    'send_buttons' => post('send_buttons') === '1',
+                    'buttons_api' => post('send_buttons') === '1' ? ($btnPack['buttons_api'] ?? []) : [],
+                    'buttons' => post('send_buttons') === '1' ? ($btnPack['buttons'] ?? []) : [],
+                ]
             );
             flash((string)$result['message'], !empty($result['ok']) ? 'ok' : 'error');
             redirect(communicate_back($kind, (string)post('back', '')));

@@ -29,6 +29,33 @@ if ($communicateItems):
       <label class="label" for="communicate-outro">Mensagem final</label>
       <textarea class="textarea" name="outro" id="communicate-outro" rows="3" maxlength="1000" placeholder="Ex.: Em breve entraremos em contato."></textarea>
 
+      <div id="communicate-appt-extras" hidden>
+        <label class="check-row" style="margin-top:12px">
+          <input type="checkbox" name="attach_pdf" value="1" id="communicate-pdf">
+          Enviar PDF de confirmação da reserva (embutido na conversa)
+        </label>
+        <p class="settings-hint" style="margin:6px 0 0">O mesmo comprovante de Agendamentos → PDF, junto com os dados da mensagem.</p>
+        <label class="check-row" style="margin-top:12px">
+          <input type="checkbox" name="send_buttons" value="1" id="communicate-btns">
+          Incluir botões no WhatsApp
+        </label>
+        <div id="communicate-btn-box" hidden>
+          <p class="settings-hint">Até 3 botões: resposta, link, ligar ou copiar.</p>
+          <?php for ($i = 0; $i < 3; $i++): ?>
+          <div class="communicate-btn-row">
+            <input class="input" name="btn_text[]" maxlength="20" placeholder="Texto" data-btn-text>
+            <select class="select" name="btn_type[]" data-btn-type>
+              <option value="REPLY">Resposta</option>
+              <option value="URL">Link</option>
+              <option value="CALL">Ligar</option>
+              <option value="COPY">Copiar</option>
+            </select>
+            <input class="input" name="btn_value[]" maxlength="500" placeholder="Link, telefone ou texto" data-btn-value>
+          </div>
+          <?php endfor; ?>
+        </div>
+      </div>
+
       <label class="label communicate-preview-title">Pré-visualização</label>
       <div class="communicate-preview" id="communicate-preview"></div>
 

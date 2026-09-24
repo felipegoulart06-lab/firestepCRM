@@ -570,7 +570,7 @@ window.FS_ASSIST_FLOW = {
 
     comunicar: {
       texts: [
-        "**Comunicar** envia WhatsApp ao destinatário pela conexão da empresa.",
+        "**Comunicar** envia WhatsApp ao destinatário pela conexão da empresa. Em Agendamentos dá para embutir o PDF da reserva e até 3 botões.",
         "Em **Configurações → Comunicar** você liga envios automáticos: novo horário, confirmação, cancelamento, 1 dia antes e nova solicitação."
       ],
       choices: [

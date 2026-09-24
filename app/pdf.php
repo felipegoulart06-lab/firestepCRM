@@ -240,29 +240,31 @@ function tenant_dossier_pdf(array $tenant, ?array $admin, ?array $segment): stri
     ]);
 }
 
-function send_appointment_pdf(array $tenant, array $a): never
+function appointment_pdf_pack(array $tenant, array $a): array
 {
     $status = APPT_STATUS[$a['status'] ?? ''][0] ?? (string)($a['status'] ?? '—');
     $start = $a['starts_at'] ?? '';
     $end = $a['ends_at'] ?? '';
+    $client = (string)($a['client_name'] ?? $a['name'] ?? 'cliente');
     $lines = [
         'Empresa: '.($tenant['display_name'] ?: $tenant['business_name']),
         str_repeat('-', 80),
-        'Cliente: '.($a['client_name'] ?? '—'),
-        'Telefone: '.phone_fmt($a['client_phone'] ?: ($a['client_whatsapp'] ?? null)),
-        'WhatsApp: '.phone_fmt($a['client_whatsapp'] ?? null),
-        'E-mail: '.($a['client_email'] ?: 'Não informado'),
+        'Reserva: '.(function_exists('appointment_reserva_label') ? appointment_reserva_label($a) : '—'),
+        'Cliente: '.$client,
+        'Telefone: '.phone_fmt($a['client_phone'] ?? $a['phone'] ?? ($a['client_whatsapp'] ?? $a['whatsapp'] ?? null)),
+        'WhatsApp: '.phone_fmt($a['client_whatsapp'] ?? $a['whatsapp'] ?? null),
+        'E-mail: '.($a['client_email'] ?? $a['email'] ?? 'Não informado'),
         str_repeat('-', 80),
     ];
     if (!empty($a['service_name'])) {
         $lines[] = 'Serviço: '.$a['service_name'];
         $lines[] = 'Duração: '.(((int)($a['duration_minutes'] ?? 0)) > 0 ? (int)$a['duration_minutes'].' min' : '—');
     }
-    $lines[] = 'Data: '.($start ? date('d/m/Y', strtotime($start)) : '—');
-    $lines[] = 'Horário: '.($start && $end ? substr($start, 11, 5).' – '.substr($end, 11, 5) : '—');
+    $lines[] = 'Data: '.($start ? date('d/m/Y', strtotime((string)$start)) : '—');
+    $lines[] = 'Horário: '.($start && $end ? substr((string)$start, 11, 5).' – '.substr((string)$end, 11, 5) : '—');
     $lines[] = 'Status: '.$status;
     $lines[] = 'Origem: '.($a['source'] ?: '—');
-    $lines[] = 'Criado em: '.(!empty($a['created_at']) ? date('d/m/Y H:i', strtotime($a['created_at'])) : '—');
+    $lines[] = 'Criado em: '.(!empty($a['created_at']) ? date('d/m/Y H:i', strtotime((string)$a['created_at'])) : '—');
     if (!empty($a['notes'])) {
         $lines[] = 'Observações: '.$a['notes'];
     }
@@ -273,9 +275,25 @@ function send_appointment_pdf(array $tenant, array $a): never
     if ($utm) {
         $lines[] = 'Campanha: '.implode(' · ', $utm);
     }
-    $who = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string)($a['client_name'] ?? 'reserva'))) ?: 'reserva';
-    $when = $start ? date('Y-m-d-Hi', strtotime($start)) : date('Y-m-d');
-    download_pdf('Agendamento: '.($a['client_name'] ?? 'cliente'), $lines, 'agendamento-'.$who.'-'.$when.'.pdf', $tenant);
+    $who = preg_replace('/[^a-z0-9]+/i', '-', strtolower($client)) ?: 'reserva';
+    $when = $start ? date('Y-m-d-Hi', strtotime((string)$start)) : date('Y-m-d');
+    $title = 'Confirmacao de reserva: '.$client;
+    return [
+        'bytes' => build_pdf($title, $lines, $tenant),
+        'filename' => 'confirmacao-reserva-'.$who.'-'.$when.'.pdf',
+        'title' => $title,
+    ];
+}
+
+function send_appointment_pdf(array $tenant, array $a): never
+{
+    $pack = appointment_pdf_pack($tenant, $a);
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="'.$pack['filename'].'"');
+    header('Cache-Control: private, no-store');
+    header('Content-Length: '.strlen($pack['bytes']));
+    echo $pack['bytes'];
+    exit;
 }
 
 function send_tenant_dossier_pdf(array $tenant, ?array $admin, ?array $segment): never

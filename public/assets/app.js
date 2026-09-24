@@ -1047,6 +1047,10 @@ function bindCommunicate(){
   const vars = document.getElementById('communicate-vars');
   const selectedInput = document.getElementById('communicate-selected');
   const preview = document.getElementById('communicate-preview');
+  const extras = document.getElementById('communicate-appt-extras');
+  const pdfBox = document.getElementById('communicate-pdf');
+  const btnToggle = document.getElementById('communicate-btns');
+  const btnBox = document.getElementById('communicate-btn-box');
   let current = null;
   let selected = new Set();
   const lock = (on)=>{
@@ -1055,6 +1059,17 @@ function bindCommunicate(){
     document.body.classList.toggle('is-modal-open', on);
   };
   const close = ()=> lock(false);
+  const fillButtons = (rows)=>{
+    const texts = form.querySelectorAll('[data-btn-text]');
+    const types = form.querySelectorAll('[data-btn-type]');
+    const values = form.querySelectorAll('[data-btn-value]');
+    texts.forEach((el, i)=>{
+      const row = rows && rows[i] ? rows[i] : {};
+      el.value = String(row.text || row.label || '');
+      if (types[i]) types[i].value = String(row.type || 'REPLY');
+      if (values[i]) values[i].value = String(row.id || row.value || '');
+    });
+  };
   const render = ()=>{
     if (!current) return;
     const lines = [];
@@ -1067,6 +1082,8 @@ function bindCommunicate(){
     if (variableLines.length) lines.push(variableLines.join('\n'));
     const bottom = (outro?.value || '').trim();
     if (bottom) lines.push(bottom);
+    if (pdfBox?.checked) lines.push('[PDF de confirmação da reserva embutido]');
+    if (btnToggle?.checked) lines.push('[Com botões no WhatsApp]');
     if (preview) preview.textContent = lines.join('\n\n') || 'A mensagem aparecerá aqui.';
     if (selectedInput) selectedInput.value = Array.from(selected).join(',');
     vars?.querySelectorAll('button[data-key]').forEach(btn=>{
@@ -1085,6 +1102,12 @@ function bindCommunicate(){
       if (intro) intro.value = current.intro || '';
       if (outro) outro.value = current.outro || '';
       if (dest) dest.textContent = String(current.name || 'Destinatário')+' · '+String(current.phone || 'sem telefone');
+      const isAppt = (current.kind || '') === 'appointment';
+      if (extras) extras.hidden = !isAppt;
+      if (pdfBox) pdfBox.checked = isAppt && current.attach_pdf !== false;
+      if (btnToggle) btnToggle.checked = isAppt && !!current.send_buttons;
+      if (btnBox) btnBox.hidden = !btnToggle?.checked;
+      fillButtons(isAppt ? (current.buttons || []) : []);
       if (vars) {
         vars.innerHTML = '';
         Object.entries(current.variables || {}).forEach(([key, pair])=>{
@@ -1108,6 +1131,11 @@ function bindCommunicate(){
   document.querySelectorAll('.js-communicate-close').forEach(btn=> btn.addEventListener('click', close));
   intro?.addEventListener('input', render);
   outro?.addEventListener('input', render);
+  pdfBox?.addEventListener('change', render);
+  btnToggle?.addEventListener('change', ()=>{
+    if (btnBox) btnBox.hidden = !btnToggle.checked;
+    render();
+  });
   form?.addEventListener('submit', ()=>{
     form.querySelector('button[type="submit"]')?.setAttribute('disabled', 'disabled');
   });

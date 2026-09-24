@@ -174,6 +174,32 @@ function uazapi_send_text(array $cfg, string $number, string $text): array
     return uazapi_http($cfg, '/send/text', ['number' => $number, 'text' => $text]);
 }
 
+function uazapi_send_document(array $cfg, string $number, string $bytes, string $filename, string $caption = ''): array
+{
+    $b64 = base64_encode($bytes);
+    $body = [
+        'number' => $number,
+        'type' => 'document',
+        'file' => 'data:application/pdf;base64,'.$b64,
+        'docName' => $filename !== '' ? $filename : 'confirmacao-reserva.pdf',
+    ];
+    if (trim($caption) !== '') {
+        $body['text'] = $caption;
+    }
+    return uazapi_http($cfg, '/send/media', $body);
+}
+
+function uazapi_send_buttons(array $cfg, string $number, string $text, array $buttonsApi): array
+{
+    if ($buttonsApi === []) {
+        return ['ok' => false, 'message' => 'Nenhum botão informado.'];
+    }
+    return uazapi_send_carousel($cfg, $number, $text, [[
+        'text' => $text,
+        'buttons' => array_slice($buttonsApi, 0, 3),
+    ]]);
+}
+
 function uazapi_send_charge(array $tenant, array $card): array
 {
     $cfg = uazapi_config($tenant);

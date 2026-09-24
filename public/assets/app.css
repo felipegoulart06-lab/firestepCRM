@@ -230,7 +230,9 @@ body.is-modal-open .sidebar{pointer-events:auto;overflow:visible}
 .communicate-chip{appearance:none;border:1px solid #f59e0b;background:#fbbf24;color:#3b2800;border-radius:0;padding:6px 10px;font:600 11px/1.2 inherit;cursor:pointer}
 .communicate-chip.is-off{border-color:#d0d5dd;background:#fff;color:#667085;text-decoration:line-through;opacity:.72}
 .communicate-preview{min-height:100px;max-height:190px;overflow:auto;white-space:pre-wrap;padding:12px;border:1px solid var(--line);border-radius:6px;background:#f8fafc;color:#344054;font-size:13px;line-height:1.5}
-.communicate-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.communicate-btn-row{display:grid;grid-template-columns:1fr 120px 1fr;gap:6px;margin-top:6px}
+@media(max-width:640px){.communicate-btn-row{grid-template-columns:1fr}}
+#communicate-btn-box{margin-top:8px}
 @media(max-width:900px){.kanban,.kanban.is-compact{grid-template-columns:1fr 1fr}.kanban-col{max-height:320px;min-width:0}}
 @media(max-width:560px){.kanban,.kanban.is-compact{grid-template-columns:1fr}}
 .service-summary{display:flex;gap:22px;align-items:center;margin:-8px 0 12px;color:#667085;font-size:12px}.service-summary strong{color:#101828;font-size:14px;margin-right:3px}

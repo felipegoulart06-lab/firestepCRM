@@ -34,6 +34,7 @@ $payload = $payloads['appointment:ap-1'] ?? [];
 expect(($payload['name'] ?? '') === 'Maria Silva', 'agendamento usa o cliente como destinatário');
 expect(($payload['phone'] ?? '') === '11999999999', 'agendamento usa o telefone do cliente');
 expect(isset($payload['variables']['reserva'], $payload['variables']['servico']), 'agendamento oferece reserva e serviço');
+expect(!empty($payload['can_pdf']) && !empty($payload['attach_pdf']), 'agendamento já oferece o PDF de confirmação');
 expect(str_starts_with((string)$payload['intro'], 'Olá Maria Silva'), 'sem modelo salvo usa saudação padrão');
 
 $tenant['communicate_templates'] = [
@@ -95,6 +96,11 @@ foreach ($views as $file => $key) {
 
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
 expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pelo WhatsApp');
+expect(str_contains($index, 'attach_pdf') && str_contains($index, 'communicate_buttons_from_post'), 'envio aceita PDF e botões');
+$modal = file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');
+expect(str_contains($modal, 'attach_pdf') && str_contains($modal, 'Enviar PDF de confirmação'), 'container de Comunicar oferece o PDF da reserva');
+expect(str_contains($modal, 'send_buttons') && str_contains($modal, 'btn_text[]') && str_contains($modal, 'Incluir botões'), 'container de Comunicar oferece botões');
+expect(str_contains(file_get_contents(dirname(__DIR__).'/app/uazapi.php'), 'uazapi_send_document') && str_contains(file_get_contents(dirname(__DIR__).'/app/pdf.php'), 'appointment_pdf_pack'), 'PDF da reserva pode ir embutido no WhatsApp');
 expect(str_contains($index, 'communicate_template_save') || str_contains(file_get_contents(dirname(__DIR__).'/app/communicate.php'), 'communicate_template_save'), 'enviar grava o modelo do menu');
 expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
 $ui = file_get_contents(dirname(__DIR__).'/views/app/config.php').file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');
