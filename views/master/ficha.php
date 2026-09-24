@@ -26,7 +26,7 @@ $seg = trim(($segment['category'] ?? '').' · '.($segment['name'] ?? ''), ' ·')
 </div>
 <?php endif; ?>
 
-<div class="grid dash" style="grid-template-columns:1.3fr .9fr;align-items:start;gap:16px">
+<div class="grid dash" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start;gap:16px">
   <div class="card" style="padding:20px">
     <h2 style="margin:0 0 12px;font-size:16px">Dados do cliente</h2>
     <div class="detail-grid">
@@ -38,8 +38,20 @@ $seg = trim(($segment['category'] ?? '').' · '.($segment['name'] ?? ''), ' ·')
       <div class="detail-item"><small>Usuário</small><strong><?= e($admin['username'] ?? '—') ?></strong></div>
       <div class="detail-item"><small>Telefone</small><strong><?= e($tenant['phone'] ?: '—') ?></strong></div>
       <div class="detail-item"><small>WhatsApp</small><strong><?= e($tenant['whatsapp'] ?: '—') ?></strong></div>
-      <div class="detail-item detail-wide"><small>Cidade</small><strong><?= e(trim(($tenant['city'] ?? '').' / '.($tenant['state'] ?? ''), ' /') ?: '—') ?></strong></div>
+      <div class="detail-item"><small>Cidade</small><strong><?= e(trim(($tenant['city'] ?? '').' / '.($tenant['state'] ?? ''), ' /') ?: '—') ?></strong></div>
     </div>
+  </div>
+  <div class="card" style="padding:20px">
+    <h2 style="margin:0 0 8px;font-size:16px">Plano SaaS</h2>
+    <?php $bill = billing_sync($tenant); $snap = billing_of($bill); $lab = billing_status_label($snap['status']); $cyc = billing_cycles()[$snap['cycle']]['name'] ?? '—'; ?>
+    <p><span class="badge" style="background:<?= e($lab[2]) ?>;color:<?= e($lab[1]) ?>"><?= e($lab[0]) ?></span></p>
+    <div class="detail-grid" style="margin-top:12px">
+      <div class="detail-item"><small>Teste até</small><strong><?= e(date('d/m/Y', strtotime((string)$snap['trial_ends_at']))) ?></strong></div>
+      <div class="detail-item"><small>Pago até</small><strong><?= $snap['paid_until'] ? e(date('d/m/Y', strtotime((string)$snap['paid_until']))) : '—' ?></strong></div>
+      <div class="detail-item"><small>Ciclo</small><strong><?= e($cyc) ?></strong></div>
+      <div class="detail-item"><small>Comunicador</small><strong><?= $snap['communicate'] ? 'Incluso' : 'Sem adicional' ?></strong></div>
+    </div>
+    <p style="margin:14px 0 0"><a class="btn btn-primary" href="/master/planos">Acompanhar pagamentos</a></p>
   </div>
   <div class="card" style="padding:20px">
     <h2 style="margin:0 0 8px;font-size:16px">Token de acesso</h2>

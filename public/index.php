@@ -159,6 +159,7 @@ function require_tenant(): array
     notes_ensure_schema();
     assistant_ensure_schema();
     products_ensure_schema();
+    billing_ensure_schema();
     if (function_exists('appointment_commission_ensure_schema')) {
         appointment_commission_ensure_schema();
     }
@@ -167,7 +168,7 @@ function require_tenant(): array
         $_SESSION = [];
         redirect('/login');
     }
-    return [$u, $t];
+    return [$u, billing_sync($t)];
 }
 
 function collect_hours(): string
@@ -248,6 +249,7 @@ if (str_starts_with($path, '/master')) {
     $user = require_master();
     assistant_ensure_schema();
     products_ensure_schema();
+    billing_ensure_schema();
     if ($method === 'POST') {
         csrf_check();
         if ($path === '/master/clientes/criar') {
@@ -365,8 +367,29 @@ if (str_starts_with($path, '/master')) {
             flash($on ? 'Cabeçalho ativo nos PDFs da plataforma.' : 'Cabeçalho desativado nos PDFs.');
             redirect('/master/configuracoes');
         }
-        if ($path === '/master/planos/salvar') {
-            redirect('/master');
+        if ($path === '/master/planos/confirmar') {
+            $out = billing_confirm((string)post('id', ''), (string)$user['id']);
+            flash($out['ok'] ? 'Pagamento confirmado. O período foi liberado na empresa.' : (string)($out['message'] ?? 'Não foi possível confirmar.'), $out['ok'] ? 'ok' : 'error');
+            redirect('/master/planos');
+        }
+        if ($path === '/master/planos/recusar') {
+            $out = billing_reject((string)post('id', ''), (string)$user['id']);
+            flash($out['ok'] ? 'Pedido recusado. A empresa pode enviar outro.' : (string)($out['message'] ?? 'Não foi possível recusar.'), $out['ok'] ? 'ok' : 'error');
+            redirect('/master/planos');
+        }
+        if ($path === '/master/planos/liberar') {
+            $cycle = (string)post('cycle', 'monthly');
+            if (!isset(billing_cycles()[$cycle])) {
+                $cycle = 'monthly';
+            }
+            $out = billing_grant((string)post('tenant_id', ''), $cycle, post('communicate') === '1', (string)$user['id']);
+            flash($out['ok'] ? 'Um mês liberado nesta empresa.' : (string)($out['message'] ?? 'Não foi possível liberar.'), $out['ok'] ? 'ok' : 'error');
+            redirect('/master/planos');
+        }
+        if ($path === '/master/planos/instrucoes') {
+            billing_platform_save(['pix' => (string)post('pix', ''), 'instructions' => (string)post('instructions', '')]);
+            flash('Instruções de pagamento atualizadas.');
+            redirect('/master/planos');
         }
         if ($path === '/master/segmentos/criar') {
             $name = trim((string)post('name', ''));
@@ -463,6 +486,7 @@ if (str_starts_with($path, '/master')) {
                 FROM tenants t
                 WHERE ".sql_not_blank('t.webhook_requested_at')." AND ".sql_false('t.webhook_access')."
                 ORDER BY t.webhook_requested_at DESC"),
+            'billingStats'=>billing_master_stats(billing_master_rows()),
         ]);
         layout_end('master');
         exit;
@@ -539,7 +563,15 @@ if (str_starts_with($path, '/master')) {
         exit;
     }
     if ($path === '/master/planos') {
-        redirect('/master');
+        $rows = billing_master_rows();
+        layout_start('master', compact('user','path'));
+        view('master/planos', [
+            'rows' => $rows,
+            'stats' => billing_master_stats($rows),
+            'platform' => billing_platform(),
+        ]);
+        layout_end('master');
+        exit;
     }
     if ($path === '/master/integracoes') {
         layout_start('master', compact('user','path'));
@@ -577,7 +609,10 @@ if (str_starts_with($path, '/app')) {
     if (!empty($user['must_change_password']) && !in_array($path, $allowedWhileMustChange, true)) {
         redirect('/app/senha');
     }
-    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !in_array($path, ['/app/senha', '/app/onboarding', '/app/assistente/duvida', '/app/assistente/conversas', '/app/assistente/atendimento'], true)) {
+    if (billing_locked($tenant) && !billing_route_allowed($path)) {
+        redirect('/app/assinatura');
+    }
+    if (empty($tenant['onboarding_done']) && !is_user_agent($user) && str_starts_with($path, '/app') && !str_starts_with($path, '/app/assinatura') && !in_array($path, ['/app/senha', '/app/onboarding', '/app/assistente/duvida', '/app/assistente/conversas', '/app/assistente/atendimento'], true)) {
         redirect('/app/onboarding');
     }
     if (is_user_agent($user) && agent_route_forbidden($path)) {
@@ -604,6 +639,16 @@ if (str_starts_with($path, '/app')) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($out, JSON_UNESCAPED_UNICODE);
             exit;
+        }
+        if ($path === '/app/assinatura/solicitar') {
+            $cycle = (string)post('cycle', '');
+            if (!isset(billing_cycles()[$cycle])) {
+                flash('Escolha um plano.', 'error');
+                redirect('/app/assinatura');
+            }
+            billing_request($tenant, $cycle, post('communicate') === '1', (string)$user['id']);
+            flash('Pedido enviado. O Admin Master confirma o pagamento e libera o período.');
+            redirect('/app/assinatura');
         }
         if ($path === '/app/comunicar/enviar') {
             $kind = trim((string)post('kind', ''));
@@ -1466,6 +1511,10 @@ if (str_starts_with($path, '/app')) {
             redirect('/app/configuracoes?tab=integracoes');
         }
         if ($path === '/app/configuracoes/comunicar') {
+            if (!billing_communicate_ok($tenant)) {
+                flash('O Comunicador entra com adicional de '.money(BILLING_ADDON_COMMUNICATE).' na mensalidade.', 'error');
+                redirect('/app/assinatura');
+            }
             communicate_automations_save($tid, communicate_automations_from_post());
             flash('Automação de Comunicar salva.');
             redirect('/app/configuracoes?tab=comunicar');
@@ -1507,6 +1556,16 @@ if (str_starts_with($path, '/app')) {
         layout_start('lock', compact('user','tenant','path'));
         view('app/senha', compact('user','tenant'));
         layout_end('lock');
+        exit;
+    }
+
+    if ($path === '/app/assinatura') {
+        $billingLock = billing_locked($tenant);
+        $lockTitle = 'Plano · FirestepCRM';
+        $kind = $billingLock ? 'lock' : 'app';
+        layout_start($kind, compact('user','tenant','path','lockTitle','billingLock'));
+        view('app/assinatura', compact('tenant'));
+        layout_end($kind);
         exit;
     }
 

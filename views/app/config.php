@@ -494,6 +494,17 @@ $hourLine = static function (array $h) {
 <?php endif; ?>
 
 <?php if ($tab === 'comunicar'): ?>
+<?php if (!billing_communicate_ok($tenant)): ?>
+<div class="card settings-panel">
+  <div class="settings-panel-head">
+    <div>
+      <h2>Comunicador</h2>
+      <p>Depois do teste grátis, o WhatsApp do Comunicar entra com adicional de <?= e(money(BILLING_ADDON_COMMUNICATE)) ?> na mensalidade.</p>
+    </div>
+    <a class="btn btn-primary" href="/app/assinatura">Incluir no plano</a>
+  </div>
+</div>
+<?php else: ?>
 <?php $auto = communicate_automations_of($tenant); $catalog = communicate_automation_catalog(); ?>
 <div class="card settings-panel">
   <div class="settings-panel-head">
@@ -556,6 +567,7 @@ $hourLine = static function (array $h) {
     </form>
   <?php endif; ?>
 </div>
+<?php endif; ?>
 <?php endif; ?>
 
 <?php if ($tab === 'conta'): ?>

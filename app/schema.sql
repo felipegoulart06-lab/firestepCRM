@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS tenants (
   access_token_viewed_at TEXT,
   onboarding_done INTEGER DEFAULT 0,
   home_path TEXT DEFAULT '/app/agenda',
+  trial_ends_at TEXT,
+  billing_cycle TEXT,
+  communicate_addon INTEGER DEFAULT 0,
+  billing_paid_until TEXT,
+  billing_status TEXT DEFAULT 'trial',
+  billing_requested_at TEXT,
+  billing_requested_cycle TEXT,
+  billing_requested_addon INTEGER DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -302,3 +310,20 @@ CREATE TABLE IF NOT EXISTS assistant_threads (
 );
 CREATE INDEX IF NOT EXISTS assistant_threads_tenant ON assistant_threads(tenant_id, created_at);
 CREATE INDEX IF NOT EXISTS assistant_threads_status ON assistant_threads(status, created_at);
+CREATE TABLE IF NOT EXISTS saas_invoices (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  cycle TEXT NOT NULL,
+  communicate_addon INTEGER NOT NULL DEFAULT 0,
+  months INTEGER NOT NULL,
+  amount REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'open',
+  period_start TEXT,
+  period_end TEXT,
+  created_at TEXT NOT NULL,
+  paid_at TEXT,
+  paid_by TEXT,
+  notes TEXT
+);
+CREATE INDEX IF NOT EXISTS saas_invoices_tenant ON saas_invoices(tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS saas_invoices_status ON saas_invoices(status, created_at);

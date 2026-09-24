@@ -103,6 +103,11 @@ table.data tbody tr:hover td.row-actions-cell{background:#fcfcfd}
 .plan-card-foot{padding:0 18px 18px}
 @media(max-width:1050px){.plan-board{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.plan-board{grid-template-columns:1fr}}
+.billing-price{font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1.1}
+.billing-price small{font-size:14px;font-weight:600;color:#667085;margin-left:4px}
+.lock-body.billing-lock .lock-wrap{max-width:1100px;width:min(100% - 24px,1100px)}
+.lock-body.billing-lock .lock-wrap .page-head h1{font-size:26px}
+label.plan-card{cursor:pointer}
 .empty{text-align:center;padding:50px 18px;color:var(--muted)}
 .empty-icon{width:42px;height:42px;border-radius:6px;background:#f2f4f7;color:#667085;display:grid;place-items:center;margin:0 auto 12px}
 .flash{background:#ecfdf3;color:#027a48;border:1px solid #abefc6;padding:9px 12px;border-radius:5px;margin-bottom:12px;font-weight:500}

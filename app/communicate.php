@@ -326,6 +326,9 @@ function communicate_buttons_from_post(): array
 
 function communicate_send(array $tenant, string $kind, string $id, string $intro, array $selected, string $outro, array $opts = []): array
 {
+    if (function_exists('billing_communicate_ok') && !billing_communicate_ok($tenant)) {
+        return ['ok' => false, 'message' => 'O Comunicador entra com adicional de '.money(BILLING_ADDON_COMMUNICATE).' na mensalidade. Abra Plano para incluir.'];
+    }
     $row = communicate_load((string)$tenant['id'], $kind, $id);
     if (!$row) {
         return ['ok' => false, 'message' => 'Registro não encontrado.'];
@@ -625,6 +628,9 @@ function communicate_auto_mark(string $tenantId, string $ruleId, string $recordI
 function communicate_automation_fire(array $tenant, string $event, string $kind, string $id): array
 {
     try {
+        if (function_exists('billing_communicate_ok') && !billing_communicate_ok($tenant)) {
+            return ['ok' => false, 'skip' => 'billing'];
+        }
         $fresh = one('SELECT * FROM tenants WHERE id=?', [(string)$tenant['id']]) ?: $tenant;
         $cfg = communicate_automations_of($fresh);
         if (empty($cfg['enabled'])) {

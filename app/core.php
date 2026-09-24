@@ -56,6 +56,7 @@ function create_tenant_panel(array $in, ?string $actor = null): array
         ]);
         audit($tid, $actor, 'tenant.created', 'tenant', $tid);
         $pdo->commit();
+        billing_start_trial($tid, $tnow);
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;

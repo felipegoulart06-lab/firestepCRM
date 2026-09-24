@@ -353,6 +353,14 @@ function migrate_database(PDO $pdo): void
             'auto_backup' => 'INTEGER DEFAULT 0',
             'auto_backup_at' => 'TEXT',
             'auto_backup_hashes' => "TEXT DEFAULT '{}'",
+            'trial_ends_at' => 'TEXT',
+            'billing_cycle' => 'TEXT',
+            'communicate_addon' => 'INTEGER DEFAULT 0',
+            'billing_paid_until' => 'TEXT',
+            'billing_status' => "TEXT DEFAULT 'trial'",
+            'billing_requested_at' => 'TEXT',
+            'billing_requested_cycle' => 'TEXT',
+            'billing_requested_addon' => 'INTEGER DEFAULT 0',
         ],
         'users' => [
             'last_login_at' => 'TEXT',
@@ -669,6 +677,7 @@ function app_home_choices(?array $user = null, ?array $tenant = null): array
         '/app/financeiro' => 'Financeiro',
         '/app/webhooks' => 'Webhooks',
         '/app/configuracoes' => 'Configurações',
+        '/app/assinatura' => 'Plano',
     ];
     if ($user && is_user_agent($user)) {
         return array_filter($all, static fn(string $path) => !agent_route_forbidden($path), ARRAY_FILTER_USE_KEY);
@@ -1680,3 +1689,4 @@ require_once __DIR__ . '/metrics.php';
 require_once __DIR__ . '/r2.php';
 require_once __DIR__ . '/assistant.php';
 require_once __DIR__ . '/products.php';
+require_once __DIR__ . '/billing.php';

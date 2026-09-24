@@ -18,7 +18,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/assets/app.css?v=r44">
+<link rel="stylesheet" href="/assets/app.css?v=r45">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -65,6 +65,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <div class="nav-cat">INTEGRAÇÕES</div>
     <a href="/app/webhooks" class="<?= $path==='/app/webhooks'?'active':'' ?>"><?= icon('webhook') ?> Webhooks</a>
     <a href="/app/configuracoes" class="<?= $path==='/app/configuracoes'?'active':'' ?>"><?= icon('settings') ?> Configurações</a>
+    <a href="/app/assinatura" class="<?= str_starts_with($path,'/app/assinatura')?'active':'' ?>"><?= icon('wallet') ?> Plano</a>
     <?php endif; ?>
     <div class="sidebar-foot"><form method="post" action="/logout">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
@@ -96,5 +97,13 @@ $qsearch = trim($_GET['q'] ?? '');
     </div>
   </header>
   <main class="content">
+    <?php
+      $billBanner = billing_of($tenant);
+      if (!empty($billBanner['trial']) && (int)$billBanner['trial_days'] <= 7):
+    ?>
+    <a class="flash" href="/app/assinatura" style="display:block;margin-bottom:12px;background:#fffaeb;color:#b54708;border-color:#fedf89;text-decoration:none">Teste grátis: restam <?= (int)$billBanner['trial_days'] ?> dia<?= (int)$billBanner['trial_days']===1?'':'s' ?>. Depois a plataforma pede o plano pago.</a>
+    <?php elseif (!empty($billBanner['paid']) && (int)$billBanner['paid_days'] <= 7): ?>
+    <a class="flash" href="/app/assinatura" style="display:block;margin-bottom:12px;background:#fffaeb;color:#b54708;border-color:#fedf89;text-decoration:none">Assinatura vence em <?= (int)$billBanner['paid_days'] ?> dia<?= (int)$billBanner['paid_days']===1?'':'s' ?>. Renove o plano para não perder o acesso.</a>
+    <?php endif; ?>
     <?php $f = flash(); $fk = flash_kind(); ?>
     <?php if ($f): ?><div class="flash<?= $fk==='error' ? ' flash-error' : '' ?>" data-fs-log="<?= $fk==='error' ? 'error' : 'info' ?>"><?= e($f) ?></div><?php endif; ?>

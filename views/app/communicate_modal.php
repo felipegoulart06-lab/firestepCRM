@@ -12,6 +12,10 @@ if ($communicateItems):
       <button class="btn btn-ghost js-communicate-close communicate-close" type="button" aria-label="Fechar"><?= icon('x') ?></button>
     </div>
     <p class="communicate-notice">A mensagem será enviada ao WhatsApp do destinatário pela conexão configurada nesta empresa.</p>
+    <?php if (isset($tenant) && function_exists('billing_communicate_ok') && !billing_communicate_ok($tenant)): ?>
+      <p class="communicate-notice">O Comunicador entra com adicional de <?= e(money(BILLING_ADDON_COMMUNICATE)) ?> na mensalidade depois do teste grátis.</p>
+      <p style="margin:0 0 12px"><a class="btn btn-primary" href="/app/assinatura">Incluir Comunicador no plano</a></p>
+    <?php else: ?>
     <form method="post" action="/app/comunicar/enviar" id="communicate-form" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="kind" id="communicate-kind">
@@ -75,6 +79,7 @@ if ($communicateItems):
         <button class="btn btn-primary" type="submit"><?= icon('send') ?> Enviar</button>
       </div>
     </form>
+    <?php endif; ?>
   </div>
 </div>
 <script type="application/json" id="communicate-data"><?= json_encode($communicateItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>

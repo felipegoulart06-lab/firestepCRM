@@ -20,6 +20,18 @@
   <a class="btn btn-primary" href="/master/assistente">Abrir assistente</a>
 </div>
 <?php endif; ?>
+<?php
+  $billingStats = $billingStats ?? ['pending' => 0, 'past_due' => 0, 'trial' => 0, 'active' => 0, 'mrr' => 0];
+  $billPend = (int)($billingStats['pending'] ?? 0);
+  $billDue = (int)($billingStats['past_due'] ?? 0);
+?>
+<?php if ($billPend > 0 || $billDue > 0): ?>
+<div class="card" style="padding:16px;margin-bottom:14px;border-color:#f79009">
+  <b><?= $billPend > 0 ? ($billPend === 1 ? '1 pedido de plano aguardando pagamento' : $billPend.' pedidos de plano aguardando pagamento') : ($billDue === 1 ? '1 empresa bloqueada após o teste' : $billDue.' empresas bloqueadas após o teste') ?></b>
+  <p class="muted" style="margin:6px 0 10px">Confirme o pagamento para liberar o período. O Comunicador soma R$ 40,00 na mensalidade.</p>
+  <a class="btn btn-primary" href="/master/planos">Abrir planos</a>
+</div>
+<?php endif; ?>
 <div class="grid g4">
   <div class="card stat"><span>Clientes cadastrados</span><b><?= (int)$total ?></b></div>
   <div class="card stat"><span>Ativos</span><b><?= (int)$active ?></b></div>
@@ -27,6 +39,7 @@
   <div class="card stat"><span>Agendamentos</span><b><?= (int)$appts ?></b></div>
   <div class="card stat"><span>Solicitações</span><b><?= (int)$reqs ?></b></div>
   <div class="card stat"><span>Agendamentos hoje</span><b><?= (int)$today ?></b></div>
+  <div class="card stat"><span>MRR estimado</span><b><?= e(money((float)($billingStats['mrr'] ?? 0))) ?></b></div>
 </div>
 <div class="grid g2" style="margin-top:16px">
   <section class="card" style="padding:16px">
