@@ -30,7 +30,9 @@ expect(str_contains($index, '/cron/r2-backup') && str_contains($index, 'r2_backu
 $vercel = file_get_contents($root.'/vercel.json');
 expect(str_contains($vercel, '/cron/r2-backup'), 'Vercel agenda o backup R2');
 $env = file_get_contents($root.'/.env.example');
-expect(str_contains($env, 'R2_ACCESS_KEY_ID=') && !str_contains($env, 'da8d5df198d15cf9532abc6cb8aa9eca'), '.env.example tem R2 sem a chave real');
+expect(str_contains($env, 'R2_ACCESS_KEY_ID=') && str_contains($env, 'R2_PUBLIC_URL=') && !str_contains($env, 'da8d5df198d15cf9532abc6cb8aa9eca'), '.env.example tem R2 sem a chave real');
+$r2src = file_get_contents($root.'/app/r2.php');
+expect(str_contains($r2src, 'function r2_put_bytes') && str_contains($r2src, 'function r2_object_url'), 'R2 guarda bytes e devolve URL pública ou assinada');
 $redacted = r2_redact(['name' => 'Ana', 'password_hash' => 'secret']);
 expect($redacted['password_hash'] === '[redacted]' && $redacted['name'] === 'Ana', 'snapshot omite hash de senha');
 expect(!r2_enabled(['auto_backup' => 0]) && r2_enabled(['auto_backup' => 1]), 'flag AUTO BACKUP liga e desliga');

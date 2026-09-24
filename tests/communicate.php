@@ -31,7 +31,7 @@ $appointment = [[
 ]];
 $payloads = communicate_items('appointment', $appointment, $tenant);
 $payload = $payloads['appointment:ap-1'] ?? [];
-expect(($payload['name'] ?? '') === 'Maria Silva', 'agendamento usa o cliente como destinatário');
+expect(array_key_exists('image_url', $payload) && ($payload['image_url'] ?? '') === '', 'agendamento aceita imagem vazia por padrão');
 expect(($payload['phone'] ?? '') === '11999999999', 'agendamento usa o telefone do cliente');
 expect(isset($payload['variables']['reserva'], $payload['variables']['servico']), 'agendamento oferece reserva e serviço');
 expect(!empty($payload['can_pdf']) && !empty($payload['attach_pdf']), 'agendamento já oferece o PDF de confirmação');
@@ -42,6 +42,7 @@ $tenant['communicate_templates'] = [
         'intro' => "Olá {Nome}, tudo bem?\nRecebemos a sua solicitação de Agendamento!",
         'outro' => 'Em breve o motorista entrará em contato!',
         'selected' => ['nome', 'servico'],
+        'image_url' => 'https://pub.example.r2.dev/comunicar/demo.jpg',
     ],
     'request' => [
         'intro' => 'Pedido recebido',
@@ -53,6 +54,7 @@ $savedAppt = communicate_items('appointment', $appointment, $tenant)['appointmen
 expect(($savedAppt['intro'] ?? '') === "Olá {Nome}, tudo bem?\nRecebemos a sua solicitação de Agendamento!", 'agendamentos reabre o último intro enviado');
 expect(($savedAppt['outro'] ?? '') === 'Em breve o motorista entrará em contato!', 'agendamentos reabre o último outro enviado');
 expect(($savedAppt['selected'] ?? []) === ['nome', 'servico'], 'agendamentos reabre as variáveis do último envio');
+expect(($savedAppt['image_url'] ?? '') === 'https://pub.example.r2.dev/comunicar/demo.jpg', 'agendamentos reabre a imagem do último envio');
 
 $requestPayload = communicate_payload('request', [
     'id' => 'rq-1',
@@ -96,11 +98,16 @@ foreach ($views as $file => $key) {
 
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
 expect(str_contains($index, "/app/comunicar/enviar") && str_contains($index, 'communicate_send('), 'rota envia pelo WhatsApp');
-expect(str_contains($index, 'attach_pdf') && str_contains($index, 'communicate_buttons_from_post'), 'envio aceita PDF e botões');
+expect(str_contains($index, 'attach_pdf') && str_contains($index, 'communicate_buttons_from_post') && str_contains($index, 'communicate_image_from_post'), 'envio aceita PDF, botões e imagem');
 $modal = file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');
 expect(str_contains($modal, 'attach_pdf') && str_contains($modal, 'Enviar PDF de confirmação'), 'container de Comunicar oferece o PDF da reserva');
 expect(str_contains($modal, 'send_buttons') && str_contains($modal, 'btn_text[]') && str_contains($modal, 'Incluir botões'), 'container de Comunicar oferece botões');
-expect(str_contains(file_get_contents(dirname(__DIR__).'/app/uazapi.php'), 'uazapi_send_document') && str_contains(file_get_contents(dirname(__DIR__).'/app/pdf.php'), 'appointment_pdf_pack'), 'PDF da reserva pode ir embutido no WhatsApp');
+expect(str_contains($modal, 'enctype="multipart/form-data"') && str_contains($modal, 'name="image"'), 'container de Comunicar permite subir imagem');
+$uaz = file_get_contents(dirname(__DIR__).'/app/uazapi.php');
+$com = file_get_contents(dirname(__DIR__).'/app/communicate.php');
+expect(str_contains($uaz, 'uazapi_send_document') && str_contains(file_get_contents(dirname(__DIR__).'/app/pdf.php'), 'appointment_pdf_pack'), 'PDF da reserva pode ir embutido no WhatsApp');
+expect(str_contains($uaz, 'function uazapi_send_image') && str_contains($uaz, "\$card['image']"), 'imagem vai no carrossel com os botões');
+expect(str_contains($com, 'r2_put_bytes') && str_contains($com, 'communicate_image_from_post'), 'imagem do Comunicar sobe para a Cloudflare');
 expect(str_contains($index, 'communicate_template_save') || str_contains(file_get_contents(dirname(__DIR__).'/app/communicate.php'), 'communicate_template_save'), 'enviar grava o modelo do menu');
 expect((bool)preg_match("/view\\('app\\/fornecedores',[\\s\\S]{0,500}'tenant'/", $index), 'Fornecedores recebe tenant e não fica em branco');
 $ui = file_get_contents(dirname(__DIR__).'/views/app/config.php').file_get_contents(dirname(__DIR__).'/views/app/communicate_modal.php');

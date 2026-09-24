@@ -334,6 +334,70 @@ function r2_put_csv(string $key, string $csv): array
     return r2_request('PUT', $key, $csv, [], 'text/csv');
 }
 
+function r2_put_bytes(string $key, string $bytes, string $contentType = 'application/octet-stream'): array
+{
+    [$code, $body] = r2_request('PUT', $key, $bytes, [], $contentType);
+    if ($code >= 200 && $code < 300) {
+        return ['ok' => true, 'key' => $key, 'url' => r2_object_url($key), 'code' => $code];
+    }
+    return ['ok' => false, 'key' => $key, 'url' => '', 'code' => $code, 'error' => trim(strip_tags((string)$body))];
+}
+
+function r2_public_base(): string
+{
+    return rtrim((string)(env_str('R2_PUBLIC_URL') ?: ''), '/');
+}
+
+function r2_key_url_path(string $key): string
+{
+    $parts = array_map('rawurlencode', explode('/', str_replace('\\', '/', $key)));
+    return implode('/', array_filter($parts, static fn($p) => $p !== ''));
+}
+
+function r2_presign_get(string $key, int $ttl = 604800): string
+{
+    if (!r2_ready()) {
+        return '';
+    }
+    $cfg = r2_config();
+    $ttl = max(120, min(604800, $ttl));
+    $host = (string)parse_url($cfg['endpoint'], PHP_URL_HOST);
+    $amzDate = gmdate('Ymd\THis\Z');
+    $short = substr($amzDate, 0, 8);
+    $scope = $short.'/'.$cfg['region'].'/s3/aws4_request';
+    $query = [
+        'X-Amz-Algorithm' => 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential' => $cfg['key'].'/'.$scope,
+        'X-Amz-Date' => $amzDate,
+        'X-Amz-Expires' => (string)$ttl,
+        'X-Amz-SignedHeaders' => 'host',
+    ];
+    ksort($query);
+    $queryParts = [];
+    foreach ($query as $name => $value) {
+        $queryParts[] = r2_uri_encode((string)$name).'='.r2_uri_encode((string)$value);
+    }
+    $queryString = implode('&', $queryParts);
+    $path = r2_canonical_path($cfg['bucket'], $key);
+    $canonical = "GET\n".$path."\n".$queryString."\nhost:".$host."\n\nhost\nUNSIGNED-PAYLOAD";
+    $stringToSign = "AWS4-HMAC-SHA256\n".$amzDate."\n".$scope."\n".hash('sha256', $canonical);
+    $kDate = hash_hmac('sha256', $short, 'AWS4'.$cfg['secret'], true);
+    $kRegion = hash_hmac('sha256', $cfg['region'], $kDate, true);
+    $kService = hash_hmac('sha256', 's3', $kRegion, true);
+    $kSigning = hash_hmac('sha256', 'aws4_request', $kService, true);
+    $signature = hash_hmac('sha256', $stringToSign, $kSigning);
+    return $cfg['endpoint'].$path.'?'.$queryString.'&X-Amz-Signature='.$signature;
+}
+
+function r2_object_url(string $key): string
+{
+    $base = r2_public_base();
+    if ($base !== '') {
+        return $base.'/'.r2_key_url_path($key);
+    }
+    return r2_presign_get($key);
+}
+
 function r2_ping(): array
 {
     [$code, $body] = r2_request('GET', '', null, ['list-type' => '2', 'max-keys' => '1']);

@@ -189,15 +189,32 @@ function uazapi_send_document(array $cfg, string $number, string $bytes, string 
     return uazapi_http($cfg, '/send/media', $body);
 }
 
-function uazapi_send_buttons(array $cfg, string $number, string $text, array $buttonsApi): array
+function uazapi_send_image(array $cfg, string $number, string $file, string $caption = ''): array
+{
+    $body = [
+        'number' => $number,
+        'type' => 'image',
+        'file' => $file,
+    ];
+    if (trim($caption) !== '') {
+        $body['text'] = $caption;
+    }
+    return uazapi_http($cfg, '/send/media', $body);
+}
+
+function uazapi_send_buttons(array $cfg, string $number, string $text, array $buttonsApi, string $image = ''): array
 {
     if ($buttonsApi === []) {
         return ['ok' => false, 'message' => 'Nenhum botão informado.'];
     }
-    return uazapi_send_carousel($cfg, $number, $text, [[
+    $card = [
         'text' => $text,
         'buttons' => array_slice($buttonsApi, 0, 3),
-    ]]);
+    ];
+    if (trim($image) !== '') {
+        $card['image'] = trim($image);
+    }
+    return uazapi_send_carousel($cfg, $number, $text, [$card]);
 }
 
 function uazapi_send_charge(array $tenant, array $card): array

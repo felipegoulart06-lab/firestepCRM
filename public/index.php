@@ -570,6 +570,12 @@ if (str_starts_with($path, '/app')) {
             }
             $selected = array_values(array_filter(array_map('trim', explode(',', (string)post('selected', '')))));
             $btnPack = communicate_buttons_from_post();
+            try {
+                $imageUrl = $kind === 'appointment' ? communicate_image_from_post($tenant, $kind) : '';
+            } catch (Throwable $e) {
+                flash($e->getMessage(), 'error');
+                redirect(communicate_back($kind, (string)post('back', '')));
+            }
             $result = communicate_send(
                 $tenant,
                 $kind,
@@ -582,6 +588,7 @@ if (str_starts_with($path, '/app')) {
                     'send_buttons' => post('send_buttons') === '1',
                     'buttons_api' => post('send_buttons') === '1' ? ($btnPack['buttons_api'] ?? []) : [],
                     'buttons' => post('send_buttons') === '1' ? ($btnPack['buttons'] ?? []) : [],
+                    'image_url' => $imageUrl,
                 ]
             );
             flash((string)$result['message'], !empty($result['ok']) ? 'ok' : 'error');

@@ -231,6 +231,8 @@ body.is-modal-open .sidebar{pointer-events:auto;overflow:visible}
 .communicate-chip.is-off{border-color:#d0d5dd;background:#fff;color:#667085;text-decoration:line-through;opacity:.72}
 .communicate-preview{min-height:100px;max-height:190px;overflow:auto;white-space:pre-wrap;padding:12px;border:1px solid var(--line);border-radius:6px;background:#f8fafc;color:#344054;font-size:13px;line-height:1.5}
 .communicate-btn-row{display:grid;grid-template-columns:1fr 120px 1fr;gap:6px;margin-top:6px}
+.communicate-img-keep{display:flex;align-items:center;gap:12px;margin-top:8px}
+.communicate-img-thumb{width:72px;height:72px;object-fit:cover;border:1px solid var(--line);border-radius:6px;background:#fff}
 @media(max-width:640px){.communicate-btn-row{grid-template-columns:1fr}}
 #communicate-btn-box{margin-top:8px}
 @media(max-width:900px){.kanban,.kanban.is-compact{grid-template-columns:1fr 1fr}.kanban-col{max-height:320px;min-width:0}}

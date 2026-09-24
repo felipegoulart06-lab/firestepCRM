@@ -433,7 +433,12 @@ function security_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
-    header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob: https://api.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com https://*.mapbox.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://api.mapbox.com blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob: https://api.mapbox.com; child-src blob:; font-src 'self' data: https://api.mapbox.com https://*.mapbox.com https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    $imgSrc = "img-src 'self' data: blob: https://api.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com https://*.r2.dev https://*.r2.cloudflarestorage.com";
+    $pub = rtrim((string)(env_str('R2_PUBLIC_URL') ?: ''), '/');
+    if ($pub !== '' && preg_match('#^https://[^/\s]+#i', $pub, $m)) {
+        $imgSrc .= ' '.$m[0];
+    }
+    header("Content-Security-Policy: default-src 'self'; {$imgSrc}; style-src 'self' 'unsafe-inline' https://api.mapbox.com https://*.mapbox.com https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://api.mapbox.com blob:; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob: https://api.mapbox.com; child-src blob:; font-src 'self' data: https://api.mapbox.com https://*.mapbox.com https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || (function_exists('is_vercel') && is_vercel());

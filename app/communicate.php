@@ -147,7 +147,7 @@ function communicate_template_of(array $tenant, string $kind): array
 {
     $tpl = communicate_templates_all($tenant)[$kind] ?? null;
     if (!is_array($tpl)) {
-        return ['intro' => null, 'outro' => null, 'selected' => null, 'attach_pdf' => null, 'send_buttons' => null, 'buttons' => null];
+        return ['intro' => null, 'outro' => null, 'selected' => null, 'attach_pdf' => null, 'send_buttons' => null, 'buttons' => null, 'image_url' => null];
     }
     $selected = $tpl['selected'] ?? null;
     if (is_array($selected)) {
@@ -162,6 +162,7 @@ function communicate_template_of(array $tenant, string $kind): array
         'attach_pdf' => array_key_exists('attach_pdf', $tpl) ? !empty($tpl['attach_pdf']) : null,
         'send_buttons' => array_key_exists('send_buttons', $tpl) ? !empty($tpl['send_buttons']) : null,
         'buttons' => is_array($tpl['buttons'] ?? null) ? array_values(array_slice($tpl['buttons'], 0, 3)) : null,
+        'image_url' => array_key_exists('image_url', $tpl) ? trim((string)$tpl['image_url']) : null,
     ];
 }
 
@@ -179,6 +180,7 @@ function communicate_template_save(string $tenantId, array &$tenant, string $kin
         'attach_pdf' => !empty($extra['attach_pdf']),
         'send_buttons' => !empty($extra['send_buttons']),
         'buttons' => is_array($extra['buttons'] ?? null) ? array_values(array_slice($extra['buttons'], 0, 3)) : [],
+        'image_url' => trim((string)($extra['image_url'] ?? '')),
     ];
     $encoded = json_encode($all, JSON_UNESCAPED_UNICODE);
     $tenant['communicate_templates'] = $all;
@@ -209,6 +211,7 @@ function communicate_payload(string $kind, array $row, array $tenant): array
         'attach_pdf' => $kind === 'appointment',
         'send_buttons' => false,
         'buttons' => [['text' => '', 'type' => 'REPLY', 'id' => ''], ['text' => '', 'type' => 'URL', 'id' => ''], ['text' => '', 'type' => 'CALL', 'id' => '']],
+        'image_url' => '',
     ];
     $tpl = communicate_template_of($tenant, $kind);
     if ($tpl['intro'] !== null) {
@@ -229,6 +232,9 @@ function communicate_payload(string $kind, array $row, array $tenant): array
         }
         if ($tpl['buttons'] !== null && $tpl['buttons'] !== []) {
             $payload['buttons'] = array_pad($tpl['buttons'], 3, ['text' => '', 'type' => 'REPLY', 'id' => '']);
+        }
+        if ($tpl['image_url'] !== null) {
+            $payload['image_url'] = (string)$tpl['image_url'];
         }
     }
     return $payload;
@@ -260,6 +266,53 @@ function communicate_back(string $kind, ?string $requested = null): string
     return str_starts_with($requested, $fallback) ? $requested : $fallback;
 }
 
+function communicate_image_from_post(array $tenant, string $kind): string
+{
+    if (post('remove_image') === '1') {
+        return '';
+    }
+    $kept = trim((string)post('image_url', ''));
+    if (!preg_match('#^https://#i', $kept)) {
+        $kept = '';
+    }
+    $file = $_FILES['image'] ?? null;
+    if (!is_array($file) || (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return $kept;
+    }
+    if ((int)($file['error'] ?? 0) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Não foi possível ler a imagem.');
+    }
+    if ((int)($file['size'] ?? 0) > 1000000) {
+        throw new RuntimeException('A imagem deve ter no máximo 1 MB.');
+    }
+    $tmp = (string)($file['tmp_name'] ?? '');
+    $bin = $tmp !== '' ? (string)file_get_contents($tmp) : '';
+    $info = $bin !== '' ? @getimagesizefromstring($bin) : false;
+    if (!is_array($info) || empty($info['mime'])) {
+        throw new RuntimeException('Envie JPEG, PNG ou WEBP.');
+    }
+    $mime = strtolower((string)$info['mime']);
+    $ext = match ($mime) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        default => '',
+    };
+    if ($ext === '') {
+        throw new RuntimeException('Envie JPEG, PNG ou WEBP.');
+    }
+    if (!function_exists('r2_ready') || !r2_ready()) {
+        throw new RuntimeException('A Cloudflare R2 não está configurada para guardar a imagem.');
+    }
+    $tid = preg_replace('/[^a-zA-Z0-9_-]+/', '', (string)($tenant['id'] ?? 'tenant')) ?: 'tenant';
+    $key = 'comunicar/'.$tid.'/'.$kind.'/'.bin2hex(random_bytes(8)).'.'.$ext;
+    $put = r2_put_bytes($key, $bin, $mime);
+    if (empty($put['ok']) || ($put['url'] ?? '') === '') {
+        throw new RuntimeException('Não foi possível guardar a imagem na Cloudflare.');
+    }
+    return (string)$put['url'];
+}
+
 function communicate_buttons_from_post(): array
 {
     $texts = is_array($_POST['btn_text'] ?? null) ? $_POST['btn_text'] : [];
@@ -280,17 +333,23 @@ function communicate_send(array $tenant, string $kind, string $id, string $intro
     $message = communicate_message($intro, $selected, communicate_variables($kind, $row, $tenant), $outro);
     $attachPdf = $kind === 'appointment' && !empty($opts['attach_pdf']);
     $buttonsApi = ($kind === 'appointment' && !empty($opts['send_buttons'])) ? ($opts['buttons_api'] ?? []) : [];
-    if ($message === '' && !$attachPdf) {
-        return ['ok' => false, 'message' => 'Escreva uma mensagem, selecione uma variável ou envie o PDF da reserva.'];
+    $imageUrl = $kind === 'appointment' ? trim((string)($opts['image_url'] ?? '')) : '';
+    if ($imageUrl !== '' && !preg_match('#^https://#i', $imageUrl)) {
+        $imageUrl = '';
+    }
+    if ($message === '' && !$attachPdf && $imageUrl === '') {
+        return ['ok' => false, 'message' => 'Escreva uma mensagem, selecione uma variável, envie o PDF ou anexe uma imagem.'];
     }
     communicate_template_save((string)$tenant['id'], $tenant, $kind, $intro, $outro, $selected, [
         'attach_pdf' => $attachPdf,
         'send_buttons' => $buttonsApi !== [],
         'buttons' => $opts['buttons'] ?? [],
+        'image_url' => $imageUrl,
     ]);
     return communicate_dispatch($tenant, $row, $message, [
         'attach_pdf' => $attachPdf,
         'buttons_api' => $buttonsApi,
+        'image_url' => $imageUrl,
         'kind' => $kind,
         'id' => $id,
     ]);
@@ -309,20 +368,47 @@ function communicate_dispatch(array $tenant, array $row, string $message, array 
     $who = (string)($row['name'] ?? 'destinatário');
     $buttonsApi = is_array($opts['buttons_api'] ?? null) ? array_values($opts['buttons_api']) : [];
     $attachPdf = !empty($opts['attach_pdf']);
+    $imageUrl = trim((string)($opts['image_url'] ?? ''));
+    if ($imageUrl !== '' && !preg_match('#^https://#i', $imageUrl)) {
+        $imageUrl = '';
+    }
     $okAny = false;
     $lastFail = 'Não foi possível enviar a mensagem.';
+    $cardText = $message !== '' ? $message : 'Sua reserva';
 
-    if ($buttonsApi !== [] && $message !== '') {
-        $btn = uazapi_send_buttons($cfg, $number, $message, $buttonsApi);
+    if ($buttonsApi !== []) {
+        $btn = uazapi_send_buttons($cfg, $number, $cardText, $buttonsApi, $imageUrl);
         if (!empty($btn['ok'])) {
             $okAny = true;
         } else {
             $lastFail = (string)($btn['message'] ?? $lastFail);
-            $txt = uazapi_send_text($cfg, $number, $message);
-            if (!empty($txt['ok'])) {
-                $okAny = true;
-            } else {
-                $lastFail = (string)($txt['message'] ?? $lastFail);
+            if ($imageUrl !== '') {
+                $img = uazapi_send_image($cfg, $number, $imageUrl, $cardText);
+                if (!empty($img['ok'])) {
+                    $okAny = true;
+                }
+            }
+            if (!$okAny && $message !== '') {
+                $txt = uazapi_send_text($cfg, $number, $message);
+                if (!empty($txt['ok'])) {
+                    $okAny = true;
+                } else {
+                    $lastFail = (string)($txt['message'] ?? $lastFail);
+                }
+            }
+        }
+    } elseif ($imageUrl !== '') {
+        $caption = $message !== '' && !$attachPdf ? $message : ($message !== '' ? $message : '');
+        $img = uazapi_send_image($cfg, $number, $imageUrl, $caption);
+        if (!empty($img['ok'])) {
+            $okAny = true;
+        } else {
+            $lastFail = (string)($img['message'] ?? $lastFail);
+            if ($message !== '' && !$attachPdf) {
+                $txt = uazapi_send_text($cfg, $number, $message);
+                if (!empty($txt['ok'])) {
+                    $okAny = true;
+                }
             }
         }
     } elseif ($message !== '' && !$attachPdf) {
@@ -332,20 +418,18 @@ function communicate_dispatch(array $tenant, array $row, string $message, array 
         } else {
             $lastFail = (string)($sent['message'] ?? $lastFail);
         }
-    } elseif ($message !== '' && $attachPdf) {
-        // caption do PDF leva a mensagem; texto extra só se o documento falhar
     }
 
     if ($attachPdf) {
         require_once __DIR__.'/pdf.php';
         $pack = appointment_pdf_pack($tenant, $row);
-        $caption = $message !== '' && $buttonsApi === [] ? $message : 'Confirmação da reserva em PDF.';
+        $caption = $message !== '' && $buttonsApi === [] && $imageUrl === '' ? $message : 'Confirmação da reserva em PDF.';
         $doc = uazapi_send_document($cfg, $number, $pack['bytes'], $pack['filename'], $caption);
         if (!empty($doc['ok'])) {
             $okAny = true;
         } else {
             $lastFail = (string)($doc['message'] ?? $lastFail);
-            if ($message !== '' && $buttonsApi === []) {
+            if ($message !== '' && $buttonsApi === [] && $imageUrl === '') {
                 $txt = uazapi_send_text($cfg, $number, $message);
                 if (!empty($txt['ok'])) {
                     $okAny = true;
@@ -358,6 +442,9 @@ function communicate_dispatch(array $tenant, array $row, string $message, array 
         $bits = ['Mensagem enviada para o WhatsApp de '.$who];
         if ($attachPdf) {
             $bits[] = 'com o PDF de confirmação da reserva';
+        }
+        if ($imageUrl !== '') {
+            $bits[] = 'com imagem';
         }
         if ($buttonsApi !== []) {
             $bits[] = 'e botões';

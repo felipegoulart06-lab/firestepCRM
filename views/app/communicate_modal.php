@@ -12,12 +12,14 @@ if ($communicateItems):
       <button class="btn btn-ghost js-communicate-close communicate-close" type="button" aria-label="Fechar"><?= icon('x') ?></button>
     </div>
     <p class="communicate-notice">A mensagem será enviada ao WhatsApp do destinatário pela conexão configurada nesta empresa.</p>
-    <form method="post" action="/app/comunicar/enviar" id="communicate-form">
+    <form method="post" action="/app/comunicar/enviar" id="communicate-form" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="kind" id="communicate-kind">
       <input type="hidden" name="id" id="communicate-id">
       <input type="hidden" name="selected" id="communicate-selected">
       <input type="hidden" name="back" value="<?= e($communicateBack ?? '/') ?>">
+      <input type="hidden" name="image_url" id="communicate-image-url" value="">
+      <input type="hidden" name="remove_image" id="communicate-remove-image" value="0">
 
       <label class="label" for="communicate-intro">Mensagem inicial</label>
       <textarea class="textarea" name="intro" id="communicate-intro" rows="3" maxlength="1000"></textarea>
@@ -35,6 +37,16 @@ if ($communicateItems):
           Enviar PDF de confirmação da reserva (embutido na conversa)
         </label>
         <p class="settings-hint" style="margin:6px 0 0">O mesmo comprovante de Agendamentos → PDF, junto com os dados da mensagem.</p>
+        <label class="label" for="communicate-image" style="margin-top:12px">Imagem (junto com as opções)</label>
+        <p class="settings-hint">JPEG, PNG ou WEBP, até 1 MB. Guardada na Cloudflare e enviada com o texto e os botões.</p>
+        <input class="input" type="file" name="image" id="communicate-image" accept="image/jpeg,image/png,image/webp">
+        <div class="communicate-img-keep" id="communicate-img-keep" hidden>
+          <img alt="" id="communicate-img-thumb" class="communicate-img-thumb">
+          <label class="check-row">
+            <input type="checkbox" id="communicate-img-drop">
+            Remover imagem
+          </label>
+        </div>
         <label class="check-row" style="margin-top:12px">
           <input type="checkbox" name="send_buttons" value="1" id="communicate-btns">
           Incluir botões no WhatsApp

@@ -1051,6 +1051,12 @@ function bindCommunicate(){
   const pdfBox = document.getElementById('communicate-pdf');
   const btnToggle = document.getElementById('communicate-btns');
   const btnBox = document.getElementById('communicate-btn-box');
+  const imageInput = document.getElementById('communicate-image');
+  const imageUrlInput = document.getElementById('communicate-image-url');
+  const removeImageInput = document.getElementById('communicate-remove-image');
+  const imageKeep = document.getElementById('communicate-img-keep');
+  const imageThumb = document.getElementById('communicate-img-thumb');
+  const imageDrop = document.getElementById('communicate-img-drop');
   let current = null;
   let selected = new Set();
   const lock = (on)=>{
@@ -1084,6 +1090,9 @@ function bindCommunicate(){
     if (bottom) lines.push(bottom);
     if (pdfBox?.checked) lines.push('[PDF de confirmação da reserva embutido]');
     if (btnToggle?.checked) lines.push('[Com botões no WhatsApp]');
+    const hasNewImage = imageInput?.files && imageInput.files.length > 0;
+    const hasKeptImage = !!(imageUrlInput?.value || '').trim() && removeImageInput?.value !== '1';
+    if (hasNewImage || hasKeptImage) lines.push('[Imagem junto com as opções]');
     if (preview) preview.textContent = lines.join('\n\n') || 'A mensagem aparecerá aqui.';
     if (selectedInput) selectedInput.value = Array.from(selected).join(',');
     vars?.querySelectorAll('button[data-key]').forEach(btn=>{
@@ -1091,6 +1100,14 @@ function bindCommunicate(){
       btn.classList.toggle('is-off', !on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+  };
+  const syncImagePreview = (url)=>{
+    const show = !!url && removeImageInput?.value !== '1';
+    if (imageKeep) imageKeep.hidden = !show;
+    if (imageThumb) {
+      imageThumb.src = show ? url : '';
+      imageThumb.hidden = !show;
+    }
   };
   document.querySelectorAll('.js-communicate').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1108,6 +1125,12 @@ function bindCommunicate(){
       if (btnToggle) btnToggle.checked = isAppt && !!current.send_buttons;
       if (btnBox) btnBox.hidden = !btnToggle?.checked;
       fillButtons(isAppt ? (current.buttons || []) : []);
+      if (imageInput) imageInput.value = '';
+      if (removeImageInput) removeImageInput.value = '0';
+      if (imageDrop) imageDrop.checked = false;
+      const keptUrl = isAppt ? String(current.image_url || '') : '';
+      if (imageUrlInput) imageUrlInput.value = keptUrl;
+      syncImagePreview(keptUrl);
       if (vars) {
         vars.innerHTML = '';
         Object.entries(current.variables || {}).forEach(([key, pair])=>{
@@ -1132,6 +1155,25 @@ function bindCommunicate(){
   intro?.addEventListener('input', render);
   outro?.addEventListener('input', render);
   pdfBox?.addEventListener('change', render);
+  imageInput?.addEventListener('change', ()=>{
+    if (removeImageInput) removeImageInput.value = '0';
+    if (imageDrop) imageDrop.checked = false;
+    const file = imageInput.files && imageInput.files[0];
+    if (file) {
+      const local = URL.createObjectURL(file);
+      syncImagePreview(local);
+    } else {
+      syncImagePreview((imageUrlInput?.value || '').trim());
+    }
+    render();
+  });
+  imageDrop?.addEventListener('change', ()=>{
+    const drop = !!imageDrop.checked;
+    if (removeImageInput) removeImageInput.value = drop ? '1' : '0';
+    if (drop && imageInput) imageInput.value = '';
+    syncImagePreview(drop ? '' : (imageUrlInput?.value || '').trim());
+    render();
+  });
   btnToggle?.addEventListener('change', ()=>{
     if (btnBox) btnBox.hidden = !btnToggle.checked;
     render();
