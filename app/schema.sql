@@ -231,6 +231,27 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   value TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS platform_products (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  image_url TEXT NOT NULL DEFAULT '',
+  link_url TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS platform_products_sort ON platform_products(sort_order, title);
+CREATE TABLE IF NOT EXISTS platform_product_leads (
+  id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS platform_product_leads_created ON platform_product_leads(created_at);
 CREATE TABLE IF NOT EXISTS php_sessions (
   id TEXT PRIMARY KEY,
   data TEXT NOT NULL,

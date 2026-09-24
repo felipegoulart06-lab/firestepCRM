@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <style>html,body{margin:0;background:#f6f7f9}</style>
-<link rel="stylesheet" href="/assets/app.css?v=r38">
+<link rel="stylesheet" href="/assets/app.css?v=r39">
 </head>
 <body>
 <div class="wrap">
@@ -20,6 +20,7 @@
     <a href="/master/objetivo" class="<?= $path==='/master/objetivo'?'active':'' ?>"><?= icon('file') ?> Objetivo</a>
     <a href="/master/clientes" class="<?= str_starts_with($path,'/master/clientes')?'active':'' ?>"><?= icon('users') ?> Clientes SaaS</a>
     <a href="/master/segmentos" class="<?= $path==='/master/segmentos'?'active':'' ?>"><?= icon('tag') ?> Segmentos</a>
+    <a href="/master/produtos" class="<?= str_starts_with($path,'/master/produtos')?'active':'' ?>"><?= icon('briefcase') ?> Produtos</a>
     <div class="nav-cat">SISTEMA</div>
     <a href="/master/integracoes" class="<?= $path==='/master/integracoes'?'active':'' ?>"><?= icon('webhook') ?> Integrações<?php
       $pendHook = (int)(one("SELECT COUNT(*) c FROM tenants WHERE ".sql_not_blank('webhook_requested_at')." AND ".sql_false('webhook_access'))['c'] ?? 0);

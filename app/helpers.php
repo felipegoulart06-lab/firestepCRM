@@ -619,7 +619,7 @@ function sql_tenant_admin_join(string $tenantAlias = 't', string $userAlias = 'u
 
 function agent_route_forbidden(string $path): bool
 {
-    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/relatorios', '/app/financeiro', '/app/abrangencia', '/app/fornecedores', '/app/webhooks', '/app/configuracoes', '/app/onboarding'] as $prefix) {
+    foreach (['/app/agentes', '/app/metricas', '/app/servicos', '/app/produtos', '/app/relatorios', '/app/financeiro', '/app/abrangencia', '/app/fornecedores', '/app/webhooks', '/app/configuracoes', '/app/onboarding'] as $prefix) {
         if ($path === $prefix || str_starts_with($path, $prefix.'/')) {
             return true;
         }
@@ -664,6 +664,7 @@ function app_home_choices(?array $user = null, ?array $tenant = null): array
         '/app/abrangencia' => 'Abrangência',
         '/app/fornecedores' => 'Fornecedores',
         '/app/servicos' => 'Serviços',
+        '/app/produtos' => 'Produtos',
         '/app/relatorios' => 'Relatórios',
         '/app/financeiro' => 'Financeiro',
         '/app/webhooks' => 'Webhooks',
@@ -1678,3 +1679,4 @@ require_once __DIR__ . '/communicate.php';
 require_once __DIR__ . '/metrics.php';
 require_once __DIR__ . '/r2.php';
 require_once __DIR__ . '/assistant.php';
+require_once __DIR__ . '/products.php';

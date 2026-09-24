@@ -158,6 +158,7 @@ function require_tenant(): array
     services_ensure_schema();
     notes_ensure_schema();
     assistant_ensure_schema();
+    products_ensure_schema();
     if (function_exists('appointment_commission_ensure_schema')) {
         appointment_commission_ensure_schema();
     }
@@ -246,6 +247,7 @@ if ($path === '/logout' && $method === 'POST') {
 if (str_starts_with($path, '/master')) {
     $user = require_master();
     assistant_ensure_schema();
+    products_ensure_schema();
     if ($method === 'POST') {
         csrf_check();
         if ($path === '/master/clientes/criar') {
@@ -392,6 +394,35 @@ if (str_starts_with($path, '/master')) {
             }
             redirect('/master/segmentos');
         }
+        if ($path === '/master/produtos/salvar') {
+            $editId = trim((string)post('id', ''));
+            try {
+                $saved = products_save_from_post();
+            } catch (Throwable $e) {
+                bounce_form('/master/produtos'.($editId !== '' ? '?edit='.rawurlencode($editId) : ''), $e->getMessage());
+            }
+            flash(!empty($saved['created']) ? 'Produto publicado no menu das empresas.' : 'Produto atualizado.');
+            redirect('/master/produtos');
+        }
+        if ($path === '/master/produtos/status') {
+            $id = trim((string)post('id', ''));
+            $on = post('active') === '1';
+            if ($id === '' || !products_set_active($id, $on)) {
+                flash('Produto não encontrado.', 'error');
+            } else {
+                flash($on ? 'Produto visível no menu.' : 'Produto ocultado.');
+            }
+            redirect('/master/produtos');
+        }
+        if ($path === '/master/produtos/excluir') {
+            $id = trim((string)post('id', ''));
+            if ($id === '' || !products_delete($id)) {
+                flash('Produto não encontrado.', 'error');
+            } else {
+                flash('Produto removido do catálogo.');
+            }
+            redirect('/master/produtos');
+        }
         if ($path === '/master/configuracoes/whatsapp') {
             $url = rtrim(trim((string)post('whatsapp_url', '')), '/');
             if ($url !== '' && !preg_match('#^https?://#i', $url)) {
@@ -490,6 +521,19 @@ if (str_starts_with($path, '/master')) {
         view('master/segmentos', [
             'items'=>all('SELECT * FROM segments ORDER BY category, name'),
             'categories'=>array_values(array_unique(array_filter(array_map(fn($r) => $r['category'] ?? '', all('SELECT DISTINCT category FROM segments ORDER BY category'))))),
+        ]);
+        layout_end('master');
+        exit;
+    }
+    if ($path === '/master/produtos') {
+        $editId = trim((string)($_GET['edit'] ?? ''));
+        $edit = $editId !== '' ? products_one($editId) : null;
+        layout_start('master', compact('user','path'));
+        view('master/produtos', [
+            'items' => products_all(),
+            'leads' => products_leads(),
+            'edit' => $edit,
+            'old' => take_old_form(),
         ]);
         layout_end('master');
         exit;
@@ -593,6 +637,11 @@ if (str_starts_with($path, '/app')) {
             );
             flash((string)$result['message'], !empty($result['ok']) ? 'ok' : 'error');
             redirect(communicate_back($kind, (string)post('back', '')));
+        }
+        if ($path === '/app/produtos/interesse') {
+            $result = products_interest($tenant, $user, trim((string)post('id', '')));
+            flash((string)$result['message'], !empty($result['ok']) ? 'ok' : 'error');
+            redirect('/app/produtos');
         }
         if ($path === '/app/senha') {
             $pw = (string)post('password', '');
@@ -1829,6 +1878,12 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/servicos') {
         layout_start('app', compact('user','tenant','path'));
         view('app/servicos', ['services'=>all('SELECT * FROM services WHERE tenant_id=? ORDER BY name', [$tenant['id']]),'tenant'=>$tenant]);
+        layout_end('app');
+        exit;
+    }
+    if ($path === '/app/produtos') {
+        layout_start('app', compact('user','tenant','path'));
+        view('app/produtos', ['items' => products_public(), 'tenant' => $tenant]);
         layout_end('app');
         exit;
     }

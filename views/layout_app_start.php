@@ -18,7 +18,7 @@ $qsearch = trim($_GET['q'] ?? '');
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="/assets/app.css?v=r43">
+<link rel="stylesheet" href="/assets/app.css?v=r44">
 <style>:root{--primary:<?= e($tenant['primary_color'] ?: '#2563eb') ?>;}</style>
 </head>
 <body>
@@ -52,6 +52,7 @@ $qsearch = trim($_GET['q'] ?? '');
     <a href="/app/abrangencia" class="<?= $path==='/app/abrangencia'?'active':'' ?>"><?= icon('map') ?> Abrangência</a>
     <a href="/app/fornecedores" class="<?= str_starts_with($path,'/app/fornecedores')?'active':'' ?>"><?= icon('briefcase') ?> Fornecedores</a>
     <a href="/app/servicos" class="<?= $path==='/app/servicos'?'active':'' ?>"><?= icon('briefcase') ?> Serviços</a>
+    <a href="/app/produtos" class="<?= $path==='/app/produtos'?'active':'' ?>"><?= icon('tag') ?> Produtos</a>
     <a href="/app/relatorios" class="<?= $path==='/app/relatorios'?'active':'' ?>"><?= icon('file') ?> Relatórios</a>
     <details class="nav-group<?= str_starts_with($path,'/app/financeiro')?' nav-on':'' ?>" <?= str_starts_with($path,'/app/financeiro')?'open':'' ?>>
       <summary><?= icon('wallet') ?> Financeiro</summary>

@@ -34,6 +34,7 @@ $agent = ['role' => 'user_agent'];
 
 expect(app_home_path($tenant, $crm) === '/app/agenda', 'padrão é Agenda');
 expect(isset(app_home_choices(null, $tenant)['/app/clientes']), 'lista inclui Clientes');
+expect(isset(app_home_choices(null, $tenant)['/app/produtos']), 'lista inclui Produtos');
 
 q('UPDATE tenants SET home_path=? WHERE id=?', ['/app/kanban', 'ten-h']);
 $tenant = one('SELECT * FROM tenants WHERE id=?', ['ten-h']);
