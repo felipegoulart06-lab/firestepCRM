@@ -1074,38 +1074,6 @@ function service_price_kind(?array $s): string
     return in_array($k, ['priced', 'convenio', 'cortesia', 'reuniao'], true) ? $k : 'priced';
 }
 
-function service_duration_parts(?array $s): array
-{
-    $total = max(0, (int)($s['duration_minutes'] ?? 60));
-    return [intdiv($total, 60), $total % 60];
-}
-
-function service_duration_label(int $minutes): string
-{
-    $minutes = max(0, $minutes);
-    $h = intdiv($minutes, 60);
-    $m = $minutes % 60;
-    if ($h > 0 && $m > 0) {
-        return $h.' h '.$m.' min';
-    }
-    if ($h > 0) {
-        return $h.' h';
-    }
-    return $m.' min';
-}
-
-function parse_service_duration(): int
-{
-    if (isset($_POST['duration_hours']) || isset($_POST['duration_mins'])) {
-        $hours = max(0, min(24, (int)($_POST['duration_hours'] ?? 0)));
-        $mins = max(0, min(59, (int)($_POST['duration_mins'] ?? 0)));
-        $total = ($hours * 60) + $mins;
-    } else {
-        $total = (int)($_POST['duration_minutes'] ?? 60);
-    }
-    return max(5, min(24 * 60, $total));
-}
-
 function service_price_label(?array $s): string
 {
     $k = service_price_kind($s);
@@ -1576,6 +1544,75 @@ function app_url(): string
         || is_vercel();
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
     return ($https ? 'https://' : 'http://') . $host;
+}
+
+function parse_service_duration(): int
+{
+    $hoursPosted = array_key_exists('duration_hours', $_POST);
+    $minsPosted = array_key_exists('duration_mins', $_POST);
+    if ($hoursPosted || $minsPosted) {
+        $hours = max(0, min(24, (int)($_POST['duration_hours'] ?? 0)));
+        $mins = max(0, min(59, (int)($_POST['duration_mins'] ?? 0)));
+        $total = $hours >= 24 ? 24 * 60 : ($hours * 60 + $mins);
+        return $total > 0 ? max(5, min(24 * 60, $total)) : 60;
+    }
+    return max(5, min(24 * 60, (int)post('duration_minutes', '60')));
+}
+
+function service_duration_parts(array $svc): array
+{
+    $total = max(0, (int)($svc['duration_minutes'] ?? 60));
+    return [intdiv($total, 60), $total % 60];
+}
+
+function service_duration_label(int $minutes): string
+{
+    $minutes = max(0, $minutes);
+    $h = intdiv($minutes, 60);
+    $m = $minutes % 60;
+    if ($h > 0 && $m === 0) {
+        return $h.' h';
+    }
+    if ($h > 0) {
+        return $h.' h '.$m.' min';
+    }
+    return $m.' min';
+}
+
+function agenda_event_ts(?string $raw, ?array $tenant = null): ?int
+{
+    $wall = appt_wall($raw, $tenant);
+    if ($wall === '') {
+        return null;
+    }
+    $t = strtotime($wall);
+    return $t ?: null;
+}
+
+function agenda_event_covers_hour(array $ev, string $ymd, int $hour, ?array $tenant = null): bool
+{
+    $start = agenda_event_ts((string)($ev['start'] ?? $ev['starts_at'] ?? ''), $tenant);
+    if ($start === null) {
+        return false;
+    }
+    $end = agenda_event_ts((string)($ev['end'] ?? $ev['ends_at'] ?? ''), $tenant);
+    if ($end === null || $end <= $start) {
+        $end = $start + 3600;
+    }
+    $slotStart = strtotime(sprintf('%s %02d:00:00', $ymd, $hour));
+    if ($slotStart === false) {
+        return false;
+    }
+    return $start < ($slotStart + 3600) && $end > $slotStart;
+}
+
+function agenda_event_starts_in_hour(array $ev, string $ymd, int $hour, ?array $tenant = null): bool
+{
+    $start = agenda_event_ts((string)($ev['start'] ?? $ev['starts_at'] ?? ''), $tenant);
+    if ($start === null) {
+        return false;
+    }
+    return date('Y-m-d', $start) === $ymd && (int)date('G', $start) === $hour;
 }
 
 function service_span_minutes(?array $svc): int

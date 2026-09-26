@@ -141,17 +141,19 @@ body.is-modal-open .sidebar{pointer-events:auto;overflow:visible}
 .cal-head{padding:9px;text-align:center;font-weight:700;font-size:12px;color:#344054;background:#f8fafc;border-bottom:1px solid var(--line-soft);border-left:1px solid var(--line-soft)}
 .cal-head.today{background:var(--primary-soft);color:var(--primary)}
 .cal-time{padding:5px 8px;font-size:11px;color:#667085;font-weight:600;background:#f8fafc;border-top:1px solid var(--line-soft)}
+.duration-inputs{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.duration-inputs label{display:flex;gap:6px;align-items:center;margin:0}
+.duration-inputs .input{width:88px}
+.duration-picks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .slot{min-height:66px;border-top:1px solid var(--line-soft);border-left:1px solid var(--line-soft);background:#fff}
+.slot.is-occupied{background:#eef2f6;cursor:default}
+.slot.is-occupied .slot-add{display:none!important;pointer-events:none}
+.cal-full-day .slot.is-occupied{display:flex;flex-direction:column}
+.cal-full-day .ev-span{flex:1;margin:2px 4px;min-height:32px;display:flex;align-items:center}
 .cal-full-day .slot{min-height:44px}
 .cal-full-day .slot-add{min-height:36px}
 .cal-full-day .cal-time{padding:4px 6px}
-.slot.is-occupied{background:#f8fafc;cursor:default}
-.slot.is-occupied .slot-add{display:none!important;pointer-events:none}
-.ev-span{min-height:calc(100% - 8px);display:flex;align-items:center}
-.duration-inputs{display:flex;gap:10px;align-items:end}
-.duration-inputs label{display:flex;flex-direction:column;gap:4px;flex:1;font-size:12px;color:#667085;font-weight:600}
-.duration-picks{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
-.slot:hover{background:#f8fafc}
+.slot:hover:not(.is-occupied){background:#f8fafc}
 .calendar-month{overflow:hidden;background:#fff;color:var(--text)}
 .cal-month-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#f8fafc;border-bottom:1px solid var(--line)}
 .cal-month-weekdays>div{padding:10px 8px;font-size:11px;color:#667085;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:center}

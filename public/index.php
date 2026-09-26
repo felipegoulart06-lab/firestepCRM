@@ -1053,9 +1053,10 @@ if (str_starts_with($path, '/app')) {
             if (empty($pricing['ok'])) {
                 bounce_form($id ? '/app/servicos?edit='.urlencode((string)$id) : '/app/servicos?novo=1', (string)$pricing['message']);
             }
+            $duration = parse_service_duration();
             $fields = [
                 post('name'), post('category'), post('description'),
-                parse_service_duration(), max(0, (int)post('buffer_minutes','0')),
+                $duration, max(0, (int)post('buffer_minutes','0')),
                 (float)$pricing['price'], (float)$pricing['deposit'], (string)$pricing['price_kind'], post('color','#2563eb'),
                 post('location_type','presencial'), post('location_note'),
                 isset($_POST['bookable_online']) ? db_bool(true) : db_bool(false), isset($_POST['requires_confirmation']) ? db_bool(true) : db_bool(false),
@@ -1684,17 +1685,17 @@ if (str_starts_with($path, '/app')) {
     if ($path === '/app/agenda') {
         $from = date('Y-m-d', strtotime('-31 days')).' 00:00:00';
         $to = date('Y-m-d', strtotime('+62 days')).' 23:59:59';
-        $ap = all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at>=? AND a.starts_at<=?", [$tenant['id'],$from,$to]);
-        $bl = all('SELECT * FROM calendar_blocks WHERE tenant_id=? AND starts_at>=? AND starts_at<=?', [$tenant['id'],$from,$to]);
+        $ap = all("SELECT a.*, c.name client_name, s.name service_name FROM appointments a JOIN clients c ON c.id=a.client_id AND c.tenant_id=a.tenant_id LEFT JOIN services s ON s.id=a.service_id AND s.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.starts_at<=? AND a.ends_at>=?", [$tenant['id'],$to,$from]);
+        $bl = all('SELECT * FROM calendar_blocks WHERE tenant_id=? AND starts_at<=? AND ends_at>=?', [$tenant['id'],$to,$from]);
         $events = [];
-        foreach ($ap as $a) $events[] = ['id'=>$a['id'],'kind'=>'appointment','title'=>$a['client_name'],'subtitle'=>$a['service_name'],'status'=>$a['status'],'source'=>$a['source'],'start'=>$a['starts_at'],'end'=>$a['ends_at']];
-        foreach ($bl as $b) $events[] = ['id'=>$b['id'],'kind'=>'block','title'=>$b['reason']?:'Bloqueio','start'=>$b['starts_at'],'end'=>$b['ends_at']];
+        foreach ($ap as $a) $events[] = ['id'=>$a['id'],'kind'=>'appointment','title'=>$a['client_name'],'subtitle'=>$a['service_name'],'status'=>$a['status'],'source'=>$a['source'],'start'=>appt_wall($a['starts_at'], $tenant),'end'=>appt_wall($a['ends_at'], $tenant)];
+        foreach ($bl as $b) $events[] = ['id'=>$b['id'],'kind'=>'block','title'=>$b['reason']?:'Bloqueio','start'=>appt_wall($b['starts_at'], $tenant),'end'=>appt_wall($b['ends_at'], $tenant)];
         $pendingReq = all("SELECT r.*, s.name service_name, s.duration_minutes FROM requests r LEFT JOIN services s ON s.id=r.service_id AND s.tenant_id=r.tenant_id WHERE r.tenant_id=? AND r.status NOT IN ('SCHEDULED','DONE','ARCHIVED','LOST') AND ".sql_not_blank('r.desired_date'), [$tenant['id']]);
         foreach ($pendingReq as $r) {
             $time = substr((string)($r['desired_time'] ?: '09:00'), 0, 5);
             $start = $r['desired_date'].' '.$time.':00';
             $end = date('Y-m-d H:i:s', strtotime($start) + max(30, (int)($r['duration_minutes'] ?? 60)) * 60);
-            $events[] = ['id'=>$r['id'],'kind'=>'request','title'=>$r['name'],'subtitle'=>$r['service_name'] ?: 'Solicitação','status'=>'REQUEST','source'=>$r['source'],'start'=>$start,'end'=>$end];
+            $events[] = ['id'=>$r['id'],'kind'=>'request','title'=>$r['name'],'subtitle'=>$r['service_name'] ?: 'Solicitação','status'=>'REQUEST','source'=>$r['source'],'start'=>appt_wall($start, $tenant),'end'=>appt_wall($end, $tenant)];
         }
         foreach (notes_agenda_events($tenant['id'], $from, $to) as $noteEv) {
             $events[] = $noteEv;

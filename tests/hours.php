@@ -74,6 +74,7 @@ expect(str_contains($agenda, 'agenda_event_covers_hour') && str_contains($agenda
 $svcUi = file_get_contents(dirname(__DIR__).'/views/app/servicos.php');
 expect(str_contains($svcUi, 'name="duration_hours"') && str_contains($svcUi, '8 h'), 'formulário de serviço tem duração em horas');
 $index = file_get_contents(dirname(__DIR__).'/public/index.php');
+expect(str_contains($index, 'parse_service_duration()'), 'salvar serviço usa horas e minutos do formulário');
 expect(appt_wall('2026-09-23 17:00:00+00:00') === '2026-09-23 14:00:00', 'timestamptz UTC vira horário de Brasília');
 expect(appt_wall('2026-09-23 14:00:00-03:00') === '2026-09-23 14:00:00', 'offset de Brasília permanece 14:00');
 expect(str_starts_with(appt_from_form('2026-09-23', '14:00'), '2026-09-23 14:00:00'), 'formulário grava o horário digitado');

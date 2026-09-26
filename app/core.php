@@ -216,29 +216,6 @@ function agenda_hour_range(array $tenant, array $events = []): array
     return range($minH, $maxH);
 }
 
-function agenda_event_covers_hour(array $ev, string $ymd, int $hour): bool
-{
-    $start = strtotime((string)($ev['start'] ?? ''));
-    if ($start === false) {
-        return false;
-    }
-    $end = strtotime((string)($ev['end'] ?? ''));
-    if ($end === false || $end <= $start) {
-        $end = $start + 3600;
-    }
-    $slotStart = strtotime($ymd.' '.sprintf('%02d:00:00', $hour));
-    if ($slotStart === false) {
-        return false;
-    }
-    return $start < ($slotStart + 3600) && $end > $slotStart;
-}
-
-function agenda_event_starts_in_hour(array $ev, string $ymd, int $hour): bool
-{
-    $start = (string)($ev['start'] ?? '');
-    return substr($start, 0, 10) === $ymd && (int)substr($start, 11, 2) === $hour;
-}
-
 function business_day_config(array $tenant, string $date): ?array
 {
     $ts = strtotime($date.' 12:00:00');

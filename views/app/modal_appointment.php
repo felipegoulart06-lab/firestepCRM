@@ -187,7 +187,7 @@ $panelMax = $modalInline ? '100%' : ($edit ? '720' : '500').'px';
           <select class="select" name="service_id" required style="margin-top:6px" data-service-select>
             <option value="">Selecione</option>
             <?php foreach ($services as $s): ?>
-              <option value="<?= e($s['id']) ?>" data-price="<?= e((string)(service_price_kind($s)==='priced' ? (float)($s['price'] ?? 0) : 0)) ?>" data-duration="<?= e((string)service_span_minutes($s)) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id']) || old_fill($oldAppt, 'service_id')===$s['id'] ?'selected':'' ?>><?= e($s['name']) ?> · <?= (int)$s['duration_minutes'] ?> min · <?= e(service_price_label($s)) ?></option>
+              <option value="<?= e($s['id']) ?>" data-price="<?= e((string)(service_price_kind($s)==='priced' ? (float)($s['price'] ?? 0) : 0)) ?>" data-duration="<?= e((string)service_span_minutes($s)) ?>" <?= ($edit && ($edit['service_id']??'')===$s['id']) || old_fill($oldAppt, 'service_id')===$s['id'] ?'selected':'' ?>><?= e($s['name']) ?> · <?= e(service_duration_label((int)$s['duration_minutes'])) ?> · <?= e(service_price_label($s)) ?></option>
             <?php endforeach; ?>
           </select>
           <?php if (!$services): ?><p class="muted">Cadastre um serviço em Serviços para definir a duração do atendimento.</p><?php endif; ?>
